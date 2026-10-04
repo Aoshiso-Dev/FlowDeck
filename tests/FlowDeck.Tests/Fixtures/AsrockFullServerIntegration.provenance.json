@@ -1,0 +1,222 @@
+{
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "flowDeckPatch": 8,
+  "hardwareMocked": true,
+  "fullNetworkServer": true,
+  "actualSettingsStorage": true,
+  "resourceManagerMocked": true,
+  "windowsStartupIncluded": false,
+  "linkedDependencies": [
+    "WS2_32.dll",
+    "KERNEL32.dll"
+  ],
+  "warnings": {
+    "C4458": 34,
+    "C4005": 2,
+    "C4244": 11,
+    "C4996": 17,
+    "C4101": 2,
+    "C4702": 1
+  },
+  "binarySha256": "90E24ADE26E2BBC12E786A48669D8489C191C8C48F510E945543D7B224B239DE",
+  "compiledSources": [
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.cpp",
+      "sha256": "3ADCF7BC8D6FBF2BD1D756426D0F42A68774EBB4AFAAA686C19EFC72BDD2BA48"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.h",
+      "sha256": "8E9D2C368A839E7E7A423EF6D8D503CE19A79E6AEC090FDA6BBCBEBC19303BD0"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.cpp",
+      "sha256": "0E82311A69CE311D4BD30B3CD2CE1B8C1EB2502BEDCD6A408C228AF5F00339A3"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.h",
+      "sha256": "9E73F53386D18FCE8B9CEA59E5E695ED34DB7F99B2C9D4C64E85DCFE203E7B7E"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBControllerDetect.cpp",
+      "sha256": "938862312F730FB477F597A794F8C252E75914A893F3ECF83AA610B6DE6C9316"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockIo.h",
+      "sha256": "C718C6519238965906FF9E1A79965FD9CC3BA8C12FDB39BFFED7EC08B88BD185"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockOperation.h",
+      "sha256": "407D0E6519557DBC250F91BE2CE28180A4551E2CC25D4311863EAA85A0F4B447"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockAuthorization.h",
+      "sha256": "599425AB841E902B20F187461BAD7335BBCF48E4468007E7F94B4AD3E1A435FA"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckHidAllowlist.h",
+      "sha256": "02AB763CF38751C53C982BF09427F2EF95FCD8DC29DB6AA78E714170C6D7CDE9"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockWire.h",
+      "sha256": "B6AB244183B8D75161207B9BF33024A51F115934735761F17FD9570741EC7EE2"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockPipe.h",
+      "sha256": "FF83D1F63D9B7D1868826C6A12EE2C9E9613460A787EFD8E16CC25D9CCB037CC"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockBootstrap.h",
+      "sha256": "F77F13B610136D54903448D77E2479FA08FD5D899DCEC659E7A9613BFCB2A6CF"
+    },
+    {
+      "path": "RGBController/RGBController.cpp",
+      "sha256": "9434C7DDE305F506EF1D1C55BC7749F4084C0C6D955789B3B95D2B199710E8A7"
+    },
+    {
+      "path": "RGBController/RGBController.h",
+      "sha256": "8C18F975CE98AD949BF737028E7A4754846868F0EAA0A673AA13FCBF269EEDD0"
+    },
+    {
+      "path": "RGBController/RGBControllerInterface.h",
+      "sha256": "20543C30348AB9819D5F236E9635D06B21204A77AD297068878B6D63D60E1E04"
+    },
+    {
+      "path": "NetworkProtocol.h",
+      "sha256": "9AA020AEBBB1A60BC36DBAEFD6EDAC4A98E3FA2FB22B4D8E0833F52C764088B7"
+    },
+    {
+      "path": "NetworkProtocol.cpp",
+      "sha256": "A5D18CD6436D76A6338251BCA28D0978AB66DE67625ABA8F39524C9821A381C2"
+    },
+    {
+      "path": "FlowDeckAsrockSdk.inc",
+      "sha256": "E26585B1F85FD28B95E1B94DE9D1037B2172F61FD1BFBE84FC9281E4440748DC"
+    },
+    {
+      "path": "FlowDeckAsrockSdkPeer.inc",
+      "sha256": "89BB40B2B5904171C6FE01D46985774972DDEB87E2BB785C2917DCA8025504FD"
+    },
+    {
+      "path": "NetworkServer.cpp",
+      "sha256": "0C4CA36298EAC7F31F624166D2071F05CE8ABA0F009F937A332A7E7E57A5F794"
+    },
+    {
+      "path": "NetworkServer.h",
+      "sha256": "406E6093E9A5C6FD793ED9B530797EDEA3209F19D2E1B803650DFC984D290254"
+    },
+    {
+      "path": "SettingsManager.cpp",
+      "sha256": "A615040F54A44C36B584A86C1F9E6350F5DE7F7B34EEC6FFF3C41E3D6BFAA55C"
+    },
+    {
+      "path": "SettingsManager.h",
+      "sha256": "7349DCC9DFB4A0301953226D8CE0F248685E242C6458272C32B41F244E08CA9D"
+    },
+    {
+      "path": "JsonUtils.cpp",
+      "sha256": "E4B8115830DAB383D21C6F64918A0FE9C78A006195F5176420E6B929EB8C7178"
+    },
+    {
+      "path": "JsonUtils.h",
+      "sha256": "E0CFD0DA324A2EDC5E80E06AA5B535A514DA38002D4219D2A92952A5F2F21718"
+    },
+    {
+      "path": "filesystem.h",
+      "sha256": "E5CD96775E73E117FDFC1BF84BE02A21CA292E860E7CD6F2690F8EF0C1EDB5C9"
+    },
+    {
+      "path": "ProfileManager.h",
+      "sha256": "5E2ACB1CC06BFD32C4B1DEFE2379D81AF4FA7CA969D3C205F26D0BD71A2331BC"
+    },
+    {
+      "path": "PluginManagerInterface.h",
+      "sha256": "4D707F90AF48F20B8C76741D1E1BDE8B8C5DF3B13FAEFB2A436D40A3C65CE6DC"
+    },
+    {
+      "path": "ResourceManagerCallback.h",
+      "sha256": "CE270191F05FBD5347002E3065B54EAB8C5166F323A1C3C5A451CFA86DAC008F"
+    },
+    {
+      "path": "net_port/net_port.h",
+      "sha256": "6D25571DBE75E8B1B1806B628014CBBBB1634A7FA02D2F4184ECDCF67145947E"
+    },
+    {
+      "path": "FlowDeckNetworkLifecycle.inc",
+      "sha256": "95661B88D29437ADBA064875CFDDDB7AFD5BE9DF29B0FD17FBE04CD0A10E0D1C"
+    },
+    {
+      "path": "FlowDeckShutdown.h",
+      "sha256": "0A9B7067B48F59FFE5AA5ABBFDFE5B68B31C669905F45DA3414F51968092B9E3"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "scripts\\build-openrgb-full-server-fixture.py",
+      "sha256": "24EE846F5E7F9B04D9C8B9F2E10262CA45FDE13DE057AC5CF171EA193A05FFD0"
+    },
+    {
+      "path": "tests\\native\\openrgb-io\\fixture.h",
+      "sha256": "1271CADFD2CF76EE0BBAC8B699BB28DF571D0936680B5773848EA7412FEC6692"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\ResourceManager.h",
+      "sha256": "2092300BB1D40A87323E880F07806C961966BD0872BA7A71B1C7B0119DBC6C3B"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\LogManager.h",
+      "sha256": "AEFC3006B6B82D64C53D70B6CCD5D55311F283E3366394C0952F237966B6465C"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\NetworkClient.h",
+      "sha256": "6157688EBDCB1B975C71D15A8146C5FCF220CBB1371C67511BA856E8D3A952AB"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\server-body.inc",
+      "sha256": "139875244CCF633C44BDB60139CD39D96B1DAB6B43E51201F34649E51BE5A7D7"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\network-test-hooks.h",
+      "sha256": "265161CFD0B910FE0D036660B0F68C9963E08E1FBBF80B7B64B000EE58A013A0"
+    },
+    {
+      "path": "tests\\native\\openrgb-full-server\\lifecycle-tests.inc",
+      "sha256": "955C16577F810B10E862D5F9BD45BE77088DEF341465A6895110FE957A4C808E"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch8\\ResourceManager.h",
+      "sha256": "49C96E0FBB3CACEAA5B494980458E8477A47A901E247EC1E7622844AB24D56D3"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch8\\i2c_smbus\\i2c_smbus.h",
+      "sha256": "4180EC7E6E8CDD0357AF3CD2ECF2C32B73B0E7AB11DB25B94EDE5AFA73EF2892"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch8\\serial_port\\find_usb_serial_port.h",
+      "sha256": "3410564D9D94A52FBD771893FE00DCAD28DE0FCF6D74D50D037461273C8AB523"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch8\\ResourceManager.cpp",
+      "sha256": "884609950A80B0E0373880E1E2085F3315AC2C7EAA6B723E02EDB7D35C16B24B"
+    },
+    {
+      "path": "tests\\native\\openrgb-integration\\server.cpp",
+      "sha256": "3FCC599E2533C73F37218B3780B9B83600DE5FE07EBBDCFC37E83228D49C128F"
+    }
+  ],
+  "historicalBinarySha256": "3F7CD31E119145A0F48F45F1687EDCA1AFDF06647F4EEB7AC3052F414147DB61",
+  "publicSourceBundle": "third-party/OpenRGB-Fixtures",
+  "publicRebuild": {
+    "date": "2026-10-04",
+    "sourceDirectory": "full-server",
+    "recipe": "third-party/OpenRGB-Fixtures/build.py",
+    "includeArguments": [
+      "/I.",
+      "/I../shared"
+    ],
+    "compilerToolset": "MSVC 14.43 x64",
+    "reason": "Rebuild unchanged fixture sources with relative include paths",
+    "personalPathMatches": 0,
+    "hardwareExecuted": false,
+    "historicalSourceInputsRetained": true
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "devices": [
+    {
+      "id": "nzxt-control-hub-1e71-2022-v1",
+      "revision": 1,
+      "driver": "nzxt-control-hub",
+      "driverRevision": 1,
+      "name": "NZXT Control Hub",
+      "transport": {
+        "vendorId": 7793,
+        "productId": 8226,
+        "workerProtocol": 1,
+        "pythonVersionPrefix": "3.13.",
+        "liquidctlVersion": "1.16.0"
+      },
+      "cooling": {
+        "endpoints": ["fan1", "fan2", "fan3", "fan4", "fan5"],
+        "features": ["rpm", "dutyRead", "fixedDuty", "automaticDuty", "releaseCooling"],
+        "exitAction": "fixedDuty",
+        "stopSupported": true,
+        "calibrationSupported": true
+      },
+      "lighting": {
+        "endpoints": ["led1", "led2", "led3", "led4", "led5"],
+        "channelMasks": [2, 1, 4, 8, 16],
+        "features": ["fixedColor", "nativeEffect", "colorFrames", "restoreLighting"],
+        "nativeColors": "grb",
+        "frameColors": "grb",
+        "encodedPixelsPerEndpoint": 24,
+        "maximumLedsPerEndpoint": 24,
+        "ledCountPolicy": "confirmed-accessory",
+        "exitActions": ["fixedColor", "off"],
+        "nativeEffects": ["fixed", "breathing", "fading", "spectrum-wave", "covering-marquee", "super-rainbow", "off"]
+      },
+      "lightingLimits": {
+        "minimumIntervalMilliseconds": 100,
+        "maximumFrameAgeMilliseconds": 500,
+        "maximumLeds": 120,
+        "endpointColors": true,
+        "concurrentEndpointStreams": true
+      },
+      "resourceDomainPrefix": "usb:",
+      "discoveryResourceDomains": ["usb:control-hub-discovery"],
+      "physicalResources": ["usb-product:1e71:2022"],
+      "verification": ["docs/照明効果と同期.md", "docs/実機受入-1.20.0.md"],
+      "limitations": [
+        "Discovery is restricted to liquidctl ControlHub and the exact USB product; other liquidctl drivers are not enabled.",
+        "Firmware is included in the live binding; no claim is made that all firmware revisions are certified.",
+        "Reported duty and RPM do not establish a safe minimum for an attached fan. Each endpoint requires setup.",
+        "The encoder sends 24 uniform pixels per lighting endpoint. LED counts and accessories require explicit confirmation.",
+        "Lighting has no color readback. Exit sends the configured color or off; it cannot restore an unknown original effect.",
+        "Lighting masks include the instance-local liquidctl 6227bbf correction. Fan masks are unchanged.",
+        "Frame timing is a software budget, not a measurement of physical illumination timing."
+      ]
+    }
+  ]
+}

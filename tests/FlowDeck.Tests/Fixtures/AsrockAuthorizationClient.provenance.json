@@ -1,0 +1,49 @@
+{
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "basePatch": 5,
+  "hardwareMocked": true,
+  "actualWindowsPipeClient": true,
+  "binarySha256": "24311D37721D4BFC20D52045140B8547BBF6A0660A2D43A32558D9295BE45A91",
+  "inputs": [
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch5-checked\\Controllers\\ASRockPolychromeUSBController\\FlowDeckAsrockAuthorization.h",
+      "sha256": "599425AB841E902B20F187461BAD7335BBCF48E4468007E7F94B4AD3E1A435FA"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch5-checked\\Controllers\\ASRockPolychromeUSBController\\FlowDeckAsrockIo.h",
+      "sha256": "C718C6519238965906FF9E1A79965FD9CC3BA8C12FDB39BFFED7EC08B88BD185"
+    },
+    {
+      "path": "native\\OpenRgb\\FlowDeckAsrockWire.h",
+      "sha256": "B6AB244183B8D75161207B9BF33024A51F115934735761F17FD9570741EC7EE2"
+    },
+    {
+      "path": "native\\OpenRgb\\FlowDeckAsrockPipe.h",
+      "sha256": "FF83D1F63D9B7D1868826C6A12EE2C9E9613460A787EFD8E16CC25D9CCB037CC"
+    },
+    {
+      "path": "native\\OpenRgb\\FlowDeckAsrockBootstrap.h",
+      "sha256": "F77F13B610136D54903448D77E2479FA08FD5D899DCEC659E7A9613BFCB2A6CF"
+    },
+    {
+      "path": "tests\\native\\openrgb-authorization-pipe\\client.cpp",
+      "sha256": "94FE8F327352DC208E34328F61EBEDA22D12C8F90701419168E3E3D1D895C552"
+    }
+  ],
+  "historicalBinarySha256": "BD76DB018DB59FA2DA27093845E31F682A0E8F55B28A0F588C42FAF586D2723C",
+  "publicSourceBundle": "third-party/OpenRGB-Fixtures",
+  "publicRebuild": {
+    "date": "2026-10-04",
+    "sourceDirectory": "authorization",
+    "recipe": "third-party/OpenRGB-Fixtures/build.py",
+    "includeArguments": [
+      "/I.",
+      "/I../shared"
+    ],
+    "compilerToolset": "MSVC 14.43 x64",
+    "reason": "Rebuild unchanged fixture sources with relative include paths",
+    "personalPathMatches": 0,
+    "hardwareExecuted": false,
+    "historicalSourceInputsRetained": true
+  }
+}

@@ -1,0 +1,43 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FlowDeck.App">
+ <BooleanToVisibilityConverter x:Key="TelemetryVisibility"/>
+ <local:RpmScaleConverter x:Key="RpmScale"/>
+ <Style TargetType="local:TelemetryMeter"><Setter Property="Fill" Value="{DynamicResource AccentBrush}"/><Setter Property="Track" Value="{DynamicResource TrackBrush}"/><Setter Property="IsHitTestVisible" Value="False"/></Style>
+ <DataTemplate x:Key="TemperatureCards">
+  <ItemsControl ItemsSource="{Binding DashboardTemperatures}" Margin="0,0,-12,8">
+   <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+   <ItemsControl.ItemTemplate><DataTemplate><Border Style="{DynamicResource Card}" Padding="14,12" Margin="0,0,12,12" ToolTip="{Binding State}"><StackPanel>
+    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+    <Grid Width="114" Height="108" HorizontalAlignment="Center" Margin="0,7,0,0" ToolTip="{Binding ScaleDescription}">
+     <local:TelemetryMeter Circular="True" Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Visibility="{Binding Circular,Converter={StaticResource TelemetryVisibility}}"/>
+     <local:TelemetryMeter Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Height="9" VerticalAlignment="Bottom" Margin="0,0,0,10" Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"/>
+     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,4,0,0"><TextBlock Text="{Binding DisplayValue}" FontSize="27" FontWeight="Light" HorizontalAlignment="Center"/><TextBlock Text="°C" Style="{DynamicResource Muted}" FontSize="11" HorizontalAlignment="Center"/></StackPanel>
+    </Grid>
+    <TextBlock Text="{Binding Connection}" Foreground="{DynamicResource MutedBrush}" FontSize="10" HorizontalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxWidth="175" ToolTip="{Binding Connection}"/>
+    <TextBlock Text="{Binding State}" FontSize="10" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Value}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+   </StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+  </ItemsControl>
+ </DataTemplate>
+ <DataTemplate x:Key="RpmReadout">
+  <StackPanel ToolTip="{Binding ScaleDescription}">
+   <Grid Width="92" Height="86" HorizontalAlignment="Right" Visibility="{Binding Circular,Converter={StaticResource TelemetryVisibility}}">
+    <local:TelemetryMeter Circular="True" Value="{Binding Value}" Maximum="{Binding ScaleMaximum}"/>
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Light" HorizontalAlignment="Center"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" HorizontalAlignment="Center"/></StackPanel>
+   </Grid>
+   <StackPanel Visibility="{Binding Inline,Converter={StaticResource TelemetryVisibility}}">
+   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Light"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="5,0,0,3" VerticalAlignment="Bottom"/></StackPanel>
+   <local:TelemetryMeter Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Height="9" Margin="0,3,0,0" Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"/>
+   <DockPanel Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"><TextBlock Text="0" Foreground="{DynamicResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding ScaleMaximum,StringFormat={}{0:N0}}" Foreground="{DynamicResource MutedBrush}" FontSize="9" HorizontalAlignment="Right"/></DockPanel>
+   </StackPanel>
+   <TextBlock Text="{Binding State}" FontSize="10" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Right" Margin="0,3,0,0"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Value}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+  </StackPanel>
+ </DataTemplate>
+ <DataTemplate x:Key="FanGlyph">
+  <Grid Width="26" Height="26" ToolTip="{Binding Role}">
+   <Ellipse Stroke="{DynamicResource MutedBrush}" StrokeThickness="1"/>
+   <Path x:Name="FanBlades" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1" Fill="{DynamicResource InsetBrush}" Data="M13,12 C3,12 3,3 8,4 C13,5 15,8 13,12 M14,13 C14,3 23,3 22,8 C21,13 18,15 14,13 M13,14 C23,14 23,23 18,22 C13,21 11,18 13,14 M12,13 C12,23 3,23 4,18 C5,13 8,11 12,13"/>
+   <Path x:Name="PumpDrop" Visibility="Collapsed" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.2" Data="M13,5 C11,9 7,12 7,16 C7,23 19,23 19,16 C19,12 15,9 13,5 Z"/>
+   <Ellipse x:Name="FanHub" Width="4" Height="4" Fill="{DynamicResource MutedBrush}"/>
+  </Grid>
+  <DataTemplate.Triggers><DataTrigger Binding="{Binding Role}" Value="ポンプ"><Setter TargetName="FanBlades" Property="Visibility" Value="Collapsed"/><Setter TargetName="FanHub" Property="Visibility" Value="Collapsed"/><Setter TargetName="PumpDrop" Property="Visibility" Value="Visible"/></DataTrigger></DataTemplate.Triggers>
+ </DataTemplate>
+</ResourceDictionary>

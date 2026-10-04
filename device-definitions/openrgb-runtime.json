@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "id": "openrgb-1.0-windows-x64-usb",
+  "release": "1.0",
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "archiveUrl": "https://codeberg.org/OpenRGB/OpenRGB/releases/download/release_1.0/OpenRGB_1.0_Windows_64_81bbe18.zip",
+  "archiveSha256": "182A52A3C97C4C4AE52C80286B4260C9666C51C3447DBC416EE8945F66192E90",
+  "archivePrefix": "OpenRGB Windows 64-bit/",
+  "files": [
+    {
+      "path": "LedsValve.bin",
+      "length": 43796,
+      "sha256": "1C1809281AE6F3E3C5B362F1536C0E6706013E6E33BFBA66CAD74636E61436D6",
+      "include": false
+    },
+    {
+      "path": "LpcIO.bin",
+      "length": 18076,
+      "sha256": "B3896A1CAB0D808FCA31FE2EBCAE045D59DAC690DA87B17C858BB8DA357EB45E",
+      "include": false
+    },
+    {
+      "path": "OpenRGB.exe",
+      "length": 10648064,
+      "sha256": "86A88B99F60A086E13E6F6ECFB8260A94DBCD598DDEABFFDA7070D78C97D7E95",
+      "include": true
+    },
+    {
+      "path": "PawnIOLib.dll",
+      "length": 4096,
+      "sha256": "C6E7C2F54643EF9CB51B9A3EC7B0EFC9E204803C206F33014E39F281546EA9B4",
+      "include": true
+    },
+    {
+      "path": "Qt6Core.dll",
+      "length": 6070272,
+      "sha256": "8632F4A9F57355680F1B0DE5013EB4657B1038B0CEDC7C0534DB827F73162014",
+      "include": true
+    },
+    {
+      "path": "Qt6Core5Compat.dll",
+      "length": 859648,
+      "sha256": "0D949A077144CFE2FECD4A030A3A6FBF0D651501E1B39BBDAAA11F56C74C25A2",
+      "include": true
+    },
+    {
+      "path": "Qt6Gui.dll",
+      "length": 8933376,
+      "sha256": "1C6AB7A785ADE7A8964F67CCE21E6099B1209301498726019189EA0023E6F24C",
+      "include": true
+    },
+    {
+      "path": "Qt6OpenGL.dll",
+      "length": 1964544,
+      "sha256": "BFB1BE764C0E9D75682319B14D8BA0493D89A52D1680E1CC914525EA1AD944FB",
+      "include": true
+    },
+    {
+      "path": "Qt6Widgets.dll",
+      "length": 6447616,
+      "sha256": "BAF97DFDB7FE72A14E1675F37B21CC8634C7EC26CC9082F4883AA7492292A1DB",
+      "include": true
+    },
+    {
+      "path": "SmbusI801.bin",
+      "length": 55540,
+      "sha256": "A0F7D066E7EFDA28C0E754C1F52DBD8DC280D388BA8575B514A80CB67490530C",
+      "include": false
+    },
+    {
+      "path": "SmbusIntelSkylakeIMC.bin",
+      "length": 19828,
+      "sha256": "2E2D6C1E541FDFE598AA8DF4D334E11C491C8A84F23E8256DD18119DD420DBD2",
+      "include": false
+    },
+    {
+      "path": "SmbusNCT6793.bin",
+      "length": 21244,
+      "sha256": "DB068C6A87C0066EBFB7F691D88422FEE8AF350898E7A7F0DB100FD6632BAB17",
+      "include": false
+    },
+    {
+      "path": "SmbusPIIX4.bin",
+      "length": 42404,
+      "sha256": "91F9B4B1C39E3D399CE48477A89D8F6BD3E58A2241064A4DAEC3A1513DFF56E5",
+      "include": false
+    },
+    {
+      "path": "dxcompiler.dll",
+      "length": 12602944,
+      "sha256": "6EC587D1952778A41A5A90647B39D0C86958E7DABF87FA1CF2B14408BFE1E8DE",
+      "include": true
+    },
+    {
+      "path": "dxil.dll",
+      "length": 1225280,
+      "sha256": "A0CFAF3E930894E9B5D48EFCACAED6ACE5C645BAD3C4E99B4A23C9831A078120",
+      "include": true
+    },
+    {
+      "path": "hidapi-hotplug.dll",
+      "length": 45056,
+      "sha256": "263A662B014A7082871BB3E46F4D3C4790D7ED253768DCD585264FD598892DFB",
+      "include": true
+    },
+    {
+      "path": "imageformats/qgif.dll",
+      "length": 35840,
+      "sha256": "9CB2A7645576E72DB54F957E9431B6145DAF55BB83F4879CC01F864D4AF96621",
+      "include": true
+    },
+    {
+      "path": "imageformats/qico.dll",
+      "length": 33792,
+      "sha256": "41038802DAF3A01D4701F88E2C7730C41A9E7E63FA8C985E2EF4A9A9370B2D6E",
+      "include": true
+    },
+    {
+      "path": "imageformats/qjpeg.dll",
+      "length": 564736,
+      "sha256": "C6D100F40B051A1750CDA26C46B66694B8854EAE01DE45A0D4510B779B5EA88D",
+      "include": true
+    },
+    {
+      "path": "libusb-1.0.dll",
+      "length": 157696,
+      "sha256": "A8C91F0FF68FB7802A9F4416728F0EEB4D99AF4CEAA4EF7DFE9374E76E375018",
+      "include": true
+    },
+    {
+      "path": "platforms/qwindows.dll",
+      "length": 892928,
+      "sha256": "D858A41E1617052F113442EA755696BC6DBE8030E64266E3FF3DC27FDDEA6BEF",
+      "include": true
+    },
+    {
+      "path": "styles/qmodernwindowsstyle.dll",
+      "length": 209920,
+      "sha256": "518118BBE1EBA484B431A5EFF1A212A1FFE8B92305DB18A3476A6A6217A78C9F",
+      "include": true
+    }
+  ]
+}

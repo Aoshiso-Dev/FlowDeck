@@ -1,0 +1,35 @@
+<UserControl x:Class="FlowDeck.App.ColorPicker" x:Name="Picker" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FlowDeck.App" Focusable="False">
+ <UserControl.Resources>
+  <DataTemplate x:Key="SwatchTemplate"><Button Width="30" Height="30" MinHeight="30" Padding="3" Margin="0,0,6,4" Background="Transparent" BorderBrush="Transparent" ToolTip="{Binding Label}" AutomationProperties.Name="{Binding Label}" Click="SwatchClick"><Border Width="23" Height="23" CornerRadius="12" Background="{Binding Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/></Button></DataTemplate>
+  <ItemsPanelTemplate x:Key="SwatchWrap"><WrapPanel/></ItemsPanelTemplate>
+ </UserControl.Resources>
+ <StackPanel>
+  <Grid>
+   <Grid.ColumnDefinitions><ColumnDefinition Width="238"/><ColumnDefinition Width="24"/><ColumnDefinition/></Grid.ColumnDefinitions>
+   <local:HsvWheel x:Name="Wheel" Width="238" Height="238" VerticalAlignment="Top" SelectedColor="{Binding SelectedColor,ElementName=Picker,Mode=TwoWay}"/>
+   <StackPanel Grid.Column="2" Margin="0,2,0,0">
+    <Border Background="{DynamicResource InsetBrush}" CornerRadius="8" Padding="10">
+     <DockPanel><Border DockPanel.Dock="Left" Width="44" Height="44" CornerRadius="8" Background="{Binding SelectedBrush,ElementName=Picker}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,12,0"/><StackPanel VerticalAlignment="Center"><TextBlock Text="選択中の色" Style="{StaticResource Muted}"/><TextBlock Text="{Binding Hex,ElementName=Picker}" FontSize="21" FontWeight="Light" Margin="0,2,0,0"/></StackPanel></DockPanel>
+    </Border>
+    <ItemsControl x:Name="PresetItems" Margin="0,10,0,0" ItemsSource="{x:Static local:ColorPalette.Presets}" ItemTemplate="{StaticResource SwatchTemplate}" ItemsPanel="{StaticResource SwatchWrap}"/>
+    <StackPanel><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding Palette,ElementName=Picker}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+    <DockPanel Margin="0,3,0,3"><Button x:Name="FavoriteButton" DockPanel.Dock="Right" Content="{Binding FavoriteLabel,ElementName=Picker}" IsEnabled="{Binding Palette.CanEdit,ElementName=Picker}" Click="FavoriteClick" Padding="8,2" MinHeight="24" FontSize="11" Margin="0" ToolTip="現在の色をお気に入りに追加・解除"/><TextBlock Text="お気に入り" Style="{StaticResource Muted}" VerticalAlignment="Center"/></DockPanel>
+    <ItemsControl x:Name="FavoriteItems" ItemsSource="{Binding Palette.Favorites,ElementName=Picker}" ItemTemplate="{StaticResource SwatchTemplate}" ItemsPanel="{StaticResource SwatchWrap}"/>
+    <TextBlock Text="まだありません" Style="{StaticResource Muted}" Margin="4,4,0,10" Visibility="{Binding Palette.FavoritesEmpty,ElementName=Picker,Converter={StaticResource BoolVisibility}}"/>
+    <TextBlock Text="最近使った色" Style="{StaticResource Muted}" Margin="0,3,0,4"/>
+    <ItemsControl x:Name="RecentItems" ItemsSource="{Binding Palette.Recent,ElementName=Picker}" ItemTemplate="{StaticResource SwatchTemplate}" ItemsPanel="{StaticResource SwatchWrap}"/>
+    <TextBlock Text="まだありません" Style="{StaticResource Muted}" Margin="4,4,0,0" Visibility="{Binding Palette.RecentEmpty,ElementName=Picker,Converter={StaticResource BoolVisibility}}"/>
+    <TextBlock Text="{Binding Palette.Warning,ElementName=Picker}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"/>
+    </StackPanel>
+   </StackPanel>
+  </Grid>
+  <Expander x:Name="DetailsExpander" Header="詳細 · RGB / HEX" Margin="0,14,0,0">
+   <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="26"/><ColumnDefinition/><ColumnDefinition Width="45"/><ColumnDefinition Width="24"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+    <TextBlock Text="R" VerticalAlignment="Center"/><Slider Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Red,ElementName=Picker}" AutomationProperties.Name="赤"/><TextBlock Grid.Column="2" Text="{Binding Red,ElementName=Picker}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+    <TextBlock Grid.Row="1" Text="G" VerticalAlignment="Center"/><Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Green,ElementName=Picker}" AutomationProperties.Name="緑"/><TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Green,ElementName=Picker}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+    <TextBlock Grid.Row="2" Text="B" VerticalAlignment="Center"/><Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="255" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Blue,ElementName=Picker}" AutomationProperties.Name="青"/><TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Blue,ElementName=Picker}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+    <StackPanel Grid.Column="4" Grid.RowSpan="3"><TextBlock Text="HEX" Style="{StaticResource Label}"/><TextBox x:Name="HexInput" Text="{Binding HexDraft,ElementName=Picker,UpdateSourceTrigger=PropertyChanged}" MaxLength="7" LostKeyboardFocus="HexLostFocus" KeyDown="HexKeyDown" AutomationProperties.Name="HEXカラー"/><TextBlock Text="{Binding HexError,ElementName=Picker}" FontSize="11" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,5,0,0"/></StackPanel>
+   </Grid>
+  </Expander>
+ </StackPanel>
+</UserControl>

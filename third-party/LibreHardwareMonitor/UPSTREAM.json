@@ -1,0 +1,755 @@
+{
+  "upstream": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor",
+  "commit": "3d331e3370efb858411f19511373eff65a218701",
+  "archiveSha256": "5A83EE3F504A85EFB6AFEE4112447E60CACA1B7EC2E2D71F4651570B8B9B4230",
+  "files": [
+    {
+      "path": "LibreHardwareMonitorLib.csproj",
+      "sha256": "9BD6CDE748DF1E92455B914983E15103CF339050F5478697CAD25E4FE96198D0"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "1F256ECAD192880510E84AD60474EAB7589218784B9A50BC7CEEE34C2B91F1D5"
+    },
+    {
+      "path": "main.nuget.target",
+      "sha256": "C1D404B42C2A845AD2594BB69427FE70BE28C93908EB6A78AB9EEA3124D63EFF"
+    },
+    {
+      "path": "NativeMethods.txt",
+      "sha256": "EBE1B276F1BE763A8F017C0CD165F8F7831D75802E945062EE7BC2A6665EBBE8"
+    },
+    {
+      "path": "RAMSPDToolkitDriver.cs",
+      "sha256": "6C9CC45EFA81C45F505AAC69FCBF7EB5F92C5531BB23BDCC774F4C17816631DD"
+    },
+    {
+      "path": "THIRD-PARTY-NOTICES.txt",
+      "sha256": "A60D5EE62F4D700CAFF38566F42874D554B8B530437C72804FB28B958CFBDA9B"
+    },
+    {
+      "path": "Hardware/CompositeSensor.cs",
+      "sha256": "994D22632F7431959D434E8499CA908B68FFFDDCD1D6C178F798A76266CB3145"
+    },
+    {
+      "path": "Hardware/Computer.cs",
+      "sha256": "5E0F66CF0BBB87E0738D0C0B2E85FAC606B3050AC592388CAA6998DDE4F02D3E"
+    },
+    {
+      "path": "Hardware/Control.cs",
+      "sha256": "C40C0FBED7B701459F5C3821E1CBFF551E339F725ED4F8FF29870C904ACAB9D5"
+    },
+    {
+      "path": "Hardware/CoreType.cs",
+      "sha256": "581123A0204A735DA074CB20E6BC191623D32C247D97DEEA5A1EA3DC6252B551"
+    },
+    {
+      "path": "Hardware/D3DDisplayDevice.cs",
+      "sha256": "40DA1A53E3D0B3378A0F6828B12D25327248636ECC34EF0067006EF0CDBFC969"
+    },
+    {
+      "path": "Hardware/FirmwareTable.cs",
+      "sha256": "8BE80732761867092351D432DC53935DE049AB6CAB2C435493186853336E170F"
+    },
+    {
+      "path": "Hardware/GroupAffinity.cs",
+      "sha256": "B4A03E9E28F4E9DC432C92F99C50C6D5F710474960D02C2A02E4E32CC15069BA"
+    },
+    {
+      "path": "Hardware/Hardware.cs",
+      "sha256": "DF656116A708176428505743FC0EF8DF30981ACE47258797CF4F4AAEA015430F"
+    },
+    {
+      "path": "Hardware/HardwareType.cs",
+      "sha256": "28E1D7AAB22D73D694FBF4FDD2936F05DBF5C1A2A05BAEDFB0BA59E4EAC19892"
+    },
+    {
+      "path": "Hardware/IComputer.cs",
+      "sha256": "858049BD751302DDACD06DFC848C1FE6867AEFDA5D9BD268DC13852D58C4EF1F"
+    },
+    {
+      "path": "Hardware/IControl.cs",
+      "sha256": "9A9CF22BD2BCB1D6B6F0899038192604E2EB730CB098B75B308744AEC23B3047"
+    },
+    {
+      "path": "Hardware/Identifier.cs",
+      "sha256": "832B9C325F38E0F18AE2F7429F66B06331B9F2E0BC96D560DBD39A390A1E5D98"
+    },
+    {
+      "path": "Hardware/IElement.cs",
+      "sha256": "A35A9BD46D4ABA71D4284C7B8E071D3175743312B64FB08BA82A996E221D04C9"
+    },
+    {
+      "path": "Hardware/IGroup.cs",
+      "sha256": "8521E700A9AD34E396A345F62BC27C63FC9F0DE5FBBE7C16E89DA4C8B5FC2F6F"
+    },
+    {
+      "path": "Hardware/IHardware.cs",
+      "sha256": "255D893E57D2A64F831318F265CA624D0C438134338729D13246FEDF486D2302"
+    },
+    {
+      "path": "Hardware/IHardwareChanged.cs",
+      "sha256": "8439DE21DFA35A4FD3CEF8D851F7ACE04C52069E211513EDB1FEB1477587B994"
+    },
+    {
+      "path": "Hardware/IParameter.cs",
+      "sha256": "E60C8D5A0479588179F620EB90C02ED7D7F7C7988248E552BED4C1B96B57B99C"
+    },
+    {
+      "path": "Hardware/ISensor.cs",
+      "sha256": "AC27D23D94C8B1B51FB0EF608AC848C7CCBBD0D6E9722D219772F4B0A8E7122D"
+    },
+    {
+      "path": "Hardware/ISensorLimits.cs",
+      "sha256": "35F2869499FF049FB7C21B6CEB02C33C2347BF4F29AEEAD3809BB50942F6BED8"
+    },
+    {
+      "path": "Hardware/ISettings.cs",
+      "sha256": "AFEC0E41A656553B8A7AF20674577A3131177D8145CE7AE6C99ACAFA72309266"
+    },
+    {
+      "path": "Hardware/IVisitor.cs",
+      "sha256": "670D28125FB73C213DD3AAED356D281C5EE3CDF5E16D0E9C751DDB7154B74FC4"
+    },
+    {
+      "path": "Hardware/Mutexes.cs",
+      "sha256": "D6A7F6855EDFECDEEA2C010E2E4B12ABF0BA9A27B9F2A88FDDD144E472942056"
+    },
+    {
+      "path": "Hardware/OpCode.cs",
+      "sha256": "63A5BF2BAB7D77EB3EF09EDC71041646EBA170AAEB9E6131D8051CE41547D334"
+    },
+    {
+      "path": "Hardware/Parameter.cs",
+      "sha256": "5EF6D1D541FD592D99E813036CCC59A9B6552D5BF927FF32DB7E20EFABD2BF15"
+    },
+    {
+      "path": "Hardware/ParameterDescription.cs",
+      "sha256": "61F518EE9B0534DB11DA3157C8203DAFF4847EFBE47452A8A73C221CC56F8DC2"
+    },
+    {
+      "path": "Hardware/RyzenSMU.cs",
+      "sha256": "5F9B597CCB8AE17AA227AA84D9F1E09DDE3328BB7FFCD98C0362B87E9E557A35"
+    },
+    {
+      "path": "Hardware/Sensor.cs",
+      "sha256": "A0BE4A9CFD0B2A813E24F068229106AE4A9195857B2E84C51EE9FF86383125A9"
+    },
+    {
+      "path": "Hardware/SensorVisitor.cs",
+      "sha256": "4D311F2945782410DA290AFB17654ACFA43EB25FDFC8BCC76958E0FBB054F5FF"
+    },
+    {
+      "path": "Hardware/SMBios.cs",
+      "sha256": "4DFECF8AD6D090EF5A34226B68A005AB3B590809EC2B13BCE34E05BD09548DEA"
+    },
+    {
+      "path": "Hardware/ThreadAffinity.cs",
+      "sha256": "B8E3431BB1D0CF6AF08DEBEC5EB3836B5DF5BEF9FFB6094047E4C8A48AE9308C"
+    },
+    {
+      "path": "Hardware/Battery/Battery.cs",
+      "sha256": "C745E787BD7118099C7D2EBBE1E28F13C11FD3E5FC3B6E69F1E402A74093D379"
+    },
+    {
+      "path": "Hardware/Battery/BatteryChemistry.cs",
+      "sha256": "CD10DB8966C0FBD400990217D4554828372FDA5004ECE7826F0261EA099B001D"
+    },
+    {
+      "path": "Hardware/Battery/BatteryGroup.cs",
+      "sha256": "94907B42CA5754EFE22046B33944C97BDC3084D4C250248027B5DF82624AF688"
+    },
+    {
+      "path": "Hardware/Controller/AeroCool/AeroCoolGroup.cs",
+      "sha256": "63E2FE0120FFEAA77BA9B603AE18BD7D322F118D045707607FF35075FDE53C3E"
+    },
+    {
+      "path": "Hardware/Controller/AeroCool/P7-H1.cs",
+      "sha256": "5312C3B860C0D1A05A5BD80AD1500EA904825D546FAA37DADF6321ABD6E90271"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/AquaComputerGroup.cs",
+      "sha256": "0D7D942443DB6A573138BFA0F6BFD6E44DF6075B0F90794E851D2D5AAD1D7694"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/AquastreamUltimate.cs",
+      "sha256": "C3A2A01F901DB6191AE59E0CA9B0C6E108CB2B74230702513E09DC781DEF05B8"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/AquastreamXT.cs",
+      "sha256": "AE81B95AAC99FE2DCBD4106699385AA1AA96CFD0A05A5F8AF3A1ECD90C17ED3A"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/D5Next.cs",
+      "sha256": "C558E58ADB0939A56BED702DA9221B5A9EF0FEBC31FE7B7AEEBDCAA64880CDCB"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/Farbwerk.cs",
+      "sha256": "E9A4FEA6B3409854B7B9B2583A21A77694645A90AADD6D4CE77C874B53752CC7"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/Farbwerk360.cs",
+      "sha256": "9DC97DC929D5BA7EF9405B47FDC6CEEEB39CB7E78CDF7E10C090B2CB4061668E"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/HighFlowNext.cs",
+      "sha256": "015BDFAD39B2C59D75584752404128274D5CF356EC7F8FC288B950DA89E370BE"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/MPS.cs",
+      "sha256": "93424C34F90361984E5B5BA9A901164284F1BCE37229870EC07768BE5AEF0BB3"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/Octo.cs",
+      "sha256": "B1813E904A00BB58BDD4EF26F926D8BCBB0F8C914C7FF3DB63D00550831B555C"
+    },
+    {
+      "path": "Hardware/Controller/AquaComputer/Quadro.cs",
+      "sha256": "D73BD7BE99392F10DD1AA8E7A209813EEB7484C0953AB9D001A2F003D5A27A3A"
+    },
+    {
+      "path": "Hardware/Controller/Arctic/ArcticFanController.cs",
+      "sha256": "D199F416E5422EC9EBE72734C5D14EDD9A66A2E374EBB2F34619ACF28366EB4D"
+    },
+    {
+      "path": "Hardware/Controller/Arctic/ArcticGroup.cs",
+      "sha256": "9336A191D558DF9A226208770B6C7DC34E27E0C76DD1D5C3D4885B584F28DD70"
+    },
+    {
+      "path": "Hardware/Controller/Arctic/README.MD",
+      "sha256": "6F13FCA3F715496E5A01A931D885ED39FF11F44621326394FB89357B154FD007"
+    },
+    {
+      "path": "Hardware/Controller/Heatmaster/Heatmaster.cs",
+      "sha256": "0F852C0938A2DA163EB84E8F156496A757A1CACE47B3BFDC5EDD561E1B702D11"
+    },
+    {
+      "path": "Hardware/Controller/Heatmaster/HeatmasterGroup.cs",
+      "sha256": "43761A0A0FAD37150F24A0697C89C4065B696BF5431C170CEAE00FB8219851EE"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiConstants.cs",
+      "sha256": "0D5877FFCE77E72FF9A5D48877050E3A79F3D879498EA4B287FB7B7ED78248F7"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiCoreLiquidController.cs",
+      "sha256": "C860D35F642F81D8D1AFE0BF7F719911620ABFE79E9FB2F70159E7820E36B727"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiDevice.cs",
+      "sha256": "3D6FA98E19241AA58E8B94F82CEC5C4EE921B84F15DAC32E37B2B3922949EE10"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiFan.cs",
+      "sha256": "63EF5AE5F81A0FC0604F64BB39B272DFD868050CC387ACC865B2ADCE294CF82B"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiFanControl.cs",
+      "sha256": "77C1790A791EF526F4EA73B89C2F6913D3A178CC0F016EF6976808907DDBDEB1"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiFanMode.cs",
+      "sha256": "BEEC3151BC413AB86B83F48E51DBA53005BAC40FA9C02EAA0F0EDD8770138E36"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiGroup.cs",
+      "sha256": "6DC26D1E1CC8B8555E1DE3A7E8189C13EB7D87221BBDABED4842DCACB43ABA7B"
+    },
+    {
+      "path": "Hardware/Controller/MSI/MsiSensor.cs",
+      "sha256": "4E227B9660974E111F3ED8032E8AF2E17C03DAA1805EC07149810DBE65B5A755"
+    },
+    {
+      "path": "Hardware/Controller/Nzxt/GridV3.cs",
+      "sha256": "41A0ABAC00839B189653BC05A66A8C57A384A82182E6142F863915310D4B857A"
+    },
+    {
+      "path": "Hardware/Controller/Nzxt/KrakenV2.cs",
+      "sha256": "8749B1BE81B1A758BFCF93822E08984AD99808E49D1FD4FAC65F3CE0FC566BF3"
+    },
+    {
+      "path": "Hardware/Controller/Nzxt/KrakenV3.cs",
+      "sha256": "E3369A3446D8DAC2B5D725AF6100A85C70B05886AD7620551F80A9EE85EAAEB6"
+    },
+    {
+      "path": "Hardware/Controller/Nzxt/NzxtGroup.cs",
+      "sha256": "712AAEBCF759621C87338C0CBE6071FD25AF4E24875139D68546C54F634D7795"
+    },
+    {
+      "path": "Hardware/Controller/Razer/RazerFanController.cs",
+      "sha256": "BE4F58D20270690070A2E8B5AD420B1C216A1504EC883C5F429D06775501B8EB"
+    },
+    {
+      "path": "Hardware/Controller/Razer/RazerGroup.cs",
+      "sha256": "AFCED588F062E45EB3DE9183DA4F540C1E0F9258B148EE0A321F0399ADE03535"
+    },
+    {
+      "path": "Hardware/Controller/TBalancer/TBalancer.cs",
+      "sha256": "184F9F83D1D1AC8876399EBEA1B103B6C181DBA46C5940E4B785CD0769C0BE44"
+    },
+    {
+      "path": "Hardware/Controller/TBalancer/TBalancerGroup.cs",
+      "sha256": "7CD169EA9C4ED976F812BB5E0763A2755BECE14A75EE20C73E25063B6BFB1106"
+    },
+    {
+      "path": "Hardware/Cpu/Amd0FCpu.cs",
+      "sha256": "3D1370D07094E74EB82001A2582B0895E7FD2B27CCE0104B4490F84B4D8B26D4"
+    },
+    {
+      "path": "Hardware/Cpu/Amd10Cpu.cs",
+      "sha256": "6C7E6034B7924AA60494CA09C84CD5A92B57C8AE776A3D285ED7E037C666F19D"
+    },
+    {
+      "path": "Hardware/Cpu/Amd17Cpu.cs",
+      "sha256": "E51A91B2B18989087F7F9D9F0A7AD9E7269CA63FA46B5BEE233078653B28A671"
+    },
+    {
+      "path": "Hardware/Cpu/AmdCpu.cs",
+      "sha256": "BF2CA1FE4ABCA007B0676B9E242B05DA41E3D9AB588B4682D64F7330A0DE80F1"
+    },
+    {
+      "path": "Hardware/Cpu/CpuGroup.cs",
+      "sha256": "41AC9A7451AAF72BA7251DA8086575F2F38C298DB935601C67DEB756534E29C2"
+    },
+    {
+      "path": "Hardware/Cpu/CpuId.cs",
+      "sha256": "223679C4381AE260B9ED60BF369E3B80AD327F40AFEA9E6288FBF68BF0A77D67"
+    },
+    {
+      "path": "Hardware/Cpu/CpuLoad.cs",
+      "sha256": "1315A30F9E02A781DC17026CF41BF100EDB638B88E08FBFAD53298D70D6B5ABE"
+    },
+    {
+      "path": "Hardware/Cpu/GenericCpu.cs",
+      "sha256": "757E1C23D57EE0AD7704B26FD49D18410A939F97A68430987404B3E5A71DC9AE"
+    },
+    {
+      "path": "Hardware/Cpu/IntelCpu.cs",
+      "sha256": "EEDC57388DBFF1EA2E2368DD18EDCBE7F11DBA3E5A87158F54FC0BD67782B5E3"
+    },
+    {
+      "path": "Hardware/Gpu/AmdGpu.cs",
+      "sha256": "C14545FE122C55C80C6663677E9F235449456BC4BB45FA160F17B30A55A5C61C"
+    },
+    {
+      "path": "Hardware/Gpu/AmdGpuGroup.cs",
+      "sha256": "F5F7C04041CCC56AAAB812CC50CD140F9FBCFB79513DEB46A5D0A009AE942973"
+    },
+    {
+      "path": "Hardware/Gpu/GenericGpu.cs",
+      "sha256": "5F5E8768A33AC58FFD851C50AC95E5A308D42AD651271C94A9B1B4972CE6DEC3"
+    },
+    {
+      "path": "Hardware/Gpu/IntelDiscreteGpu.cs",
+      "sha256": "8740E83C2E0B466E5EEE3A520400FE8C7576594E20C6030A8DD7D4467531A144"
+    },
+    {
+      "path": "Hardware/Gpu/IntelGpuGroup.cs",
+      "sha256": "B6F61C9D7B6B7405161C42987BCEE84E582BEF83F90B15D9124E2440A33CE16A"
+    },
+    {
+      "path": "Hardware/Gpu/IntelIntegratedGpu.cs",
+      "sha256": "2A5CA0A3FEFF375D8676A50B518D7C4E817D8DAD266EA9C761ECB71C931BFDD8"
+    },
+    {
+      "path": "Hardware/Gpu/NvidiaGpu.cs",
+      "sha256": "604D896B7E7C63B2420CD157AC5AB1887F176CBF6311D4AF9F5F166D47D79558"
+    },
+    {
+      "path": "Hardware/Gpu/NvidiaGroup.cs",
+      "sha256": "8A75D8E8D5557E81755E95D5A5E1822606BCEBD1108E8EC52EA80E5DED4E95C9"
+    },
+    {
+      "path": "Hardware/Memory/DimmMemory.cs",
+      "sha256": "27C3BD4C79F69D2AC2278CACF6208B78F206E635D5A483422D9217DBB04DBC9C"
+    },
+    {
+      "path": "Hardware/Memory/MemoryGroup.cs",
+      "sha256": "FABBE561808C8FC9EE7A5D4B1E2F90A91893D7FED750A8351E143FB35A331E25"
+    },
+    {
+      "path": "Hardware/Memory/MemoryLinux.cs",
+      "sha256": "1190142A8F0ED51FA250ABA5EF794C979002558A46640FE46E5B2443F53DAC9D"
+    },
+    {
+      "path": "Hardware/Memory/MemoryWindows.cs",
+      "sha256": "FDD764692292115D6B1088219517DF73BCE22DC8179C1C96717E88161DC39860"
+    },
+    {
+      "path": "Hardware/Memory/TotalMemory.cs",
+      "sha256": "0398E6482747B5B577924B2B65A8B62D60BAE1888178CEF2E63DD690B48CA47E"
+    },
+    {
+      "path": "Hardware/Memory/VirtualMemory.cs",
+      "sha256": "C2BC76A314362903760F4100978110BBA96B60C0A2932ABFC7F45767FF3B95AA"
+    },
+    {
+      "path": "Hardware/Memory/Sensors/SpdThermalSensor.cs",
+      "sha256": "6F8A21974D3DEB0816805C7B8C40F7B053B46A82072DA8E8BDD9D99E4EF2C54C"
+    },
+    {
+      "path": "Hardware/Motherboard/Control.cs",
+      "sha256": "21036BB3660674A69A85D3A5B7929328BA47D59CD34E2A27E4744B7FDBE98F55"
+    },
+    {
+      "path": "Hardware/Motherboard/Fan.cs",
+      "sha256": "955C73A35FB0F96A7A316928190F545F3F44D7F5D095260C610AD12F31F66603"
+    },
+    {
+      "path": "Hardware/Motherboard/Identification.cs",
+      "sha256": "C1DC6999D9D35B3569FD0CDB2C437F778C695112AEF73A54DF67FE24637FD683"
+    },
+    {
+      "path": "Hardware/Motherboard/Manufacturer.cs",
+      "sha256": "2A36E9D026173069571B8CB59AAA728F9D0EE4ED7429C6A7E4F2B776A9F6523E"
+    },
+    {
+      "path": "Hardware/Motherboard/Model.cs",
+      "sha256": "07873AB54FE613461DB995A62124116D1A1C31AA043ED0B81521A03902CAFDD8"
+    },
+    {
+      "path": "Hardware/Motherboard/Motherboard.cs",
+      "sha256": "28F6214A93D2FFDA9E648D6DF92B120D261BFEA058B6FE37E7C971FEE8EB7EA1"
+    },
+    {
+      "path": "Hardware/Motherboard/MotherboardGroup.cs",
+      "sha256": "31A87FF87C1922F650160BC75A5AAB6C0CE6B8BFA371DDC3155C7E540B2B2E44"
+    },
+    {
+      "path": "Hardware/Motherboard/SuperIOHardware.cs",
+      "sha256": "25EFBF2F88C99662E046BD21FFAD835297594C42DF0F8AB4A4F5644DE8B945CD"
+    },
+    {
+      "path": "Hardware/Motherboard/Temperature.cs",
+      "sha256": "51E26967D7665D461A3D5F8F380EBAAAAE4FC97CA762A40154C8C9EC2F66CEDE"
+    },
+    {
+      "path": "Hardware/Motherboard/Voltage.cs",
+      "sha256": "5FA03B33BCC6DED92708906228479FAE3CFE0AABD1E90194A9147D35B7F4A289"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/Chip.cs",
+      "sha256": "9454A752609DABC0FAE1438EF83710D90B07D637A263E2769C90270BEF65C0EA"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EcioPortGigabyteController.cs",
+      "sha256": "7C30E41686DC666B70DD4F4AB580CA70F626FFA676C89C5D79197D10855BAEA3"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/F718XX.cs",
+      "sha256": "AA331CADC126129F06342E8100653B0C1111DD3C47BD64F039393DA29D1234F3"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/IGigabyteController.cs",
+      "sha256": "FA769602AA5AF189856A0EF5C8777BB440BD2E9B378B1CA299AF829F9EF9B30A"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/Ipmi.cs",
+      "sha256": "D33077DC023D482EB9103A2D2FE5481238CA8952FB595A730E56A120DF62D7BA"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/IsaBridgeGigabyteController.cs",
+      "sha256": "5A0C1B3CC40F98C1ABBEC163F5E24341E255E999511DA98CB151824E471AAF8F"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/ISuperIO.cs",
+      "sha256": "C844F063D975D2F37FDCC5DE4785EA348BE076890537767C03A27684F6A4ADA2"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/IT879xEcioPort.cs",
+      "sha256": "20E3B13DE6326E721A873844E7B5D7933386986C9CA67ACAC4E1CF3B00834B4D"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/IT87XX.cs",
+      "sha256": "3D012EFC24B77B5F0FF4957B9F1A8B9780A0063B697D8A3A1150273848116F2B"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/LMSensors.cs",
+      "sha256": "B1ED11B253334BB8E570E1460E8C3BD92B2454B640B5422917EC8770DEE781B3"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/LpcIO.cs",
+      "sha256": "6D3DF50D0D2FE52AE27149C4FCC96B83051122DE2F4DBE55866729046EA71F4C"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/LpcPort.cs",
+      "sha256": "540EF558321BE444DE2C54F810BDFCE830C1D183BD9F99506FFF67F482AE986C"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/Nct677X.cs",
+      "sha256": "2180CCB779B448FE2F587312EAA8CAE0AD8D22CE4DC0C71DE22AAB4653B72EEE"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/W836XX.cs",
+      "sha256": "663F12E082D29C23469AD68CD4F46B892FC69ED519058DEEE302E78A22C6E8E2"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/ChromeOSEmbeddedController.cs",
+      "sha256": "FF53705FB5AD173B20F50071BB871605C4C8B3951EEAF4C6A005A563A0DE8BF5"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/ChromeOSEmbeddedControllerIO.cs",
+      "sha256": "68B21A494623CC9907EB07ABF8A83C646ADCC5B0B90EAD4D8FC9921E6B3A9154"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/EmbeddedController.cs",
+      "sha256": "DC60AE0E7B1D99F3A3E77C4FAF90E8D0EA9D6D4331B59CE83F3E3013E1885BE6"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/EmbeddedControllerReader.cs",
+      "sha256": "485224C26FCF3347AA431D33BA0BA00E400A64FFC90E81997CDE0D60AFFCA035"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/EmbeddedControllerSource.cs",
+      "sha256": "714E918A5B9414DBFD21E9F85ED24F2ACBF23FC30E7B805F0F45EB466D903BE4"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/IEmbeddedControllerIO.cs",
+      "sha256": "0CAF5E0CADBEF39AE47CECA442B3C3BEA517A4A32A44B3F4B147FF3421B9B9F4"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/WindowsEmbeddedController.cs",
+      "sha256": "25372E40EAFA8B6380E1712F8F8B6B5EBD5A3E1200722965E8D073717E62EF7E"
+    },
+    {
+      "path": "Hardware/Motherboard/Lpc/EC/WindowsEmbeddedControllerIO.cs",
+      "sha256": "C5CE2E2947921BF9ED486FC3A9EB04A7EE3EBC8D19CF2CB6B5602BBB4459089D"
+    },
+    {
+      "path": "Hardware/Network/Network.cs",
+      "sha256": "D371995AD747D7AA829F579338DE9F43FDDA6482C9FB2994F232BCC6BF8418B1"
+    },
+    {
+      "path": "Hardware/Network/NetworkGroup.cs",
+      "sha256": "DF4F3291255AC6643E31AD84C6EC71A97704F3B89C059315C2CDBB94B00102BB"
+    },
+    {
+      "path": "Hardware/PowerMonitor/IPowerMonitor.cs",
+      "sha256": "5FECAF5AFC48CD12102FE576394E4F505E35BDA10784A30DD0F8A8C1D36B736D"
+    },
+    {
+      "path": "Hardware/PowerMonitor/PowerMonitorGroup.cs",
+      "sha256": "03BF962E35E7F74F1DDDB424E40D473A4F8457B2BB625687D47AA87EE1714C66"
+    },
+    {
+      "path": "Hardware/PowerMonitor/SharedSerialPort.cs",
+      "sha256": "701B6E5E5DD7CEDFEAD430AA418EA760ADCE7503ECC9B71CE6EAA61D1631D047"
+    },
+    {
+      "path": "Hardware/PowerMonitor/WireViewPro2.cs",
+      "sha256": "1E3F203C388F6850F30FCEBE9B77B57C1A5F1AA29DE481B5B37B17B8538C26FE"
+    },
+    {
+      "path": "Hardware/PowerMonitor/WireViewPro2Sensor.cs",
+      "sha256": "5FBB76739C670539C66EF5EAAB20BAC30AEDEBBD39B4B41665770E3316A3AC41"
+    },
+    {
+      "path": "Hardware/Psu/ProtocolError.cs",
+      "sha256": "327B31CF1EBC30D937D7B13BB834B98B278F0DB0DE6E5AAC0C694511F9CD3BB8"
+    },
+    {
+      "path": "Hardware/Psu/Corsair/CorsairPsu.cs",
+      "sha256": "C2DF39B2A3BE8B8C4F81D69502D374A7288C07E61520B615A3206E1538C816DC"
+    },
+    {
+      "path": "Hardware/Psu/Corsair/CorsairPsuGroup.cs",
+      "sha256": "EC2261D5E475EBCB664791925A93292D3F903D911FE2269634D15D0B93C7E268"
+    },
+    {
+      "path": "Hardware/Psu/Corsair/UsbApi.cs",
+      "sha256": "60E428AA604FD79833AE795B1E2AC0B8C0B4C6469CB0C407152D3A41EF375839"
+    },
+    {
+      "path": "Hardware/Psu/Msi/MsiPsu.cs",
+      "sha256": "334279406323AB67D69DC5B581AFFA71BA9072E4A1869ABA3F40FD6DB60460C7"
+    },
+    {
+      "path": "Hardware/Psu/Msi/MsiPsuGroup.cs",
+      "sha256": "3D841E8968BC3742E16388889FA5258C1A45390AAA355DAB905389F7B97698AE"
+    },
+    {
+      "path": "Hardware/Psu/Msi/UsbApi.cs",
+      "sha256": "F69B218DC50B1231665D9F2679C4DDE7B38D1BD5B778E760797FC56BB4B07FA5"
+    },
+    {
+      "path": "Hardware/Storage/ISmart.cs",
+      "sha256": "632807751F305A263AEB0B4216A872B4E10C81DB0579D02700BB5DFF8175E4A6"
+    },
+    {
+      "path": "Hardware/Storage/SmartAttribute.cs",
+      "sha256": "31FE199554CF32177E3EB81F28EADB207F61394D270186F872F8C6F32669FC9A"
+    },
+    {
+      "path": "Hardware/Storage/SmartAttributeTranslator.cs",
+      "sha256": "E142691CC1E851E6889BABDC9C9F5B4305D18113DD23D91DB348F3FD3393ADF3"
+    },
+    {
+      "path": "Hardware/Storage/StorageDevice.cs",
+      "sha256": "07A0B96A3AC3C0EC1AFE9871EBA2A1B206379F97196B2AE04FF2BA12EC2F9251"
+    },
+    {
+      "path": "Hardware/Storage/StorageDeviceSensor.cs",
+      "sha256": "36996AE99E1039AB80EA29881979EAD3C8F4701BE74EE630AD3C54B03E49713A"
+    },
+    {
+      "path": "Hardware/Storage/StorageGroup.cs",
+      "sha256": "76B8C1E12A9CFBFEB22FD901615AFE87801AA9F6CFCE9EC0673A06CFCA776833"
+    },
+    {
+      "path": "Interop/AtiAdlxx.cs",
+      "sha256": "351B994A9C1CDEC8208265677BC43C5ABED026C4BBA1027581770410B9AD7519"
+    },
+    {
+      "path": "Interop/ByteExtensions.cs",
+      "sha256": "89FA7249376F39FC78F1A8B33E3AA8E3FFDD0769400BB6832706F96FE253DC2F"
+    },
+    {
+      "path": "Interop/Ftd2xx.cs",
+      "sha256": "E47B8AF82727D4F32C7E6A765013A6ADAC43A32ED3520FF10633EBF86DD94F39"
+    },
+    {
+      "path": "Interop/IntelGcl.cs",
+      "sha256": "FCE8FE59BBE2EC9E0632E33D6A15DC0FADDFE10A47E397DEEDF33193E67A281F"
+    },
+    {
+      "path": "Interop/Ipmi.cs",
+      "sha256": "CE4008E005221B698C0B6621D076E91A8F960B9A364E7976C63BCFC8DAEF5E68"
+    },
+    {
+      "path": "Interop/LibC.cs",
+      "sha256": "14F9DA862BFFC2861297195180973F88939D267B0D4EF1683EB8888DCD75C588"
+    },
+    {
+      "path": "Interop/NvApi.cs",
+      "sha256": "8A35265F402E6AF28ED839E500F4DAD1DEB711D8009960BC96ABC504BE99C47A"
+    },
+    {
+      "path": "Interop/NvidiaML.cs",
+      "sha256": "0A15122DDDFEE8FF16F8415BBEB0F9ED6ED945CC55B81725EFD7940191E36433"
+    },
+    {
+      "path": "Interop/PowerMonitor/DeviceData.cs",
+      "sha256": "AFDC106583D90FE9AB337DA7DC9A027B7798276C1F0E56E4979E0A7C2360A9E9"
+    },
+    {
+      "path": "Interop/PowerMonitor/Stm32PortFinder.cs",
+      "sha256": "D6198681E656012B716E267BFB199961AD746E0BA4516281CF2CBDC6FFD94172"
+    },
+    {
+      "path": "Interop/PowerMonitor/StructureConversion.cs",
+      "sha256": "C529868511B9C9F13F9ACCA0656D4DD586CE78BD8C529E5B4E41137AABE1B97E"
+    },
+    {
+      "path": "Interop/PowerMonitor/WireViewPro2Enums.cs",
+      "sha256": "B33D4DE6C4B25946E244FA6BF04BBA54C3BCD0E309E976C03A66E0B37E044F7A"
+    },
+    {
+      "path": "Interop/PowerMonitor/WireViewPro2Structures.cs",
+      "sha256": "E3AB4F3BD9ED61DF8630E9A6D43F751E5EF280BD9C51A46E4EA3970135F9BF72"
+    },
+    {
+      "path": "PawnIo/AmdFamily0F.cs",
+      "sha256": "1DA27A2A2246A4AFF92DECDD0A4EB0DE3DB004FFE18D3EF6B3D82E112CBC0E78"
+    },
+    {
+      "path": "PawnIo/AmdFamily10.cs",
+      "sha256": "81E8DDA872C054D3237FE936BA656C033B66C9A1B1F68E7A2FBD82649B4FE7F9"
+    },
+    {
+      "path": "PawnIo/AmdFamily17.cs",
+      "sha256": "D47CBC1E8469DD7E1B8B6CBBD798C298DF62CA59229DE0F0D7163AC869D6F970"
+    },
+    {
+      "path": "PawnIo/IntelMsr.cs",
+      "sha256": "2C65B8AFB3EC17273BEF35DCCB4C0C497FAD8E50F1ABA8BC1B2BE4ECC398C33C"
+    },
+    {
+      "path": "PawnIo/IsaBridgeEc.cs",
+      "sha256": "A97A1171ECF0DC40039496362ED1F1144109AC868AF4D1A4F425F89DB1FD008D"
+    },
+    {
+      "path": "PawnIo/LpcACPIEC.cs",
+      "sha256": "FC0880DC752B36DD16EF87F5E9875CE41C6055A5935F62C11B17DD92DA4A400A"
+    },
+    {
+      "path": "PawnIo/LpcCrOS.cs",
+      "sha256": "1A56F3EC7D3260ABD8DF4621F6D9AAC3723E14C5F3B693CC13495D3E332B5B72"
+    },
+    {
+      "path": "PawnIo/LpcIO.cs",
+      "sha256": "C267048632928C353D02510B26BC54DE017D8F6991A6514CBEFBFB693032F5F6"
+    },
+    {
+      "path": "PawnIo/PawnIo.cs",
+      "sha256": "42D1602C9AF3D2524BE661CAC21F40FD87E38609482AA6DDAB4CC39F369D746A"
+    },
+    {
+      "path": "PawnIo/RyzenSmu.cs",
+      "sha256": "C01C9A910027693DD5073183761515C5CAB6F1D9ADF5121B4A4F5B2FC5FED9F8"
+    },
+    {
+      "path": "Resources/packageicon.png",
+      "sha256": "E7658F72961EBED60FF2EEA39451286DC3E01876009A60028B732AE95ADCEFEB"
+    },
+    {
+      "path": "Resources/PawnIo/AMDFamily0F.bin",
+      "sha256": "1788550C02100AD6BBC91604399ED6E055058EA0F6C0C828C02D9B01A09AD27F"
+    },
+    {
+      "path": "Resources/PawnIo/AMDFamily10.bin",
+      "sha256": "79BE1396621AA44EB149C5DC6D1BAB4519B9CFA49A32AF5E022CB9F9CA887658"
+    },
+    {
+      "path": "Resources/PawnIo/AMDFamily17.bin",
+      "sha256": "099DC01D6DB97EA997FEC4A461E191CC64B9D7CE47C9D2153C451C56C2ADCF50"
+    },
+    {
+      "path": "Resources/PawnIo/COPYING",
+      "sha256": "DC626520DCD53A22F727AF3EE42C770E56C97A64FE3ADB063799D8AB032FE551"
+    },
+    {
+      "path": "Resources/PawnIo/IntelMSR.bin",
+      "sha256": "ED41A0D0DE082F4668A9CACCB9681EBBAD97A8ED3452C41918DDA1EB454B77A9"
+    },
+    {
+      "path": "Resources/PawnIo/IsaBridgeEC.bin",
+      "sha256": "7218C633384BD019CCE09E8DF91F74996F980765AC44DDE0F22B0B5318C20F03"
+    },
+    {
+      "path": "Resources/PawnIo/LpcACPIEC.bin",
+      "sha256": "C38FD116E7AFF4D1FDB0A494E296BE0A6708E5A22FC72F14587442FB7F8F7906"
+    },
+    {
+      "path": "Resources/PawnIo/LpcCrOSEC.bin",
+      "sha256": "277ED6CE6B5F647D5DAE9B06C83ED39E904974B06F95598D49F4737237974776"
+    },
+    {
+      "path": "Resources/PawnIo/LpcIO.bin",
+      "sha256": "3DCF8B2BC80FF642D97C4608511A818642B5BF315FF53DF3DF393D043E71D101"
+    },
+    {
+      "path": "Resources/PawnIo/README",
+      "sha256": "C0933E9986AFE65CB8629B2F1F1BF64C765D172F51CA325B0A17037F1FB2E348"
+    },
+    {
+      "path": "Resources/PawnIo/RyzenSMU.bin",
+      "sha256": "0CF0FE1296C5C38F4BEE0F96352B35F14D32AB97CB58FD17600646D98507D8AA"
+    },
+    {
+      "path": "Resources/PawnIo/SmbusI801.bin",
+      "sha256": "76B082A144027244FE7BBF3CA0E987E7DFA279AA87E0CCC2A6A918E10E2038E1"
+    },
+    {
+      "path": "Resources/PawnIo/SmbusNCT6793.bin",
+      "sha256": "385BD1B229FAA44AEFE2EB1F938AC629F6D897F1A4931DAB5341B18B3BD432C1"
+    },
+    {
+      "path": "Resources/PawnIo/SmbusPIIX4.bin",
+      "sha256": "3F8B44C93EB030D59FB68C6FDC6857C61313EAB2B6AA0ED64595396D71BF3EA3"
+    },
+    {
+      "path": "Software/OperatingSystem.cs",
+      "sha256": "6D935B458D0F6E39523D83BECA729503D3AB7155E4B45FA8978D20951715EC38"
+    }
+  ]
+}

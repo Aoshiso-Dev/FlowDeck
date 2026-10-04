@@ -1,0 +1,67 @@
+{
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "flowDeckPatch": 5,
+  "sourceTest": "tests/native/openrgb-operation/authorization.inc",
+  "compiledSources": [
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.cpp",
+      "sha256": "3ADCF7BC8D6FBF2BD1D756426D0F42A68774EBB4AFAAA686C19EFC72BDD2BA48"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.h",
+      "sha256": "8E9D2C368A839E7E7A423EF6D8D503CE19A79E6AEC090FDA6BBCBEBC19303BD0"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.cpp",
+      "sha256": "0E82311A69CE311D4BD30B3CD2CE1B8C1EB2502BEDCD6A408C228AF5F00339A3"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.h",
+      "sha256": "9E73F53386D18FCE8B9CEA59E5E695ED34DB7F99B2C9D4C64E85DCFE203E7B7E"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockIo.h",
+      "sha256": "C718C6519238965906FF9E1A79965FD9CC3BA8C12FDB39BFFED7EC08B88BD185"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockOperation.h",
+      "sha256": "407D0E6519557DBC250F91BE2CE28180A4551E2CC25D4311863EAA85A0F4B447"
+    },
+    {
+      "path": "RGBController/RGBController.cpp",
+      "sha256": "9434C7DDE305F506EF1D1C55BC7749F4084C0C6D955789B3B95D2B199710E8A7"
+    },
+    {
+      "path": "RGBController/RGBController.h",
+      "sha256": "8C18F975CE98AD949BF737028E7A4754846868F0EAA0A673AA13FCBF269EEDD0"
+    },
+    {
+      "path": "RGBController/RGBControllerInterface.h",
+      "sha256": "20543C30348AB9819D5F236E9635D06B21204A77AD297068878B6D63D60E1E04"
+    },
+    {
+      "path": "NetworkProtocol.h",
+      "sha256": "9AA020AEBBB1A60BC36DBAEFD6EDAC4A98E3FA2FB22B4D8E0833F52C764088B7"
+    },
+    {
+      "path": "FlowDeckAsrockSdk.inc",
+      "sha256": "E26585B1F85FD28B95E1B94DE9D1037B2172F61FD1BFBE84FC9281E4440748DC"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockAuthorization.h",
+      "sha256": "599425AB841E902B20F187461BAD7335BBCF48E4468007E7F94B4AD3E1A435FA"
+    },
+    {
+      "path": "FlowDeckAsrockSdkPeer.inc",
+      "sha256": "89BB40B2B5904171C6FE01D46985774972DDEB87E2BB785C2917DCA8025504FD"
+    }
+  ],
+  "sdkFunctionBodiesSha256": "FC214D4F1A81E1387BA215C784BE1E448E90B01045130EE444856478FE3E33C1",
+  "binarySha256": "0B8B6C2C823C717129C44390CE51D35894880B1E64F9D7A4095808C2BB2D8622",
+  "testReport": "artifacts/generalization-openrgb-authorization-wire-tests/results.json",
+  "testReportSha256": "48B1F8755F97FBEB46E1E159BBD6AD33F5AAE28938045252913D5C74F62AC95F",
+  "cases": 32,
+  "fixtureSha256": "EF12A08A91681FAE86BF10CF8C444B4F5C6308E3704D7300D713F1EA487A0D6B",
+  "hardwareAccessed": false,
+  "sdkSocketsMocked": true
+}

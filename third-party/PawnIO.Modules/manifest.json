@@ -1,0 +1,174 @@
+{
+  "format": 1,
+  "upstream": "https://github.com/namazso/PawnIO.Modules",
+  "license": "LGPL-2.1-or-later",
+  "headersLicense": "0BSD",
+  "verification": "SHA-256 equality to official signed release assets; not a local compiler or signature reproduction.",
+  "binaryModified": false,
+  "releases": [
+    {
+      "version": "0.2.2",
+      "releaseUrl": "https://github.com/namazso/PawnIO.Modules/releases/tag/0.2.2",
+      "tagObjectSha": "95a194e64ef7f044c8d441d857daabe21e44952f",
+      "sourceCommit": "e12a858d952461ee2e919897cacbff7f905fe370",
+      "sourceArchive": "third-party/PawnIO.Modules/source-0.2.2.zip",
+      "sourceArchiveUrl": "https://codeload.github.com/namazso/PawnIO.Modules/zip/e12a858d952461ee2e919897cacbff7f905fe370",
+      "sourceArchiveSha256": "bf64a7dd05f5d634fe2b38ade90e82d7e4fc4bb97958cdc2275806f215d31cf7",
+      "sourceArchiveRoot": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/",
+      "releaseArchiveUrl": "https://github.com/namazso/PawnIO.Modules/releases/download/0.2.2/release_0_2_2.zip",
+      "releaseArchiveSha256": "b9e05e52c07fd76b7f9db3da0f542b710d55511dc995d4f4ca08e9179b4c4032",
+      "licenseSha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "releaseLicenseSha256": "1e7e6bae5a5bde32f1ae5a7c37a082d1ab03cf89354f7f936ac40be9e39a6531",
+      "licenseTextEqualAfterNewlineNormalization": true,
+      "binaries": [
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/AMDFamily0F.bin",
+          "bytes": 8404,
+          "sha256": "1788550c02100ad6bbc91604399ed6e055058ea0f6c0c828c02d9b01a09ad27f",
+          "releaseEntry": "AMDFamily0F.bin",
+          "releaseEntrySha256": "1788550c02100ad6bbc91604399ed6e055058ea0f6c0c828c02d9b01a09ad27f",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/AMDFamily0F.p",
+          "sourceEntrySha256": "6ccfaa0c5573879168b7c1982743b7c041ff77ce1520a399186960b12a5ecf58"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/AMDFamily10.bin",
+          "bytes": 16836,
+          "sha256": "79be1396621aa44eb149c5dc6d1bab4519b9cfa49a32af5e022cb9f9ca887658",
+          "releaseEntry": "AMDFamily10.bin",
+          "releaseEntrySha256": "79be1396621aa44eb149c5dc6d1bab4519b9cfa49a32af5e022cb9f9ca887658",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/AMDFamily10.p",
+          "sourceEntrySha256": "490a42c66c6679752d275dfd29c9ae411938731fdea332a57a402dfc7851739b"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/AMDFamily17.bin",
+          "bytes": 9300,
+          "sha256": "099dc01d6db97ea997fec4a461e191cc64b9d7ce47c9d2153c451c56c2adcf50",
+          "releaseEntry": "AMDFamily17.bin",
+          "releaseEntrySha256": "099dc01d6db97ea997fec4a461e191cc64b9d7ce47c9d2153c451c56c2adcf50",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/AMDFamily17.p",
+          "sourceEntrySha256": "852ffd303272d7118bb269e462c5d1a9631c47e7fda1170fb298e84b948ed860"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/IntelMSR.bin",
+          "bytes": 4068,
+          "sha256": "ed41a0d0de082f4668a9caccb9681ebbad97a8ed3452c41918dda1eb454b77a9",
+          "releaseEntry": "IntelMSR.bin",
+          "releaseEntrySha256": "ed41a0d0de082f4668a9caccb9681ebbad97a8ed3452c41918dda1eb454b77a9",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/IntelMSR.p",
+          "sourceEntrySha256": "623580c944d7f057ed501b51a16bb72279dfdf5cfae8a1fc843cee92026da80e"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/IsaBridgeEC.bin",
+          "bytes": 51628,
+          "sha256": "7218c633384bd019cce09e8df91f74996f980765ac44dde0f22b0b5318c20f03",
+          "releaseEntry": "IsaBridgeEC.bin",
+          "releaseEntrySha256": "7218c633384bd019cce09e8df91f74996f980765ac44dde0f22b0b5318c20f03",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/IsaBridgeEC.p",
+          "sourceEntrySha256": "fe9b56b670e41f6ae83dcc0bfb28f12b89128ee4195399b9c189c09ca22334a9"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/LpcACPIEC.bin",
+          "bytes": 2612,
+          "sha256": "c38fd116e7aff4d1fdb0a494e296be0a6708e5a22fc72f14587442fb7f8f7906",
+          "releaseEntry": "LpcACPIEC.bin",
+          "releaseEntrySha256": "c38fd116e7aff4d1fdb0a494e296be0a6708e5a22fc72f14587442fb7f8f7906",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/LpcACPIEC.p",
+          "sourceEntrySha256": "1c6547250fc8aab006d2d3ea5b1dec8e39634f227609ee9b83a4fa738d670df9"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/LpcCrOSEC.bin",
+          "bytes": 19692,
+          "sha256": "277ed6ce6b5f647d5dae9b06c83ed39e904974b06f95598d49f4737237974776",
+          "releaseEntry": "LpcCrOSEC.bin",
+          "releaseEntrySha256": "277ed6ce6b5f647d5dae9b06c83ed39e904974b06f95598d49f4737237974776",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/LpcCrOSEC.p",
+          "sourceEntrySha256": "f131103a54e5ac106ebf6069a3cc8f9feaea9bd5c143df83db5e26b9eda93fad"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/LpcIO.bin",
+          "bytes": 17172,
+          "sha256": "3dcf8b2bc80ff642d97c4608511a818642b5bf315ff53df3df393d043e71d101",
+          "releaseEntry": "LpcIO.bin",
+          "releaseEntrySha256": "3dcf8b2bc80ff642d97c4608511a818642b5bf315ff53df3df393d043e71d101",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/LpcIO.p",
+          "sourceEntrySha256": "416db33fee64fc96958166dcc4d3aebb67c716ee1a536489cd31f4d38dc5f1cb"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/RyzenSMU.bin",
+          "bytes": 38036,
+          "sha256": "0cf0fe1296c5c38f4bee0f96352b35f14d32ab97cb58fd17600646d98507d8aa",
+          "releaseEntry": "RyzenSMU.bin",
+          "releaseEntrySha256": "0cf0fe1296c5c38f4bee0f96352b35f14d32ab97cb58fd17600646d98507d8aa",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/RyzenSMU.p",
+          "sourceEntrySha256": "072af741e2f0ae6e8730133e5eadf6d257400923ad62bd63d24c7523faf0914c"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/SmbusI801.bin",
+          "bytes": 40788,
+          "sha256": "76b082a144027244fe7bbf3ca0e987e7dfa279aa87e0ccc2a6a918e10e2038e1",
+          "releaseEntry": "SmbusI801.bin",
+          "releaseEntrySha256": "76b082a144027244fe7bbf3ca0e987e7dfa279aa87e0ccc2a6a918e10e2038e1",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/SmbusI801.p",
+          "sourceEntrySha256": "dd9bb4926e5840db431a0f25b0676849d9891a94edb87083960fb3ad6e92b8dc"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/SmbusNCT6793.bin",
+          "bytes": 17548,
+          "sha256": "385bd1b229faa44aefe2eb1f938ac629f6d897f1a4931dab5341b18b3bd432c1",
+          "releaseEntry": "SmbusNCT6793.bin",
+          "releaseEntrySha256": "385bd1b229faa44aefe2eb1f938ac629f6d897f1a4931dab5341b18b3bd432c1",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/SmbusNCT6793.p",
+          "sourceEntrySha256": "5cba5b8965db10c4dc0f7d2b1787de1eaa82cae7160d7c6a91a6e67c0946c18d"
+        },
+        {
+          "path": "third-party/LibreHardwareMonitor/Resources/PawnIo/SmbusPIIX4.bin",
+          "bytes": 37260,
+          "sha256": "3f8b44c93eb030d59fb68c6fdc6857c61313eab2b6aa0ed64595396d71bf3ea3",
+          "releaseEntry": "SmbusPIIX4.bin",
+          "releaseEntrySha256": "3f8b44c93eb030d59fb68c6fdc6857c61313eab2b6aa0ed64595396d71bf3ea3",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-e12a858d952461ee2e919897cacbff7f905fe370/SmbusPIIX4.p",
+          "sourceEntrySha256": "47a04f04417a3c26c3f9e7a6fab962ada484173954673860d27e42ca13c2476c"
+        }
+      ]
+    },
+    {
+      "version": "0.2.11",
+      "releaseUrl": "https://github.com/namazso/PawnIO.Modules/releases/tag/0.2.11",
+      "tagObjectSha": "7345a80ec8e603ea46b71896044bea90ef77f19f",
+      "sourceCommit": "52a7e536dff3e53c96917a28caac5e0fa6510696",
+      "sourceArchive": "src/FlowDeck.Infrastructure/native/PawnIO.Modules-source-0.2.11.zip",
+      "sourceArchiveUrl": "https://codeload.github.com/namazso/PawnIO.Modules/zip/refs/tags/0.2.11",
+      "sourceArchiveSha256": "69fa0b311452cd68e64e622c8b7bf70977bbb3976e5efd0fc6859eb5b0f36d42",
+      "sourceArchiveRoot": "PawnIO.Modules-0.2.11/",
+      "releaseArchiveUrl": "https://github.com/namazso/PawnIO.Modules/releases/download/0.2.11/release_0_2_11.zip",
+      "releaseArchiveSha256": "43608cb89bc84247fef1368a139013f7d043e17db6d6c8dfc9b46bf0905a81f4",
+      "licenseSha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "releaseLicenseSha256": "1e7e6bae5a5bde32f1ae5a7c37a082d1ab03cf89354f7f936ac40be9e39a6531",
+      "licenseTextEqualAfterNewlineNormalization": true,
+      "binaries": [
+        {
+          "path": "src/FlowDeck.Infrastructure/native/SmbusPIIX4.bin",
+          "bytes": 42404,
+          "sha256": "91f9b4b1c39e3d399ce48477a89d8f6bd3e58a2241064a4daec3a1513dff56e5",
+          "releaseEntry": "SmbusPIIX4.bin",
+          "releaseEntrySha256": "91f9b4b1c39e3d399ce48477a89d8f6bd3e58a2241064a4daec3a1513dff56e5",
+          "matchesOfficialRelease": true,
+          "sourceEntry": "PawnIO.Modules-0.2.11/SmbusPIIX4.p",
+          "sourceEntrySha256": "59fd3e6eef8c00904459cd314ded061bb15f4a7dda74b334d194ccde38787378"
+        }
+      ]
+    }
+  ]
+}

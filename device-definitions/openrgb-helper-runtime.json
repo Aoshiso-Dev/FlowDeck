@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "id": "flowdeck-openrgb-1.0-patch8-windows-x64-usb",
+  "release": "1.0-flowdeck-patch8",
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "archiveUrl": "local:FlowDeck-OpenRGB-1.0-patch8-stable1-win-x64.zip",
+  "archiveSha256": "7A2AA04EE266652C5585F034427B92B5DA5782FEC6B0213E9F80449862A7F17A",
+  "archivePrefix": "FlowDeck-OpenRGB/",
+  "authorizationVersion": 1,
+  "sourcePatch": 8,
+  "files": [
+    {
+      "path": "LICENSE-OpenRGB.txt",
+      "length": 18042,
+      "sha256": "7687B2F71C25336B0273F5C175286EBBC12D89ADD925B2F6C333E51FA3B1782D",
+      "include": true
+    },
+    {
+      "path": "OpenRGB.exe",
+      "length": 10519552,
+      "sha256": "3B89F75F024674A3112A0B03D383BF7D246E362376D260D1D8D977555D7EEB31",
+      "include": true
+    },
+    {
+      "path": "PawnIOLib.dll",
+      "length": 4096,
+      "sha256": "CF55D9B7A54EA4F210BE83C2E9202F52567EEA5C739B7BAEE5907D75F0DA7FC4",
+      "include": true
+    },
+    {
+      "path": "Qt6Core.dll",
+      "length": 6159496,
+      "sha256": "0CC62E841959FB8F6D366EA116C6F6BBC273E30F0EF90D8AA2E4ADEB81FD63F8",
+      "include": true
+    },
+    {
+      "path": "Qt6Gui.dll",
+      "length": 9285768,
+      "sha256": "CA9F20D9B59D5BC321A87005B926B853EBCD6A2394823E14D3C8B5FC5702FA8C",
+      "include": true
+    },
+    {
+      "path": "Qt6Svg.dll",
+      "length": 528520,
+      "sha256": "EFAF94C5C757A430EC5B89FC209089B14171B5CCE945DB961C32264F1CC99F80",
+      "include": true
+    },
+    {
+      "path": "Qt6Widgets.dll",
+      "length": 6500488,
+      "sha256": "D34EF78B3D3B5506EE8279CE6EFBFC263D773B74860AF76E66B0715346897A3A",
+      "include": true
+    },
+    {
+      "path": "hidapi-hotplug.dll",
+      "length": 45056,
+      "sha256": "263A662B014A7082871BB3E46F4D3C4790D7ED253768DCD585264FD598892DFB",
+      "include": true
+    },
+    {
+      "path": "iconengines/qsvgicon.dll",
+      "length": 77448,
+      "sha256": "6418CB7F188AF89FC6876059692D3940377A80BBDB55D70AB907406B46F671D0",
+      "include": true
+    },
+    {
+      "path": "imageformats/qgif.dll",
+      "length": 47752,
+      "sha256": "0EE32E5B48BF1404532842862045C523E0C915F223E34EA900C709E7C72B0B1E",
+      "include": true
+    },
+    {
+      "path": "imageformats/qico.dll",
+      "length": 46216,
+      "sha256": "30B344703BCCBF4BF70809CB9B6CE0075B74BDC765D18E539339190B095BB552",
+      "include": true
+    },
+    {
+      "path": "imageformats/qjpeg.dll",
+      "length": 575624,
+      "sha256": "1C3F3996B18B9A6D3F2690EF333843C9195BEC2A4EB08F6E68A3B3BC7F097C32",
+      "include": true
+    },
+    {
+      "path": "imageformats/qsvg.dll",
+      "length": 39048,
+      "sha256": "D901931D7F5DA8B408F9FCFCFE9E53A4D2247B5FA391FD67AC22A9E9F13C1636",
+      "include": true
+    },
+    {
+      "path": "libusb-1.0.dll",
+      "length": 157696,
+      "sha256": "A8C91F0FF68FB7802A9F4416728F0EEB4D99AF4CEAA4EF7DFE9374E76E375018",
+      "include": true
+    },
+    {
+      "path": "metadata/build-result.json",
+      "length": 2378,
+      "sha256": "74EB64A40AE404DA8D0B05F6F07B3DE912DB86ECA1DFE54363CF6F0F49A6528E",
+      "include": true
+    },
+    {
+      "path": "metadata/compiler-response-files.json",
+      "length": 230,
+      "sha256": "E0E2BD52A50A9F992A89C88771AE4746BDE6A82F39D67AB83B95CBC9DD8ED553",
+      "include": true
+    },
+    {
+      "path": "metadata/msvc-runtime.json",
+      "length": 4536,
+      "sha256": "B9628FA8CC40E6AEC54014A35F156423507FEA17E9F58D058346D6A6DE1F6942",
+      "include": true
+    },
+    {
+      "path": "metadata/pawniolib-build.json",
+      "length": 1235,
+      "sha256": "8B0B21CA4E67880A4AB5F740A79D1C62FDDC601583DE0F29D6D94850438303D1",
+      "include": true
+    },
+    {
+      "path": "metadata/qt-sdk.json",
+      "length": 4187,
+      "sha256": "4D7B0F380109AE93D919B3785667322DCB92DBFCB1EAE2BA1F10AFF7F42AD47B",
+      "include": true
+    },
+    {
+      "path": "metadata/qtbase-6.8.3.spdx.json",
+      "length": 3638879,
+      "sha256": "73B4DEE169C8F3A1C0C2E2F904D0679CC156CE7E9320F7C866BB723DD4FAAC68",
+      "include": true
+    },
+    {
+      "path": "metadata/qtsvg-6.8.3.spdx.json",
+      "length": 81819,
+      "sha256": "BB2422665242611DC001B3EC8269B1A5A623DA6D5DC08BC8E64467CFD2E50685",
+      "include": true
+    },
+    {
+      "path": "metadata/runtime-inputs.json",
+      "length": 16114,
+      "sha256": "0E7A744F6551EB1D956D9C320B42D9C8CF3E7EFE8404A9DBDC906A7C0D86A2C3",
+      "include": true
+    },
+    {
+      "path": "msvcp140.dll",
+      "length": 557728,
+      "sha256": "0F885B509A685D2BBFA652FED26B5FB31D88FBDAB0A978C641D1C7B8AA460AA9",
+      "include": true
+    },
+    {
+      "path": "msvcp140_1.dll",
+      "length": 35952,
+      "sha256": "BFAD5AEF4C63A669E3C140655CDFDF395B6C979B400A447BD5DCB65ED8826C3D",
+      "include": true
+    },
+    {
+      "path": "msvcp140_2.dll",
+      "length": 280200,
+      "sha256": "3EA06F0EE098B4823CB79599DF3780E7F23CCE52C19AAC31D2A0D47EFE33A5E9",
+      "include": true
+    },
+    {
+      "path": "msvcp140_codecvt_ids.dll",
+      "length": 31872,
+      "sha256": "F2069A52880EC885EE7F0511186100EB7FADA0411A2B4948FAFEA7735B878A18",
+      "include": true
+    },
+    {
+      "path": "platforms/qwindows.dll",
+      "length": 907912,
+      "sha256": "12577A7C4F2230BBEA53F279573D7E3D1A08D631197855481E1E1580F61BB877",
+      "include": true
+    },
+    {
+      "path": "source/OpenRGB-patch8.zip",
+      "length": 16853096,
+      "sha256": "25629637D34083199051C7922721D7B00A87F6F60E8B138D9A9BC1B284F0F7E0",
+      "include": true
+    },
+    {
+      "path": "source/PawnIOLib-aef64eb8.zip",
+      "length": 22793,
+      "sha256": "784299E6A7B39BE803379632DC6FCF1937D9CB62EBC655DEA63B79278C287218",
+      "include": true
+    },
+    {
+      "path": "source/recipes/build-openrgb-source.py",
+      "length": 9528,
+      "sha256": "34894B4CA182AD6BEA930EE9D75E7D3AB22C9DE5DA72659D9635C43255B6E135",
+      "include": true
+    },
+    {
+      "path": "source/recipes/build-pawniolib.py",
+      "length": 3803,
+      "sha256": "FAFF12232569F037B05A2E2CB7FD54BEFAD9550956B3E5C3FB495AD4D6C37D13",
+      "include": true
+    },
+    {
+      "path": "source/recipes/msvc_environment.py",
+      "length": 2585,
+      "sha256": "8FA9F9716AA7F1A506851CD78FDD4C8A5BF38A328868E0289F777C92350FB4AC",
+      "include": true
+    },
+    {
+      "path": "source/recipes/prepare-openrgb-stable-source.py",
+      "length": 2593,
+      "sha256": "519953AA26B92729ACE40B35241CBDCB50BA73345C71B42E74025EA0D92B90A1",
+      "include": true
+    },
+    {
+      "path": "vcruntime140.dll",
+      "length": 124544,
+      "sha256": "D5E4D9A3E835FA679450145D6A7D94E36573A509317111904D9B3712C30D9066",
+      "include": true
+    },
+    {
+      "path": "vcruntime140_1.dll",
+      "length": 49792,
+      "sha256": "1F2D41C4AA5DB0BC33EBF7B66D72943A817D7CE6CBE880502A9403823633093F",
+      "include": true
+    }
+  ]
+}

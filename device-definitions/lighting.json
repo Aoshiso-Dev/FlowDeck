@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "devices": [
+    {
+      "id": "asrock-usb-26ce-01a2-v1",
+      "revision": 1,
+      "driver": "asrock-polychrome-usb",
+      "driverRevision": 1,
+      "name": "ASRock USB RGB",
+      "match": { "vendorId": 9934, "productId": 418 },
+      "protocol": {
+        "nativeColors": "reported-rg-swap",
+        "frameColors": "grb-streaming-order-0",
+        "ledCount": "reported-per-zone",
+        "fixedLeds": null,
+        "maximumZones": 8,
+        "maximumLedsPerZone": 255,
+        "restore": "native-zones-and-order"
+      },
+      "limits": { "minimumIntervalMilliseconds": 100, "maximumFrameAgeMilliseconds": 500, "maximumLeds": 2040, "endpointColors": true },
+      "resourceDomains": ["usb:asrock-native"],
+      "physicalResources": ["usb-product:26ce:01a2"],
+      "nativeModes": [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14],
+      "verification": ["docs/マザーボード照明ガイド.md", "docs/同期中のマザー色順修正-1.23.1.md"],
+      "limitations": ["Board model and physical header positions are not inferred from the USB product.", "Firmware version is not available; topology and USB revision remain part of the live binding.", "Other boards exposing this product still require their own hardware acceptance."]
+    },
+    {
+      "id": "ene-auda0-e6k5-0101-eight-led-v1",
+      "revision": 1,
+      "driver": "ene-dram-rgb",
+      "driverRevision": 1,
+      "name": "ENE DRAM RGB",
+      "match": {
+        "firmware": "AUDA0-E6K5-0101",
+        "configurationHex": "0101080800000000000000080000000000000005000000000000000000000000000000000102030405060708090A0B0C0D0E0F1011121314151617FF0000FF00"
+      },
+      "protocol": {
+        "nativeColors": "rbg",
+        "frameColors": "rbg",
+        "ledCount": "fixed",
+        "fixedLeds": 8,
+        "maximumZones": 1,
+        "maximumLedsPerZone": 8,
+        "restore": "native-control-and-palettes"
+      },
+      "limits": { "minimumIntervalMilliseconds": 100, "maximumFrameAgeMilliseconds": 500, "maximumLeds": 8, "endpointColors": true },
+      "resourceDomains": ["smbus"],
+      "physicalResources": ["smbus-controller:amd-1022-790b", "smbus-port:0b00-p0"],
+      "nativeModes": [0, 1, 2, 3, 4, 14],
+      "verification": ["docs/メモリRGB対応.md", "docs/メモリ照明の同期.md"],
+      "limitations": ["Controller firmware and the complete 64-byte configuration must match.", "Bus address does not identify a physical DIMM slot or a memory module model.", "Bus discovery remains restricted by the separately compiled transport.", "Other firmware and bus combinations are not certified by this definition."]
+    }
+  ]
+}

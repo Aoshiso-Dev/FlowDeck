@@ -1,0 +1,112 @@
+{
+  "format": 1,
+  "downloads": [
+    {
+      "id": "libusb-openrgb-source",
+      "version": "1.0.27",
+      "file": "libusb-1.0.27.tar.bz2",
+      "url": "https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.tar.bz2",
+      "revision": "d52e355daa09f17ce64819122cb067b8a2ee0d4b",
+      "resolvedUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/15120676/74653cb5-32ef-4594-8641-52f612d89527",
+      "length": 643680,
+      "sha256": "ffaa41d741a8a3bee244ac8e54a72ea05bf2879663c098c82fc5757853441575",
+      "cachePath": "artifacts/distribution-source-downloads/libusb-1.0.27.tar.bz2",
+      "temporaryRedirectQueryOmitted": true
+    },
+    {
+      "id": "libusb-openrgb-release-binaries",
+      "version": "1.0.27",
+      "file": "libusb-1.0.27.7z",
+      "url": "https://github.com/libusb/libusb/releases/download/v1.0.27/libusb-1.0.27.7z",
+      "resolvedUrl": "https://release-assets.githubusercontent.com/github-production-release-asset/15120676/e326b0ec-6135-4039-8651-fc8af772673b",
+      "length": 4101966,
+      "sha256": "19835e290f46fab6bd8ce4be6ab7dc5209f1c04bad177065df485e51dc4118c8",
+      "cachePath": "artifacts/distribution-source-downloads/libusb-1.0.27.7z",
+      "temporaryRedirectQueryOmitted": true
+    },
+    {
+      "id": "libusb-package-upstream",
+      "version": "1.0.30.0",
+      "revision": "3ea4db141ef013c070f28738cae6ee8ed85688be",
+      "file": "libusb-package-3ea4db141ef013c070f28738cae6ee8ed85688be.zip",
+      "url": "https://codeload.github.com/pyocd/libusb-package/zip/3ea4db141ef013c070f28738cae6ee8ed85688be",
+      "resolvedUrl": "https://codeload.github.com/pyocd/libusb-package/zip/3ea4db141ef013c070f28738cae6ee8ed85688be",
+      "length": 24289,
+      "sha256": "a215c348d0c6b3f1e7ee2d57cce602d5ce092e13a288b2df0174dc7e4b67dbd7",
+      "cachePath": "artifacts/distribution-source-downloads/libusb-package-3ea4db141ef013c070f28738cae6ee8ed85688be.zip"
+    },
+    {
+      "id": "libusb-python-native",
+      "version": "1.0.30",
+      "revision": "87a55632db62c9bdc58cd31d3ccfa673f1bb017f",
+      "file": "libusb-87a55632db62c9bdc58cd31d3ccfa673f1bb017f.zip",
+      "url": "https://codeload.github.com/libusb/libusb/zip/87a55632db62c9bdc58cd31d3ccfa673f1bb017f",
+      "resolvedUrl": "https://codeload.github.com/libusb/libusb/zip/87a55632db62c9bdc58cd31d3ccfa673f1bb017f",
+      "length": 538233,
+      "sha256": "bde19251706e1f50fa4b7697b3a011889b46f2820cf14764770eb2c8b68dc0e1",
+      "cachePath": "artifacts/distribution-source-downloads/libusb-87a55632db62c9bdc58cd31d3ccfa673f1bb017f.zip"
+    },
+    {
+      "id": "WinUsbCDC-upstream",
+      "version": "1.7",
+      "revision": "a4c8a9df3b0e2734d4e787627141aa957fa29ff7",
+      "file": "WinUsbCDC-a4c8a9df3b0e2734d4e787627141aa957fa29ff7.zip",
+      "url": "https://gitlab.com/api/v4/projects/19504095/repository/archive.zip?sha=a4c8a9df3b0e2734d4e787627141aa957fa29ff7",
+      "resolvedUrl": "https://gitlab.com/api/v4/projects/19504095/repository/archive.zip?sha=a4c8a9df3b0e2734d4e787627141aa957fa29ff7",
+      "length": 26307,
+      "sha256": "3b340dc87f1c326263497bc8086893bfb961d782442564dd6db4e5eb22e6d024",
+      "cachePath": "artifacts/distribution-source-downloads/WinUsbCDC-a4c8a9df3b0e2734d4e787627141aa957fa29ff7.zip"
+    },
+    {
+      "id": "hidapi-hotplug-upstream",
+      "version": "0.15.0",
+      "revision": "238df449ecc0a56a70a3c8f4ebf46bb46857af27",
+      "file": "hidapi-hotplug-238df449ecc0a56a70a3c8f4ebf46bb46857af27.zip",
+      "url": "https://gitlab.com/api/v4/projects/77699591/repository/archive.zip?sha=238df449ecc0a56a70a3c8f4ebf46bb46857af27",
+      "resolvedUrl": "https://gitlab.com/api/v4/projects/77699591/repository/archive.zip?sha=238df449ecc0a56a70a3c8f4ebf46bb46857af27",
+      "length": 504255,
+      "sha256": "b41d03022fb7a6b369dc33cd132d826d2ef29d663f3dc74a522e22d8a863726b",
+      "cachePath": "artifacts/distribution-source-downloads/hidapi-hotplug-238df449ecc0a56a70a3c8f4ebf46bb46857af27.zip"
+    }
+  ],
+  "metadata": [
+    {
+      "path": "libusb-1.0.27-release.json",
+      "cachePath": "artifacts/native-dependency-research/libusb-1.0.27-release.json",
+      "sha256": "76821c5631d97305b4bd53c12c4fa076b6d13519702871987f341c576d267592"
+    },
+    {
+      "path": "libusb-package-tree.json",
+      "cachePath": "artifacts/native-dependency-research/libusb-package-tree.json",
+      "sha256": "27057fe8566ad6d4675e39ee632511278d13b11f22b0a11daca99e84a46f2294"
+    },
+    {
+      "path": "libusb-python-release.json",
+      "cachePath": "artifacts/native-dependency-research/libusb-python-release.json",
+      "sha256": "c7b013dce25adfd8fa5e89e93d6bf45801737a437250f10770efb81e173e37d3"
+    },
+    {
+      "path": "winusbcdc-tags.json",
+      "cachePath": "artifacts/native-dependency-research/winusbcdc-tags.json",
+      "sha256": "c78664ae6f0f39e696ffde4d50f7c408142c493a73797285de9a63c1b5b6e193"
+    },
+    {
+      "path": "hidapi-hotplug-tag.json",
+      "cachePath": "artifacts/native-dependency-research/hidapi-hotplug-tag.json",
+      "sha256": "f0b199b79c9ba698f71c20e7ccb9da7f652840362d193fda2290567b9dfe871e"
+    },
+    {
+      "path": "openrgb-hidapi-history.json",
+      "cachePath": "artifacts/native-dependency-research/openrgb-hidapi-history.json",
+      "sha256": "2df2f88d8eb895a606dc573b9c843707ce0f75c9a146f5a619229d131bffe8fa"
+    }
+  ],
+  "libusbOfficialBinary": {
+    "archiveId": "libusb-openrgb-release-binaries",
+    "member": "VS2019/MS64/dll/libusb-1.0.dll",
+    "length": 157696,
+    "sha256": "a8c91f0ff68fb7802a9f4416728f0eeb4d99af4ceaa4ef7dfe9374e76e375018"
+  },
+  "openRgbBaseRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "hidapiHotplugAdoptionRevision": "da824ccfa81add10e7a1e9b1d739503ff898a3d8"
+}

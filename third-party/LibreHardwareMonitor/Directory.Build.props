@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.9.6</Version>
+    <AssemblyVersion>0.9.6.0</AssemblyVersion>
+    <InformationalVersion>0.9.6-flowdeck.8+3d331e3370efb858411f19511373eff65a218701</InformationalVersion>
+    <Copyright>LibreHardwareMonitor and Contributors</Copyright>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x64</PlatformTarget>
+    <Deterministic>true</Deterministic>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+</Project>

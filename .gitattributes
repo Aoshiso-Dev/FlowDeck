@@ -1,0 +1,6 @@
+# Preserve exact source bytes used by pinned dependency and fixture SHA-256 records.
+* -text
+*.png binary
+*.ico binary
+*.bin binary
+*.zip binary

@@ -1,0 +1,15 @@
+<UserControl x:Class="FlowDeck.App.DeviceLightingLevelsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Expander Header="明るさの調整" Margin="0,16,0,12"><Border Style="{StaticResource Card}" Margin="0,10,0,0"><StackPanel>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="16"/><ColumnDefinition/></Grid.ColumnDefinitions>
+   <ComboBox ItemsSource="{Binding LightLevelScopes}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding LightLevelScope}" IsEnabled="{Binding CanSelectLightLevel}" AutomationProperties.Name="明るさの対象"/>
+   <ComboBox Grid.Column="2" ItemsSource="{Binding LightGroups}" DisplayMemberPath="Name" SelectedValuePath="Id" SelectedValue="{Binding LightLevelGroupId}" IsEnabled="{Binding CanSelectLightLevel}" Visibility="{Binding LightLevelIsGroup,Converter={StaticResource BoolVisibility}}" AutomationProperties.Name="明るさのグループ"/>
+  </Grid>
+  <TextBlock Text="{Binding LightLevelCurrent}" Style="{StaticResource Muted}" Margin="0,14,0,6"/>
+  <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="60"/></Grid.ColumnDefinitions>
+   <Slider Value="{Binding LightLevelBrightness,UpdateSourceTrigger=PropertyChanged}" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" IsEnabled="{Binding CanEditLightLevel}" AutomationProperties.Name="対象の明るさ倍率"/>
+   <TextBlock Grid.Column="1" Text="{Binding LightLevelValue}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+  </Grid>
+  <TextBlock Text="{Binding LightLevelStatus}" Style="{StaticResource Muted}" Margin="0,8"/>
+  <WrapPanel><Button Content="適用" Style="{StaticResource Primary}" Command="{Binding ApplyLightLevel}"/><Button Content="消灯" Command="{Binding ToggleLightLevel}"/><Button Content="元に戻す" Command="{Binding ToggleLightLevel}" CommandParameter="restore"/><Button Content="現在の設定" Command="{Binding ReloadLightLevel}"/></WrapPanel>
+ </StackPanel></Border></Expander>
+</UserControl>

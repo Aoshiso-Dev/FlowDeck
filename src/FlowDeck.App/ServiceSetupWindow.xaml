@@ -1,0 +1,34 @@
+<Window x:Class="FlowDeck.App.ServiceSetupWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="FlowDeck · サービス導入" Width="760" Height="720" MinWidth="580" MinHeight="480" WindowStartupLocation="CenterOwner"
+ Icon="Assets/FlowDeck.ico" Style="{StaticResource {x:Type Window}}">
+ <Border Background="{DynamicResource BackgroundBrush}" Padding="28"><Grid>
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <StackPanel Margin="0,0,0,20">
+   <TextBlock Text="サービス導入" FontSize="25" FontWeight="SemiBold"/>
+   <TextBlock x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
+  </StackPanel>
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+   <StackPanel x:Name="PlanPanel">
+    <TextBlock x:Name="VersionText" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16"/>
+    <TextBlock Text="導入先" Style="{StaticResource Muted}"/>
+    <TextBlock x:Name="InstallPathText" TextWrapping="Wrap" Margin="0,4,0,16"/>
+    <TextBlock Text="設定・復旧記録" Style="{StaticResource Muted}"/>
+    <TextBlock x:Name="DataPathText" TextWrapping="Wrap" Margin="0,4,0,16"/>
+    <TextBlock Text="変更内容" Style="{StaticResource Muted}" Margin="0,0,0,4"/>
+    <ItemsControl x:Name="StepsList"><ItemsControl.ItemTemplate><DataTemplate>
+     <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+    <TextBlock x:Name="BlockersText" TextWrapping="Wrap" Margin="0,12,0,12"/>
+    <Expander Header="確認した配布物と操作ユーザー" Margin="0,12,0,16">
+     <TextBlock x:Name="DetailsText" TextWrapping="Wrap" Margin="0,12,0,0"/>
+    </Expander>
+   </StackPanel>
+  </ScrollViewer>
+  <WrapPanel Grid.Row="2" HorizontalAlignment="Right" Margin="0,20,0,0">
+   <Button x:Name="ReviewButton" Content="再確認" MinWidth="88" Click="Review"/>
+   <Button x:Name="ApplyButton" Content="管理者として導入" Style="{StaticResource Primary}" Click="Apply"/>
+   <Button x:Name="CloseButton" Content="閉じる" MinWidth="88" Click="Exit" Margin="0"/>
+  </WrapPanel>
+ </Grid></Border>
+</Window>

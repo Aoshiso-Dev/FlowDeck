@@ -1,0 +1,544 @@
+{
+  "format": 1,
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "sourceBundlePurpose": "Corresponding editable compilation inputs for mock-hardware tests",
+  "sourceDirectoriesVerifiedAgainstOriginalBuilds": true,
+  "hardwareExecuted": false,
+  "sharedJson": {
+    "version": "3.11.3",
+    "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6",
+    "source": "https://github.com/nlohmann/json/tree/v3.11.3"
+  },
+  "fixtures": [
+    {
+      "directory": "authorization",
+      "binaryPath": "tests/FlowDeck.Tests/Fixtures/AsrockAuthorizationClient.bin",
+      "binarySha256": "24311d37721d4bfc20d52045140b8547bbf6a0660a2d43a32558d9295be45a91",
+      "historicalBinarySha256": "bd76db018db59fa2da27093845e31f682a0e8f55b28a0f588c42faf586d2723c",
+      "originalBuildDirectory": "artifacts/openrgb-authorization-client-bootstrap",
+      "flowDeckPatch": 5,
+      "outputName": "authorization-client.exe",
+      "compilationUnits": [
+        "client.cpp"
+      ],
+      "compilerDefines": [],
+      "libraries": []
+    },
+    {
+      "directory": "sdk",
+      "binaryPath": "tests/FlowDeck.Tests/Fixtures/AsrockSdkIntegration.bin",
+      "binarySha256": "5556e26ba724f752fdd23f1cf76d9471a1656d51991b514720665e4ed4dff60f",
+      "historicalBinarySha256": "61688f9d91da62422d63b38faf271979fea30a7c29307481dcd9a651fa681da4",
+      "originalBuildDirectory": "artifacts/openrgb-integration-fixture-v3",
+      "flowDeckPatch": 6,
+      "outputName": "integration-fixture.exe",
+      "compilationUnits": [
+        "ASRockPolychromeUSBController.cpp",
+        "RGBController_ASRockPolychromeUSB.cpp",
+        "RGBController.cpp",
+        "ASRockPolychromeUSBControllerDetect.cpp",
+        "server.cpp"
+      ],
+      "compilerDefines": [
+        "/DFLOWDECK_PATCH=6",
+        "/DNOMINMAX",
+        "/DWIN32_LEAN_AND_MEAN"
+      ],
+      "libraries": [
+        "Ws2_32.lib"
+      ]
+    },
+    {
+      "directory": "full-server",
+      "binaryPath": "tests/FlowDeck.Tests/Fixtures/AsrockFullServerIntegration.bin",
+      "binarySha256": "90e24ade26e2bbc12e786a48669d8489c191c8c48f510e945543d7b224b239de",
+      "historicalBinarySha256": "3f7cd31e119145a0f48f45f1687edca1afdf06647f4eeb7ac3052f414147db61",
+      "originalBuildDirectory": "artifacts/openrgb-full-server-fixture-patch8",
+      "flowDeckPatch": 8,
+      "outputName": "full-server-fixture.exe",
+      "compilationUnits": [
+        "ASRockPolychromeUSBController.cpp",
+        "RGBController_ASRockPolychromeUSB.cpp",
+        "RGBController.cpp",
+        "ASRockPolychromeUSBControllerDetect.cpp",
+        "NetworkServer.cpp",
+        "NetworkProtocol.cpp",
+        "SettingsManager.cpp",
+        "JsonUtils.cpp",
+        "server.cpp"
+      ],
+      "compilerDefines": [
+        "/DFLOWDECK_NETWORK_TEST",
+        "/DFLOWDECK_PATCH=8",
+        "/DWIN32",
+        "/DNOMINMAX",
+        "/DWIN32_LEAN_AND_MEAN"
+      ],
+      "libraries": [
+        "Ws2_32.lib"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "authorization/client.cpp",
+      "length": 6664,
+      "sha256": "94fe8f327352dc208e34328f61ebeda22d12c8f90701419168e3e3d1d895c552"
+    },
+    {
+      "path": "authorization/FlowDeckAsrockAuthorization.h",
+      "length": 4001,
+      "sha256": "599425ab841e902b20f187461bad7335bbcf48e4468007e7f94b4ad3e1a435fa"
+    },
+    {
+      "path": "authorization/FlowDeckAsrockBootstrap.h",
+      "length": 3908,
+      "sha256": "f77f13b610136d54903448d77e2479fa08fd5d899dcec659e7a9613bfcb2a6cf"
+    },
+    {
+      "path": "authorization/FlowDeckAsrockIo.h",
+      "length": 4565,
+      "sha256": "c718c6519238965906ff9e1a79965fd9cc3ba8c12fdb39bffed7ec08b88bd185"
+    },
+    {
+      "path": "authorization/FlowDeckAsrockPipe.h",
+      "length": 8143,
+      "sha256": "ff83d1f63d9b7d1868826c6a12ee2c9e9613460a787efd8e16cc25d9ccb037cc"
+    },
+    {
+      "path": "authorization/FlowDeckAsrockWire.h",
+      "length": 2573,
+      "sha256": "b6ab244183b8d75161207b9bf33024a51f115934735761f17fd9570741ec7ee2"
+    },
+    {
+      "path": "authorization/original-provenance.json",
+      "length": 1373,
+      "sha256": "9d9f75e2643f1b384f04edd2a7ee8019a9241110a6848938a4891efa6cd39e92"
+    },
+    {
+      "path": "build.py",
+      "length": 3882,
+      "sha256": "cc2f12b2010b616711882c6719fe791a65842ee469a7134b6b9848c39a7062fa"
+    },
+    {
+      "path": "full-server/ASRockPolychromeUSBController.cpp",
+      "length": 21868,
+      "sha256": "3adcf7bc8d6fbf2bd1d756426d0f42a68774ebb4afaaa686c19efc72bdd2ba48"
+    },
+    {
+      "path": "full-server/ASRockPolychromeUSBController.h",
+      "length": 7311,
+      "sha256": "8e9d2c368a839e7e7a423ef6d8d503ce19a79e6aec090fda6bbcbebc19303bd0"
+    },
+    {
+      "path": "full-server/ASRockPolychromeUSBControllerDetect.cpp",
+      "length": 3519,
+      "sha256": "938862312f730fb477f597a794f8c252e75914a893f3ecf83aa610b6de6c9316"
+    },
+    {
+      "path": "full-server/Controllers/ASRockPolychromeUSBController/FlowDeckAsrockAuthorization.h",
+      "length": 62,
+      "sha256": "a4167cf68ac5b981c17f6d31d7f1293a709cfd23265b9317c73dc041164a07a8"
+    },
+    {
+      "path": "full-server/DetectionManager.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "full-server/dmiinfo.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "full-server/filesystem.h",
+      "length": 1435,
+      "sha256": "e5cd96775e73e117fdfc1bf84be02a21ca292e860e7cd6f2690f8ef0c1edb5c9"
+    },
+    {
+      "path": "full-server/fixture-schema.inc",
+      "length": 5956,
+      "sha256": "0fff1f5c046891e4f57bb283f8075c7ab32eca46bd03b11c671b7d505f2fbbe5"
+    },
+    {
+      "path": "full-server/fixture.h",
+      "length": 1470,
+      "sha256": "382324e076947c5f2b0bc8aa59a9b9c01a1539288ea29344d7d6abac69aa9354"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockAuthorization.h",
+      "length": 4001,
+      "sha256": "599425ab841e902b20f187461bad7335bbcf48e4468007e7f94b4ad3e1a435fa"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockBootstrap.h",
+      "length": 3908,
+      "sha256": "f77f13b610136d54903448d77e2479fa08fd5d899dcec659e7a9613bfcb2a6cf"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockIo.h",
+      "length": 4565,
+      "sha256": "c718c6519238965906ff9e1a79965fd9cc3ba8c12fdb39bffed7ec08b88bd185"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockOperation.h",
+      "length": 4415,
+      "sha256": "407d0e6519557dbc250f91be2ce28180a4551e2cc25d4311863eaa85a0f4b447"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockPipe.h",
+      "length": 8143,
+      "sha256": "ff83d1f63d9b7d1868826c6a12ee2c9e9613460a787efd8e16cc25d9ccb037cc"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockSdk.inc",
+      "length": 1578,
+      "sha256": "e26585b1f85fd28b95e1b94de9d1037b2172f61fd1bfbe84fc9281e4440748dc"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockSdkPeer.inc",
+      "length": 1401,
+      "sha256": "89bb40b2b5904171c6fe01d46985774972ddeb87e2bb785c2917dca8025504fd"
+    },
+    {
+      "path": "full-server/FlowDeckAsrockWire.h",
+      "length": 2573,
+      "sha256": "b6ab244183b8d75161207b9bf33024a51f115934735761f17fd9570741ec7ee2"
+    },
+    {
+      "path": "full-server/FlowDeckHidAllowlist.h",
+      "length": 2283,
+      "sha256": "02ab763cf38751c53c982bf09427f2ef95fcd8dc29db6aa78e714170c6d7cde9"
+    },
+    {
+      "path": "full-server/FlowDeckNetworkLifecycle.inc",
+      "length": 16074,
+      "sha256": "95661b88d29437adba064875cfdddb7afd5be9df29b0fd17fbe04cd0a10e0d1c"
+    },
+    {
+      "path": "full-server/FlowDeckShutdown.h",
+      "length": 1988,
+      "sha256": "0a9b7067b48f59ffe5aa5abbfdfe5b68b31c669905f45da3414f51968092b9e3"
+    },
+    {
+      "path": "full-server/hardware-records.h",
+      "length": 1007,
+      "sha256": "81807e592e870f3767814c034da031e0b3273165e72784846a5040dc65cde1fb"
+    },
+    {
+      "path": "full-server/hidapi.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "full-server/i2c_smbus.h",
+      "length": 45,
+      "sha256": "addb8febe6f556e09b97cffb03c798802aef374d41154e9ec3fdc8ec21e6bcc0"
+    },
+    {
+      "path": "full-server/JsonUtils.cpp",
+      "length": 1869,
+      "sha256": "e4b8115830dab383d21c6f64918a0fe9c78a006195f5176420e6b929eb8c7178"
+    },
+    {
+      "path": "full-server/JsonUtils.h",
+      "length": 953,
+      "sha256": "e0cfd0da324a2edc5e80e06aa5b535a514da38002d4219d2a92952a5f2f21718"
+    },
+    {
+      "path": "full-server/lifecycle-tests.inc",
+      "length": 12416,
+      "sha256": "955c16577f810b10e862d5f9bd45be77088def341465a6895110fe957a4c808e"
+    },
+    {
+      "path": "full-server/LogManager.h",
+      "length": 874,
+      "sha256": "aefc3006b6b82d64c53d70b6ccd5d55311f283e3366394c0952f237966b6465c"
+    },
+    {
+      "path": "full-server/net_port.h",
+      "length": 2943,
+      "sha256": "6d25571dbe75e8b1b1806b628014cbbbb1634a7fa02d2f4184ecdcf67145947e"
+    },
+    {
+      "path": "full-server/network-test-hooks.h",
+      "length": 205,
+      "sha256": "265161cfd0b910fe0d036660b0f68c9963e08e1fbbf80b7b64b000ee58a013a0"
+    },
+    {
+      "path": "full-server/NetworkClient.h",
+      "length": 626,
+      "sha256": "6157688ebdcb1b975c71d15a8146c5fcf220cbb1371c67511ba856e8d3a952ab"
+    },
+    {
+      "path": "full-server/NetworkProtocol.cpp",
+      "length": 2597,
+      "sha256": "a5d18cd6436d76a6338251bca28d0978ab66de67625aba8f39524c9821a381c2"
+    },
+    {
+      "path": "full-server/NetworkProtocol.h",
+      "length": 15993,
+      "sha256": "9aa020aebbb1a60bc36dbaefd6edac4a98e3fa2fb22b4d8e0833f52c764088b7"
+    },
+    {
+      "path": "full-server/NetworkServer.cpp",
+      "length": 165443,
+      "sha256": "0c4ca36298eac7f31f624166d2071f05ce8aba0f009f937a332a7e7e57a5f794"
+    },
+    {
+      "path": "full-server/NetworkServer.h",
+      "length": 23936,
+      "sha256": "406e6093e9a5c6fd793ed9b530797edea3209f19d2e1b803650dfc984d290254"
+    },
+    {
+      "path": "full-server/original-provenance.json",
+      "length": 7857,
+      "sha256": "46ed1473606c5ffde8a0ee52063a860e559ca5685ce032f538d5c8076a90e143"
+    },
+    {
+      "path": "full-server/PluginManagerInterface.h",
+      "length": 3105,
+      "sha256": "4d707f90af48f20b8c76741d1e1bde8b8c5df3b13faefb2a436d40a3c65ce6dc"
+    },
+    {
+      "path": "full-server/ProfileManager.h",
+      "length": 10392,
+      "sha256": "5e2acb1cc06bfd32c4b1defe2379d81af4fa7ca969d3c205f26d0bd71a2331bc"
+    },
+    {
+      "path": "full-server/ResourceManager.h",
+      "length": 1383,
+      "sha256": "2092300bb1d40a87323e880f07806c961966bd0872ba7a71b1c7b0119dbc6c3b"
+    },
+    {
+      "path": "full-server/ResourceManagerCallback.h",
+      "length": 1637,
+      "sha256": "ce270191f05fbd5347002e3065b54eab8c5166f323a1c3c5a451cfa86dac008f"
+    },
+    {
+      "path": "full-server/RGBController.cpp",
+      "length": 168063,
+      "sha256": "9434c7dde305f506ef1d1c55bc7749f4084c0c6d955789b3b95d2b199710e8a7"
+    },
+    {
+      "path": "full-server/RGBController.h",
+      "length": 20930,
+      "sha256": "8c18f975ce98ad949bf737028e7a4754846868f0eaa0a673aa13fcbf269eedd0"
+    },
+    {
+      "path": "full-server/RGBController_ASRockPolychromeUSB.cpp",
+      "length": 18613,
+      "sha256": "0e82311a69ce311d4bd30b3cd2ce1b8c1eb2502bedcd6a408c228af5f00339a3"
+    },
+    {
+      "path": "full-server/RGBController_ASRockPolychromeUSB.h",
+      "length": 2102,
+      "sha256": "9e73f53386d18fce8b9cea59e5e695ed34db7f99b2c9d4c64e85dcfe203e7b7e"
+    },
+    {
+      "path": "full-server/RGBControllerInterface.h",
+      "length": 44426,
+      "sha256": "20543c30348ab9819d5f236e9635d06b21204a77ad297068878b6d63d60e1e04"
+    },
+    {
+      "path": "full-server/server-body.inc",
+      "length": 3539,
+      "sha256": "139875244ccf633c44bdb60139cd39d96b1dab6b43e51201f34649e51be5a7d7"
+    },
+    {
+      "path": "full-server/server.cpp",
+      "length": 4316,
+      "sha256": "12f0c404399ddf43f12311f0e3ff403d50d8b39d2a2071ddd1bfda5a88759f70"
+    },
+    {
+      "path": "full-server/SettingsManager.cpp",
+      "length": 21022,
+      "sha256": "a615040f54a44c36b584a86c1f9e6350f5de7f7b34eec6fff3c41e3d6bfaa55c"
+    },
+    {
+      "path": "full-server/SettingsManager.h",
+      "length": 6713,
+      "sha256": "7349dcc9dfb4a0301953226d8ce0f248685e242c6458272c32b41f244e08ca9d"
+    },
+    {
+      "path": "full-server/StringUtils.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "LICENSE-GPL-2.0.txt",
+      "length": 18042,
+      "sha256": "7687b2f71c25336b0273f5c175286ebbc12d89add925b2f6c333e51fa3b1782d"
+    },
+    {
+      "path": "README.md",
+      "length": 3788,
+      "sha256": "ce3be997692319b9b339d22ebe67e44cac7a77a5166ae1a54a4caff90537de2a"
+    },
+    {
+      "path": "sdk/ASRockPolychromeUSBController.cpp",
+      "length": 21868,
+      "sha256": "3adcf7bc8d6fbf2bd1d756426d0f42a68774ebb4afaaa686c19efc72bdd2ba48"
+    },
+    {
+      "path": "sdk/ASRockPolychromeUSBController.h",
+      "length": 7311,
+      "sha256": "8e9d2c368a839e7e7a423ef6d8d503ce19a79e6aec090fda6bbcbebc19303bd0"
+    },
+    {
+      "path": "sdk/ASRockPolychromeUSBControllerDetect.cpp",
+      "length": 3519,
+      "sha256": "938862312f730fb477f597a794f8c252e75914a893f3ecf83aa610b6de6c9316"
+    },
+    {
+      "path": "sdk/Controllers/ASRockPolychromeUSBController/FlowDeckAsrockAuthorization.h",
+      "length": 62,
+      "sha256": "a4167cf68ac5b981c17f6d31d7f1293a709cfd23265b9317c73dc041164a07a8"
+    },
+    {
+      "path": "sdk/DetectionManager.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "sdk/dmiinfo.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "sdk/fixture.h",
+      "length": 2094,
+      "sha256": "1b9fcb64cc0851b42a81e990f1f1e198d39e8ea31bdc1d589c23c5280967315b"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockAuthorization.h",
+      "length": 4001,
+      "sha256": "599425ab841e902b20f187461bad7335bbcf48e4468007e7f94b4ad3e1a435fa"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockBootstrap.h",
+      "length": 3908,
+      "sha256": "f77f13b610136d54903448d77e2479fa08fd5d899dcec659e7a9613bfcb2a6cf"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockIo.h",
+      "length": 4565,
+      "sha256": "c718c6519238965906ff9e1a79965fd9cc3ba8c12fdb39bffed7ec08b88bd185"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockOperation.h",
+      "length": 4415,
+      "sha256": "407d0e6519557dbc250f91be2ce28180a4551e2cc25d4311863eaa85a0f4b447"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockPipe.h",
+      "length": 8143,
+      "sha256": "ff83d1f63d9b7d1868826c6a12ee2c9e9613460a787efd8e16cc25d9ccb037cc"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockSdk.inc",
+      "length": 1578,
+      "sha256": "e26585b1f85fd28b95e1b94de9d1037b2172f61fd1bfbe84fc9281e4440748dc"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockSdkPeer.inc",
+      "length": 1401,
+      "sha256": "89bb40b2b5904171c6fe01d46985774972ddeb87e2bb785c2917dca8025504fd"
+    },
+    {
+      "path": "sdk/FlowDeckAsrockWire.h",
+      "length": 2573,
+      "sha256": "b6ab244183b8d75161207b9bf33024a51f115934735761f17fd9570741ec7ee2"
+    },
+    {
+      "path": "sdk/FlowDeckHidAllowlist.h",
+      "length": 2283,
+      "sha256": "02ab763cf38751c53c982bf09427f2ef95fcd8dc29db6aa78e714170c6d7cde9"
+    },
+    {
+      "path": "sdk/hidapi.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "sdk/LogManager.h",
+      "length": 48,
+      "sha256": "114313ac59a5b131def5243a49eb2f3a06789e2eca0024d0e172995589db99ec"
+    },
+    {
+      "path": "sdk/NetworkProtocol.h",
+      "length": 15993,
+      "sha256": "9aa020aebbb1a60bc36dbaefd6edac4a98e3fa2fb22b4d8e0833f52c764088b7"
+    },
+    {
+      "path": "sdk/original-provenance.json",
+      "length": 4556,
+      "sha256": "73824f042c3b7758e28314734a67b57f0ca8d4e34c925540b73c1420b1607b99"
+    },
+    {
+      "path": "sdk/ResourceManager.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "sdk/RGBController.cpp",
+      "length": 168063,
+      "sha256": "9434c7dde305f506ef1d1c55bc7749f4084c0c6d955789b3b95d2b199710e8a7"
+    },
+    {
+      "path": "sdk/RGBController.h",
+      "length": 20930,
+      "sha256": "8c18f975ce98ad949bf737028e7a4754846868f0eaa0a673aa13fcbf269eedd0"
+    },
+    {
+      "path": "sdk/RGBController_ASRockPolychromeUSB.cpp",
+      "length": 18613,
+      "sha256": "0e82311a69ce311d4bd30b3cd2ce1b8c1eb2502bedcd6a408c228af5f00339a3"
+    },
+    {
+      "path": "sdk/RGBController_ASRockPolychromeUSB.h",
+      "length": 2102,
+      "sha256": "9e73f53386d18fce8b9cea59e5e695ed34db7f99b2c9d4c64e85dcfe203e7b7e"
+    },
+    {
+      "path": "sdk/RGBControllerInterface.h",
+      "length": 44426,
+      "sha256": "20543c30348ab9819d5f236e9635d06b21204a77ad297068878b6d63d60e1e04"
+    },
+    {
+      "path": "sdk/sdk-functions.inc",
+      "length": 24722,
+      "sha256": "90042e5890203acdf259605c817fc381a81404009006d87e975faa778e216023"
+    },
+    {
+      "path": "sdk/server.cpp",
+      "length": 12135,
+      "sha256": "3fcc599e2533c73f37218b3780b9b83600de5fe07ebbdcfc37e83228d49c128f"
+    },
+    {
+      "path": "sdk/SettingsManager.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "sdk/StringUtils.h",
+      "length": 36,
+      "sha256": "c30172db43785e05c715e390ac0d95fdfc5a91b08ff43c011021c7d42c9249f9"
+    },
+    {
+      "path": "shared/nlohmann/json.hpp",
+      "length": 919975,
+      "sha256": "9bea4c8066ef4a1c206b2be5a36302f8926f7fdc6087af5d20b417d0cf103ea6"
+    },
+    {
+      "path": "shared/nlohmann/LICENSE.MIT",
+      "length": 1076,
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14"
+    },
+    {
+      "path": "UPSTREAM-COPYRIGHT.txt",
+      "length": 2221,
+      "sha256": "82a5189864940740b787bde6c7d44d1d3f154e60e097638c2e4e1c815b0a30ed"
+    }
+  ]
+}

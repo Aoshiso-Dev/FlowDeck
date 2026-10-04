@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "boards": [
+    {
+      "id": "asrock-x870e-taichi-white-v1",
+      "name": "ASRock X870E Taichi White",
+      "cpuFanId": "cpu-fan1",
+      "chassisFanId": "cha-fan1",
+      "ports": [
+        {
+          "id": "cpu-fan1",
+          "name": "CPU_FAN1",
+          "channel": 1,
+          "sensorId": "/lpc/nct6799d/0/fan/1",
+          "demoSensorId": "demo/board/fan/0",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "cha-fan1",
+          "name": "CHA_FAN1",
+          "channel": 0,
+          "sensorId": "/lpc/nct6799d/0/fan/0",
+          "demoSensorId": "demo/board/fan/1",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6799d-2",
+          "name": "NCT6799D RPM2",
+          "channel": 2,
+          "sensorId": "/lpc/nct6799d/0/fan/2",
+          "demoSensorId": "demo/nct6799d/fan/2",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6799d-3",
+          "name": "NCT6799D RPM3",
+          "channel": 3,
+          "sensorId": "/lpc/nct6799d/0/fan/3",
+          "demoSensorId": "demo/nct6799d/fan/3",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6799d-4",
+          "name": "NCT6799D RPM4",
+          "channel": 4,
+          "sensorId": "/lpc/nct6799d/0/fan/4",
+          "demoSensorId": "demo/nct6799d/fan/4",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6799d-5",
+          "name": "NCT6799D RPM5",
+          "channel": 5,
+          "sensorId": "/lpc/nct6799d/0/fan/5",
+          "demoSensorId": "demo/nct6799d/fan/5",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6799d-6",
+          "name": "NCT6799D RPM6",
+          "channel": 6,
+          "sensorId": "/lpc/nct6799d/0/fan/6",
+          "demoSensorId": "demo/nct6799d/fan/6",
+          "chip": "NCT6799D"
+        },
+        {
+          "id": "nct6686d-0",
+          "name": "NCT6686D RPM0",
+          "channel": 0,
+          "sensorId": "/lpc/nct6686d/0/fan/0",
+          "demoSensorId": "demo/nct6686d/fan/0",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-1",
+          "name": "NCT6686D RPM1",
+          "channel": 1,
+          "sensorId": "/lpc/nct6686d/0/fan/1",
+          "demoSensorId": "demo/nct6686d/fan/1",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-2",
+          "name": "NCT6686D RPM2",
+          "channel": 2,
+          "sensorId": "/lpc/nct6686d/0/fan/2",
+          "demoSensorId": "demo/nct6686d/fan/2",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-3",
+          "name": "NCT6686D RPM3",
+          "channel": 3,
+          "sensorId": "/lpc/nct6686d/0/fan/3",
+          "demoSensorId": "demo/nct6686d/fan/3",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-4",
+          "name": "NCT6686D RPM4",
+          "channel": 4,
+          "sensorId": "/lpc/nct6686d/0/fan/4",
+          "demoSensorId": "demo/nct6686d/fan/4",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-5",
+          "name": "NCT6686D RPM5",
+          "channel": 5,
+          "sensorId": "/lpc/nct6686d/0/fan/5",
+          "demoSensorId": "demo/nct6686d/fan/5",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-6",
+          "name": "NCT6686D RPM6",
+          "channel": 6,
+          "sensorId": "/lpc/nct6686d/0/fan/6",
+          "demoSensorId": "demo/nct6686d/fan/6",
+          "chip": "NCT6686D"
+        },
+        {
+          "id": "nct6686d-7",
+          "name": "NCT6686D RPM7",
+          "channel": 7,
+          "sensorId": "/lpc/nct6686d/0/fan/7",
+          "demoSensorId": "demo/nct6686d/fan/7",
+          "chip": "NCT6686D"
+        }
+      ]
+    }
+  ]
+}

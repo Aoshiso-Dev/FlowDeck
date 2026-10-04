@@ -1,0 +1,56 @@
+{
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "flowDeckPatch": 4,
+  "case": "native-receipt-wire",
+  "sourceTest": "tests/native/openrgb-operation/operation.cpp",
+  "compiledSources": [
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.cpp",
+      "sha256": "7C284E2DF109A427F188C2702FB15CB9041D181F916B1139F67932BDF89FEEA9"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.h",
+      "sha256": "8E9D2C368A839E7E7A423EF6D8D503CE19A79E6AEC090FDA6BBCBEBC19303BD0"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.cpp",
+      "sha256": "0E82311A69CE311D4BD30B3CD2CE1B8C1EB2502BEDCD6A408C228AF5F00339A3"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.h",
+      "sha256": "9E73F53386D18FCE8B9CEA59E5E695ED34DB7F99B2C9D4C64E85DCFE203E7B7E"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockIo.h",
+      "sha256": "768E930F5DDE8AE663A5C6412D3C922A636CF9E5712D90879CC588ADFAD6E7C6"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockOperation.h",
+      "sha256": "407D0E6519557DBC250F91BE2CE28180A4551E2CC25D4311863EAA85A0F4B447"
+    },
+    {
+      "path": "RGBController/RGBController.cpp",
+      "sha256": "9434C7DDE305F506EF1D1C55BC7749F4084C0C6D955789B3B95D2B199710E8A7"
+    },
+    {
+      "path": "RGBController/RGBController.h",
+      "sha256": "8C18F975CE98AD949BF737028E7A4754846868F0EAA0A673AA13FCBF269EEDD0"
+    },
+    {
+      "path": "RGBController/RGBControllerInterface.h",
+      "sha256": "20543C30348AB9819D5F236E9635D06B21204A77AD297068878B6D63D60E1E04"
+    },
+    {
+      "path": "NetworkProtocol.h",
+      "sha256": "9AA020AEBBB1A60BC36DBAEFD6EDAC4A98E3FA2FB22B4D8E0833F52C764088B7"
+    },
+    {
+      "path": "FlowDeckAsrockSdk.inc",
+      "sha256": "E26585B1F85FD28B95E1B94DE9D1037B2172F61FD1BFBE84FC9281E4440748DC"
+    }
+  ],
+  "binarySha256": "45FAC393BF51775D14057A6E04678D7132BEC58EAE8CCDB6F3BB693DB32ABE11",
+  "fixtureSha256": "42707AF7D38950AAC3160020B75D6DAED036030EB0728560A0AF92DB3B8AE1CB",
+  "hardwareAccessed": false,
+  "realSocketsUsed": false
+}

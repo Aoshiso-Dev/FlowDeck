@@ -1,0 +1,113 @@
+{
+  "sourceRevision": "81bbe18a84c2e507006f19dd252e397e40a56bfe",
+  "flowDeckPatch": 6,
+  "hardwareMocked": true,
+  "actualWindowsPipe": true,
+  "actualWinsock": true,
+  "actualSettingsHandlers": true,
+  "settingsStorageMocked": true,
+  "fullNetworkServer": false,
+  "warnings": {
+    "C4458": 28,
+    "C4996": 14,
+    "C4244": 11
+  },
+  "binarySha256": "61688F9D91DA62422D63B38FAF271979FEA30A7C29307481DCD9A651FA681DA4",
+  "sdkBodiesSha256": "9CAB51016D0BD3FB81BC0846FE141429253BC8E32FE663ED64BB332D317DE459",
+  "compiledSources": [
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.cpp",
+      "sha256": "3ADCF7BC8D6FBF2BD1D756426D0F42A68774EBB4AFAAA686C19EFC72BDD2BA48"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBController.h",
+      "sha256": "8E9D2C368A839E7E7A423EF6D8D503CE19A79E6AEC090FDA6BBCBEBC19303BD0"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.cpp",
+      "sha256": "0E82311A69CE311D4BD30B3CD2CE1B8C1EB2502BEDCD6A408C228AF5F00339A3"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/RGBController_ASRockPolychromeUSB.h",
+      "sha256": "9E73F53386D18FCE8B9CEA59E5E695ED34DB7F99B2C9D4C64E85DCFE203E7B7E"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/ASRockPolychromeUSBControllerDetect.cpp",
+      "sha256": "938862312F730FB477F597A794F8C252E75914A893F3ECF83AA610B6DE6C9316"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockIo.h",
+      "sha256": "C718C6519238965906FF9E1A79965FD9CC3BA8C12FDB39BFFED7EC08B88BD185"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockOperation.h",
+      "sha256": "407D0E6519557DBC250F91BE2CE28180A4551E2CC25D4311863EAA85A0F4B447"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockAuthorization.h",
+      "sha256": "599425AB841E902B20F187461BAD7335BBCF48E4468007E7F94B4AD3E1A435FA"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckHidAllowlist.h",
+      "sha256": "02AB763CF38751C53C982BF09427F2EF95FCD8DC29DB6AA78E714170C6D7CDE9"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockWire.h",
+      "sha256": "B6AB244183B8D75161207B9BF33024A51F115934735761F17FD9570741EC7EE2"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockPipe.h",
+      "sha256": "FF83D1F63D9B7D1868826C6A12EE2C9E9613460A787EFD8E16CC25D9CCB037CC"
+    },
+    {
+      "path": "Controllers/ASRockPolychromeUSBController/FlowDeckAsrockBootstrap.h",
+      "sha256": "F77F13B610136D54903448D77E2479FA08FD5D899DCEC659E7A9613BFCB2A6CF"
+    },
+    {
+      "path": "RGBController/RGBController.cpp",
+      "sha256": "9434C7DDE305F506EF1D1C55BC7749F4084C0C6D955789B3B95D2B199710E8A7"
+    },
+    {
+      "path": "RGBController/RGBController.h",
+      "sha256": "8C18F975CE98AD949BF737028E7A4754846868F0EAA0A673AA13FCBF269EEDD0"
+    },
+    {
+      "path": "RGBController/RGBControllerInterface.h",
+      "sha256": "20543C30348AB9819D5F236E9635D06B21204A77AD297068878B6D63D60E1E04"
+    },
+    {
+      "path": "NetworkProtocol.h",
+      "sha256": "9AA020AEBBB1A60BC36DBAEFD6EDAC4A98E3FA2FB22B4D8E0833F52C764088B7"
+    },
+    {
+      "path": "FlowDeckAsrockSdk.inc",
+      "sha256": "E26585B1F85FD28B95E1B94DE9D1037B2172F61FD1BFBE84FC9281E4440748DC"
+    },
+    {
+      "path": "FlowDeckAsrockSdkPeer.inc",
+      "sha256": "89BB40B2B5904171C6FE01D46985774972DDEB87E2BB785C2917DCA8025504FD"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "scripts\\build-openrgb-integration-fixture.py",
+      "sha256": "10A1CC3BEB7367E5DC4DD67B274075CF23F9DA0D2C97EE229FFC93808B3986C6"
+    },
+    {
+      "path": "tests\\native\\openrgb-integration\\server.cpp",
+      "sha256": "3FCC599E2533C73F37218B3780B9B83600DE5FE07EBBDCFC37E83228D49C128F"
+    },
+    {
+      "path": "tests\\native\\openrgb-io\\fixture.h",
+      "sha256": "1271CADFD2CF76EE0BBAC8B699BB28DF571D0936680B5773848EA7412FEC6692"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch6-checked\\NetworkServer.cpp",
+      "sha256": "D50A60AC0680859B1635454A974E6067BDDF73BB33F5F755B7144EBD33246D31"
+    },
+    {
+      "path": "artifacts\\openrgb-flowdeck-source-patch6-checked\\NetworkProtocol.cpp",
+      "sha256": "A5D18CD6436D76A6338251BCA28D0978AB66DE67625ABA8F39524C9821A381C2"
+    }
+  ]
+}

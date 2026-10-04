@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0-windows</TargetFramework><RuntimeIdentifiers>win-x64</RuntimeIdentifiers></PropertyGroup>
+  <ItemGroup><EmbeddedResource Include="../../device-definitions/lighting.json" LogicalName="FlowDeck.DeviceDefinitions.Lighting.json" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../../device-definitions/controllers.json" LogicalName="FlowDeck.DeviceDefinitions.Controllers.json" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../../device-definitions/openrgb-runtime.json" LogicalName="FlowDeck.DeviceDefinitions.OpenRgbRuntime.json" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../../device-definitions/openrgb-helper-runtime.json" LogicalName="FlowDeck.DeviceDefinitions.OpenRgbHelperRuntime.json" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="../../device-definitions/openrgb-detectors.json" LogicalName="FlowDeck.DeviceDefinitions.OpenRgbDetectors.json" /></ItemGroup>
+  <ItemGroup><Content Include="native/**/*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../FlowDeck.Core/FlowDeck.Core.csproj"/><ProjectReference Include="../../third-party/LibreHardwareMonitor/LibreHardwareMonitorLib.csproj"/><PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.3"/><PackageReference Include="System.IO.Ports" Version="10.0.3"/><PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.3"/></ItemGroup>
+</Project>

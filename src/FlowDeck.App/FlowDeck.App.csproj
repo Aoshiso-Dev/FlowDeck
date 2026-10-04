@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><Version>2.0.0</Version><Product>FlowDeck</Product><Title>FlowDeck</Title></PropertyGroup>
+  <PropertyGroup><ApplicationIcon>Assets/FlowDeck.ico</ApplicationIcon></PropertyGroup>
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><AssemblyName>FlowDeck</AssemblyName><ApplicationManifest>app.manifest</ApplicationManifest><RuntimeIdentifier>win-x64</RuntimeIdentifier></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../FlowDeck.Infrastructure/FlowDeck.Infrastructure.csproj"/><Content Include="../../worker/hub_worker.py" Link="worker/hub_worker.py" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+  <ItemGroup><Using Remove="System.Windows.Forms"/><Using Remove="System.Drawing"/></ItemGroup>
+  <ItemGroup><Resource Include="Assets/FlowDeck.ico"/></ItemGroup>
+  <ItemGroup><Resource Include="Assets/FlowDeck-preview.png"/></ItemGroup>
+</Project>
+
