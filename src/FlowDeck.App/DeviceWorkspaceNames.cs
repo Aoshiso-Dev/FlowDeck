@@ -50,19 +50,22 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         var previousText = EditedDeviceName;
         var registered = snapshot.Configuration.Configuration.Devices.Devices;
+        var connected = registered.Where(device => snapshot.Connected && snapshot.State.Inventory.Devices.Any(d =>
+            d.Connected && d.Device.Id == device.Id)).ToArray();
         reconcilingDeviceNames = true;
         try
         {
-            // Retain drafts across selection changes and keep a removed, edited device visible as a conflict.
-            foreach (var old in DeviceNameChoices.Where(c => !registered.Any(d => d.Id == c.Id) && c != selectedDeviceName &&
-                !deviceNameDrafts[c.Id].Dirty && !deviceNameDrafts[c.Id].Conflict).ToArray())
-            { DeviceNameChoices.Remove(old); deviceNameDrafts.Remove(old.Id); }
-            foreach (var device in registered)
+            // Keep unsaved names in the draft cache while disconnected devices leave the visible list.
+            foreach (var old in DeviceNameChoices.Where(c => !connected.Any(d => d.Id == c.Id)).ToArray())
+                DeviceNameChoices.Remove(old);
+            foreach (var id in deviceNameDrafts.Where(pair => !registered.Any(d => d.Id == pair.Key) &&
+                !pair.Value.Dirty && !pair.Value.Conflict).Select(pair => pair.Key).ToArray()) deviceNameDrafts.Remove(id);
+            foreach (var device in connected)
             {
                 var choice = DeviceNameChoices.SingleOrDefault(c => c.Id == device.Id);
                 if (choice is null)
                 {
-                    deviceNameDrafts.Add(device.Id, new(device.Id));
+                    deviceNameDrafts.TryAdd(device.Id, new(device.Id));
                     DeviceNameChoices.Add(new(device.Id, device.Name));
                 }
                 else choice.Update(device.Name);
@@ -78,8 +81,11 @@ public sealed partial class DeviceWorkspaceViewModel
                 }
             }
             foreach (var draft in deviceNameDrafts.Values) draft.Update(snapshot);
-            if (selectedDeviceName is null)
-            { selectedDeviceName = DeviceNameChoices.FirstOrDefault(); Notify(nameof(SelectedDeviceName)); }
+            if (selectedDeviceName is null || !DeviceNameChoices.Contains(selectedDeviceName))
+            {
+                selectedDeviceName = DeviceNameChoices.FirstOrDefault(); ClearRegistrationRemoval();
+                Notify(nameof(SelectedDeviceName));
+            }
         }
         finally { reconcilingDeviceNames = false; }
         // Do not touch an IME-owned Text value on each telemetry update.
@@ -96,10 +102,11 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         Render(); if (!CanSaveDeviceName) return;
         var draft = SelectedDeviceNameDraft!; var edit = draft.Capture(); setupBusy = true; Render();
+        using var status = BeginStatus("機器名を保存中");
         try
         {
             var result = await client.SaveDeviceNameAsync(edit);
-            ClearConfigurationPreviews(); draft.Reset(client.Snapshot!); Notice = result.Message;
+            ClearConfigurationPreviews(); draft.Reset(client.Snapshot!); ReportResult(result.Message, result.Outcome);
         }
         finally { setupBusy = false; Render(); }
     }

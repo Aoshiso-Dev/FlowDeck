@@ -25,9 +25,9 @@ public sealed partial class FlowDeckViewModel
     public string IdentificationResult => host.LightNamesError ?? identificationResult;
     public bool HasIdentificationResult => !string.IsNullOrWhiteSpace(IdentificationResult);
     public bool IdentificationBusy => identificationBusy || host.IdentifyingLight;
-    public string IdentificationHint => host.LightingSynchronized ? "同期停止後に識別できます" : IdentificationTarget is { } target &&
+    public string IdentificationHint => host.LightingSynchronized ? "識別には同期停止が必要" : IdentificationTarget is { } target &&
         target.Hub is { } h && (!core.Settings.LightingPorts.TryGetValue(h.Channel, out var previous) || previous.HubId != h.HubId || previous.Outcome != Outcome.WrittenUnverified || !HubLighting.Valid(previous.Effect))
-        ? "元の設定が不明です。一度照明を適用してください" : "";
+        ? "識別には照明の適用が必要（復元設定なし）" : "";
     public bool HasIdentificationHint => IdentificationHint.Length > 0;
     public bool CanIdentifyLight => LightingScenesIdle && IdentificationTarget?.Available == true && !host.LightingSynchronized && IdentificationHint.Length == 0;
     public ICommand IdentifyLight { get; private set; } = null!;
@@ -64,7 +64,7 @@ public sealed partial class FlowDeckViewModel
             {
                 await host.SaveLightNameAsync(address, name);
                 lightAlias = LightingNames.Find(host.LightNames, address) ?? "";
-                identificationResult = lightAlias.Length == 0 ? "標準の名前に戻しました" : "名前を保存しました";
+                identificationResult = lightAlias.Length == 0 ? "標準名に復元済み" : "名前を保存済み";
             }
             catch (Exception e) { identificationResult = e.Message; throw; }
             finally { identificationBusy = false; RefreshLightNames(); }
@@ -72,7 +72,7 @@ public sealed partial class FlowDeckViewModel
         ReloadLightAliases = Command(async _ =>
         {
             identificationBusy = true; Refresh();
-            try { await host.LoadLightNamesAsync(); identificationResult = "再読み込みしました"; }
+            try { await host.LoadLightNamesAsync(); identificationResult = "再読込済み"; }
             finally { identificationBusy = false; RefreshLightNames(); }
         }, _ => LightingScenesIdle);
     }

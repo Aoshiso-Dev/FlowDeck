@@ -26,15 +26,16 @@ public static partial class SmokeRunner
             Check(model.ImportRows.Count>0&&model.ImportRows.All(r=>r.Selected.Target==r.Source)&&!model.ImportConfirmed&&!model.CanPreviewImport,"Same-PC references are selected but restoration requires explicit confirmation");
             var stable=model.ImportRows.ToArray(); await model.PollAsync(); await Settle();
             Check(stable.SequenceEqual(model.ImportRows),"Telemetry polling preserves mapping rows and choices");
-            var confirm=Descendants<CheckBox>(expander).Single(c=>Equals(c.Content,"機器との対応と復元内容を確認した"));
+            var confirm=Descendants<CheckBox>(expander).Single(c=>Equals(c.Content,"機器の対応・復元内容を確認済み"));
             confirm.SetCurrentValue(ToggleButton.IsCheckedProperty,true); await model.PreviewImportAsync(); await Settle();
             Check(model.HasImportPreview&&model.CanApplyImport&&model.ImportChanges.Contains("ライト → ダーク")&&model.ImportChanges.Contains("変更前の終了設定"),"Preview lists the appearance change and release behavior");
             Check((await demo.Hubs[0].ReadAsync()).Channels[0].Duty==63,"Preview does not write hardware outputs");
-            model.SelectedSetup=model.SetupChoices.Single(c=>c.Target==fan.Draft.Target); model.SetupEditor!.Confirmed=true; await model.PreviewSetupAsync();
-            Check(model.HasSetupPreview&&!model.HasImportPreview&&!model.CanApplyImport,"An endpoint preview supersedes the previous import preview without discarding its draft");
+            model.SelectedSetup=model.SetupChoices.Single(c=>c.Target==fan.Draft.Target); model.SetupEditor!.Name="未保存の端子名";
+            Check(model.CanApplySetup&&model.HasImportPreview&&model.CanApplyImport,"Editing an endpoint keeps both actual settings and the existing import draft without an endpoint approval step");
             await model.PreviewImportAsync();
-            Check(model.HasImportPreview&&!model.HasSetupPreview&&!model.CanApplySetup,"An import preview supersedes the endpoint preview");
-            var save=Descendants<Button>(expander).Single(b=>Equals(b.Content,"制御を終了して復元"));
+            Check(model.HasImportPreview&&model.CanApplySetup&&model.SetupEditor.Name=="未保存の端子名"&&
+                (await demo.Hubs[0].ReadAsync()).Channels[0].Duty==63,"An import preview preserves the unsaved endpoint edit and does not write output");
+            var save=Descendants<Button>(expander).Single(b=>Equals(b.Content,"制御終了・復元"));
             Check(save.Command?.CanExecute(save.CommandParameter)==true,"Restore button is bound to the validated service transaction");
             foreach(var theme in new[]{"light","dark"}) { model.Theme=theme; await Settle(); Capture(window,output,"settings-transfer-"+theme); }
             save.BringIntoView(); await Settle(); Capture(window,output,"settings-transfer-confirmation");
@@ -44,6 +45,7 @@ public static partial class SmokeRunner
             window.Width=1120; window.Height=820; model.Theme="light";
             await model.ApplyImportAsync(); await Settle();
             Check(!model.HasImport&&!model.HasImportPreview&&model.Theme=="dark"&&(await demo.Hubs[0].ReadAsync()).Channels[0].Duty==70,"Restore adopts the local theme and returns the fan to its previous exit duty without replay");
+            Check(model.SetupEditor is { Draft.Conflict:true }&&!model.CanApplySetup,"Restoring settings invalidates the older endpoint draft before it can save");
             Check(demo.Runtime.State().Endpoints.All(e=>!e.Owned),"Successful restore leaves every endpoint unowned");
             await model.LoadImportAsync(backup); model.ImportConfirmed=true; await model.PreviewImportAsync();
             var invalid=Path.Combine(output,"invalid.flowdeck.json"); await File.WriteAllTextAsync(invalid,"{\"version\":1,\"settings\":{}}");
@@ -60,8 +62,17 @@ public static partial class SmokeRunner
             duplicate.Selected=duplicate.Choices.Single(c=>c.Target==first.Source);
             Check(duplicate.Selected.Target is null&&model.Notice.Contains("割り当て"),"Duplicate destinations are rejected without losing the existing mapping");
             foreach(var row in model.ImportRows) row.Selected=row.Choices.Single(c=>c.Target==row.Source);
+            var portableConfiguration=(await DeviceSettingsArchives.ReadAsync(portable)).Configuration;
+            var previewWrites=demo.Hubs.Select(h=>(h.Writes,h.LightingWrites)).ToArray();
             model.ImportConfirmed=true; await model.PreviewImportAsync();
-            Check(model.CanApplyImport&&model.ImportChanges.Contains("再確認"),"Portable preview requires new wiring confirmation even after explicit mapping");
+            Check(model.CanApplyImport&&model.HasImportPreview&&!string.IsNullOrWhiteSpace(model.ImportChanges)&&
+                portableConfiguration.Bindings.Devices.Length==0&&
+                SettingsTransfer.Hash(portableConfiguration.Cooling.Endpoints.Select(e=>new { e.Target,e.Safety,e.Profiles }))==
+                    SettingsTransfer.Hash(archive.Configuration.Cooling.Endpoints.Select(e=>new { e.Target,e.Safety,e.Profiles }))&&
+                SettingsTransfer.Hash(portableConfiguration.Lighting.Endpoints!.Select(e=>new { e.Target,e.Exit }))==
+                    SettingsTransfer.Hash(archive.Configuration.Lighting.Endpoints!.Select(e=>new { e.Target,e.Exit }))&&
+                previewWrites.SequenceEqual(demo.Hubs.Select(h=>(h.Writes,h.LightingWrites))),
+                "Portable settings retain actual cooling and lighting values without physical bindings, and mapped preview produces a difference without hardware output");
             first.Selected=first.Choices[0]; await Settle();
             Check(!model.ImportConfirmed&&!model.HasImportPreview&&!model.CanApplyImport,"Changing a mapping invalidates both confirmation and preview");
             first.Selected=first.Choices.Single(c=>c.Target==first.Source); model.ImportConfirmed=true; await model.PreviewImportAsync(); await model.ApplyImportAsync();

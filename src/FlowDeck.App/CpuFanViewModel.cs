@@ -31,7 +31,7 @@ public sealed partial class FlowDeckViewModel
         ? $"{reading.Rpm:N0} rpm / {reading.Duty:F1}%" : "— rpm / —%";
     public string CpuFanRpm => SelectedFanController.State.Reading is { } reading && DashboardDisplay.Fresh(reading.Timestamp) ? reading.Rpm.ToString("N0") : "—";
     public string CpuFanReportedDuty => SelectedFanController.State.Reading is { } reading && DashboardDisplay.Fresh(reading.Timestamp) ? $"{reading.Duty:F1}%" : "—%";
-    public string CpuFanMode => SelectedFanController.State.Mode switch { "manual" => "手動", "auto" => "自動", "test" => "端子テスト", "fault" => "異常・復元操作が必要", _ => "マザーボード制御" };
+    public string CpuFanMode => SelectedFanController.State.Mode switch { "manual" => "手動", "auto" => "自動", "test" => "端子テスト", "fault" => "異常・要復元", _ => "マザーボード制御" };
     private void InitializeCpuFan()
     {
         BoardFanApply = Command(_ => CpuFanAction(async () =>
@@ -63,7 +63,7 @@ public sealed partial class FlowDeckViewModel
             var saved = new CpuFanSettings(CpuFanWiringConfirmed, ParseInt(CpuFanMinimum), profile);
             if (CpuFanController.Validate(saved, SelectedBoardFan.Name) is { } error) throw new InvalidOperationException(error);
             await core.UpdateSettingsAsync(MotherboardFans.WithSettings(core.Settings, SelectedBoardFan.Id, saved), false); await host.FlushSettingsAsync();
-            Notice = SelectedBoardFan.Name + "の設定を保存しました。手動または自動を適用するまで出力は変わりません";
+            Notice = SelectedBoardFan.Name + "：保存済み・未適用";
         }, saving: true), _ => !cpuFanBusy && !SelectedFanController.State.Managing);
         CpuFanAddPoint = Command(_ => { AddCurvePoint(CpuFanPoints, BoardCurveMinimum, false, row => CpuFanSelectedPoint = row); return Task.CompletedTask; });
         CpuFanGpuAddPoint = Command(_ => { AddCurvePoint(CpuFanGpuPoints, BoardCurveMinimum, false, row => CpuFanGpuSelectedPoint = row); return Task.CompletedTask; });

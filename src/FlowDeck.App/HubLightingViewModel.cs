@@ -39,7 +39,7 @@ public sealed partial class FlowDeckViewModel
     public ICommand StopLightingSync { get; private set; } = null!;
     public bool HubLightIdle => !hubLightBusy && !host.SceneApplying && !sceneBusy && !brightnessBusy && !groupBusy && !host.LightingAdjustmentBusy && !IdentificationBusy;
     public bool LightingSyncRunning => host.LightingSynchronized;
-    public string LightingEditorTitle => HubLightSync ? "照明の同期" : "NZXT Control Hub";
+    public string LightingEditorTitle => HubLightSync ? "同期" : "NZXT Control Hub";
     public string HubLightTarget { get => hubLightTarget; set { if (value is not null && Set(ref hubLightTarget, value)) { if (value == "none") HubLightSync = true; Notify(nameof(SelectedHubLightTarget)); MarkHubLightDraft(); } } }
     public HubLightTarget? SelectedHubLightTarget
     {
@@ -78,7 +78,7 @@ public sealed partial class FlowDeckViewModel
     public bool HubLightUsesSpeed => HubLightEffects.FirstOrDefault(e => e.Id == HubLightMode)?.Speed == true;
     public bool HubLightUsesDirection => HubLightEffects.FirstOrDefault(e => e.Id == HubLightMode)?.Direction == true;
     public string HubLightResult => host.LightingSynchronized ? "同期中 · " + HubLighting.Name(host.LightingSyncMode) :
-        host.LightingSyncError ?? (hubLightDirty && hubLightDraftRevision != core.Snapshot.LightingRevision ? "別の照明操作で変更されています" : hubLightResult);
+        host.LightingSyncError ?? (hubLightDirty && hubLightDraftRevision != core.Snapshot.LightingRevision ? "別の操作で変更あり" : hubLightResult);
     public bool CanApplyHubLight => HubLightIdle && CanUseLightingScope && !state.LightingBusy &&
         (HubLightSync ? SelectedSyncBoardTargets.Length > 0 && (SelectedHubLightChannels.Length > 0 ? state.HubReady :
             HubLightTarget == "none" || CurrentLightingGroup is { Hub.Length: 0 } || core.Settings.Hardware.Hub is null) : state.HubReady && SelectedHubLightChannels.Length > 0);
@@ -98,7 +98,7 @@ public sealed partial class FlowDeckViewModel
             var color = hubColor1; var second = hubColor2; var speed = HubLightSpeed; var reverse = HubLightReverse;
             var expected = hubLightDirty ? hubLightDraftRevision : core.Snapshot.LightingRevision;
             var owned = host.LightingSynchronized;
-            if (!owned && expected != core.Snapshot.LightingRevision) throw new InvalidOperationException("別の照明操作で変更されました。「変更を戻す」で最新設定を読み込んでください");
+            if (!owned && expected != core.Snapshot.LightingRevision) throw new InvalidOperationException("別の操作で変更あり・「元に戻す」で再読込");
             hubLightBusy = true; Refresh();
             try
             {
@@ -167,7 +167,7 @@ public sealed partial class FlowDeckViewModel
         {
             HubLightTargets.Clear(); HubLightTargets.Add(new("all", CurrentLightingGroup is null ? "NZXT 全体" : "グループ内のNZXT"));
             foreach (var led in leds) HubLightTargets.Add(new(led, Name(led)));
-            HubLightTargets.Add(new("none", "NZXTを含めない"));
+            HubLightTargets.Add(new("none", "NZXTなし"));
         }
         finally { rebuildingHubTargets = false; }
         if (!HubLightTargets.Any(t => t.Id == hubLightTarget)) hubLightTarget = "all";

@@ -29,8 +29,7 @@ public static class DeviceSettingsDifferences
                 var previous=old?.Endpoints.SingleOrDefault(e=>e.Id==endpoint.Id);
                 if(Same(previous,endpoint)) continue;
                 lines.Add("端子 / "+device.Name+": "+(previous?.Name??"未登録")+" → "+endpoint.Name);
-                if(endpoint.Setup is { } setup) lines.Add($"接続機器 {setup.Accessory} / LED数 {setup.LedCount?.ToString()??"未設定"}・"+
-                    (setup.LedCountConfirmed?"確認済み":"再確認が必要")+" / M5GO表示 "+Yes(setup.ShowOnM5));
+                if(endpoint.Setup is { } setup) lines.Add($"接続機器 {setup.Accessory} / LED数設定 {setup.LedCount?.ToString()??"未設定"}");
             }
         }
         foreach(var endpoint in after.Cooling.Endpoints)
@@ -38,7 +37,7 @@ public static class DeviceSettingsDifferences
             var previous=before.Cooling.Endpoints.SingleOrDefault(e=>e.Target==endpoint.Target);
             if(Same(previous,endpoint)) continue;
             lines.Add("冷却 / "+Name(after,endpoint.Target)+": "+Safety(previous?.Safety)+" → "+Safety(endpoint.Safety));
-            lines.Add(endpoint.WiringConfirmed?"配線確認を保持":"配線と出力値の再確認が必要");
+            if(DeviceConfigurationRules.SafetyReadiness(endpoint.Safety) is { } missing) lines.Add(missing);
             if(endpoint.Safety.Stop is { } stop) lines.Add($"停止条件あり / 再始動 {stop.RestartDuty}%・{stop.RestartSeconds:0.#}秒 / "+string.Join(" / ",stop.Temperatures.Select(r=>Name(after,r.Sensor)+$" {r.Below:0.#}°C未満")));
             else if(previous?.Safety.Stop is not null) lines.Add("停止条件を解除");
             lines.Add("固定出力の温度保護: "+(endpoint.Safety.ManualProtection.Length==0?"なし":string.Join(" / ",endpoint.Safety.ManualProtection.Select(r=>Name(after,r.Sensor)+$" 過熱 {r.Overheat:0.#}°C・復帰 {r.ResumeBelow:0.#}°C未満"))));
@@ -56,8 +55,7 @@ public static class DeviceSettingsDifferences
         foreach(var endpoint in after.Lighting.Endpoints??[])
         {
             var previous=before.Lighting.Endpoints?.SingleOrDefault(e=>e.Target==endpoint.Target);
-            if(!Same(previous,endpoint)) lines.Add("照明設定 / "+Name(after,endpoint.Target)+": 終了時 "+Exit(previous?.Exit)+" → "+Exit(endpoint.Exit)+
-                " / "+(endpoint.WiringConfirmed?"配線確認を保持":"配線の再確認が必要"));
+            if(!Same(previous,endpoint)) lines.Add("照明設定 / "+Name(after,endpoint.Target)+": 終了時 "+Exit(previous?.Exit)+" → "+Exit(endpoint.Exit));
         }
         foreach(var removed in (before.Lighting.Endpoints??[]).Where(e=>!(after.Lighting.Endpoints??[]).Any(n=>n.Target==e.Target))) lines.Add("照明設定を削除: "+Name(before,removed.Target));
         foreach(var alias in after.Lighting.Names)
@@ -97,16 +95,10 @@ public static class DeviceSettingsDifferences
         }
         if(!Same(before.Preferences.Palette,after.Preferences.Palette)) lines.Add($"お気に入り色 {before.Preferences.Palette.Favorites.Length} → {after.Preferences.Palette.Favorites.Length}色 / 最近使った色を更新");
         if(before.Preferences.Startup.ResumeControl != after.Preferences.Startup.ResumeControl) lines.Add("起動時の制御再開 "+Yes(after.Preferences.Startup.ResumeControl));
-        if(!Same(before.Preferences.M5,after.Preferences.M5)) lines.Add("M5GOの接続・表示設定を変更");
-        if(before.Preferences.M5ConnectOnStart!=after.Preferences.M5ConnectOnStart) lines.Add("M5GOの自動接続 "+Yes(after.Preferences.M5ConnectOnStart));
-        if(!Same(before.Preferences.M5Selection,after.Preferences.M5Selection))
+        if(!Same(before.Preferences.DialDisplay,after.Preferences.DialDisplay))
         {
-            var panel=after.Preferences.M5Selection;
-            lines.Add("M5GO CPU: "+(panel?.Cpu is { } cpu?Name(after,cpu):"未選択")+" / GPU: "+(panel?.Gpu is { } gpu?Name(after,gpu):"未選択"));
-            lines.Add("M5GO Hub: "+(panel?.Hub is { } hub?after.Devices.Devices.Single(d=>d.Id==hub.DeviceId).Name:"未選択")+
-                " / ファン: "+string.Join(", ",panel?.Fans??[])+" / 照明: "+string.Join(", ",panel?.Leds??[]));
-            lines.Add("M5GO マザー表示: "+string.Join(", ",(panel?.Motherboard??[]).Select(i=>i.Name)));
-            lines.Add("M5GO プリセット: "+string.Join(", ",(panel?.Profiles??[]).Select(p=>p.Slot+" = "+p.ProfileId)));
+            var display=after.Preferences.DialDisplay;
+            lines.Add("ダイヤル CPU: "+(display?.Cpu is { } cpu?Name(after,cpu):"未選択")+" / GPU: "+(display?.Gpu is { } gpu?Name(after,gpu):"未選択"));
         }
         if(!Same(before.Preferences.Providers,after.Preferences.Providers)) lines.Add("外部照明の接続設定を変更");
         return lines.ToArray();

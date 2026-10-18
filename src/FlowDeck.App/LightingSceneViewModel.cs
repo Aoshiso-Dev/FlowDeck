@@ -65,26 +65,26 @@ public sealed partial class FlowDeckViewModel
         RenameLightingScene = Command(_ => Edit(async () =>
         {
             var scene = SelectedLightingScene! with { Name = LightingSceneName.Trim() };
-            await host.SaveSceneAsync(scene); RefreshLightingScenes(scene.Id); LightingSceneResult = "名前を変更しました";
+            await host.SaveSceneAsync(scene); RefreshLightingScenes(scene.Id); LightingSceneResult = "名前変更済み";
         }), _ => LightingScenesIdle && SelectedLightingScene is not null && !string.IsNullOrWhiteSpace(LightingSceneName));
         DeleteLightingScene = Command(_ => Edit(async () =>
         {
             var scene = SelectedLightingScene!; await host.DeleteSceneAsync(scene.Id); deletedLightingScene = scene;
-            RefreshLightingScenes(); LightingSceneName = ""; LightingSceneResult = "削除しました";
+            RefreshLightingScenes(); LightingSceneName = ""; LightingSceneResult = "削除済み";
         }), _ => LightingScenesIdle && SelectedLightingScene is not null);
         UndoDeleteLightingScene = Command(_ => Edit(async () =>
         {
             var scene = deletedLightingScene!; await host.SaveSceneAsync(scene); deletedLightingScene = null;
-            RefreshLightingScenes(scene.Id); LightingSceneResult = "削除を取り消しました";
+            RefreshLightingScenes(scene.Id); LightingSceneResult = "削除取消済み";
         }), _ => LightingScenesIdle && deletedLightingScene is not null);
-        ReloadLightingScenes = Command(_ => Edit(async () => { await host.LoadScenesAsync(); RefreshLightingScenes(); LightingSceneResult = "再読み込みしました"; }), _ => LightingScenesIdle);
+        ReloadLightingScenes = Command(_ => Edit(async () => { await host.LoadScenesAsync(); RefreshLightingScenes(); LightingSceneResult = "再読込済み"; }), _ => LightingScenesIdle);
         ApplyLightingScene = Command(_ => Edit(async () =>
         {
             var scene = SelectedLightingScene!;
             LightingSceneResult = "適用中…"; LightingSceneResults.Clear();
             var result = await host.ApplyLightingSceneAsync(scene, CurrentLightingGroup);
             foreach (var row in result.Rows) LightingSceneResults.Add(row);
-            LightingSceneResult = result.Succeeded ? "適用済み · " + scene.Name : result.Error ?? "適用を確認できません";
+            LightingSceneResult = result.Succeeded ? "適用済み · " + scene.Name : result.Error ?? "適用未確認";
             if (result.Succeeded)
             {
                 Notice = ""; ResetBrightnessDisplay();

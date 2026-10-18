@@ -20,7 +20,7 @@ OpenRGB の固定コミットは `81bbe18a84c2e507006f19dd252e397e40a56bfe` で�
 
 ## ビルド時・実行時に取得する依存関係
 
-NuGet の直接・推移依存は各プロジェクトの `packages.lock.json`、Python の固定版は `worker/requirements.lock`、ファームウェアの固定版は `firmware/m5go/platformio.ini` を参照してください。下表は主な依存関係であり、取得したパッケージのライセンスと第三者通知も保持してください。
+NuGet の直接・推移依存は各プロジェクトの `packages.lock.json`、Python の固定版は `worker/requirements.lock`、ファームウェアの固定版は `firmware/dial/platformio.ini` を参照してください。下表は主な依存関係であり、取得したパッケージのライセンスと第三者通知も保持してください。
 
 | コンポーネント | ライセンス・出典 |
 | --- | --- |
@@ -28,8 +28,8 @@ NuGet の直接・推移依存は各プロジェクトの `packages.lock.json`�
 | Python | PSF, [Python](https://www.python.org/) |
 | liquidctl | GPL-3.0-or-later, [liquidctl](https://github.com/liquidctl/liquidctl) |
 | HidSharp | Apache-2.0, [HidSharp](https://www.zer7.com/software/hidsharp) |
-| M5Unified | MIT, [M5Unified](https://github.com/m5stack/M5Unified) |
-| M5GFX | 個別のライブラリ・フォントのライセンス, [M5GFX](https://github.com/m5stack/M5GFX) |
+| Arduino_GFX (Dial) | BSD-2-Clause および各ファイル・フォントの通知, [Arduino_GFX](https://github.com/moononournation/Arduino_GFX), パッケージの `license.txt` とフォントの通知を保持 |
+| U8g2 (Dial 日本語フォント) | BSD-2-Clause および GNU Unifont のフォントライセンス・埋込み例外, [U8g2](https://github.com/olikraus/u8g2), パッケージの `LICENSE` と `u8g2_font_unifont_t_japanese3` の通知を保持 |
 | ArduinoJson | MIT, [ArduinoJson](https://github.com/bblanchon/ArduinoJson) |
 | Arduino ESP32 / ESP-IDF | LGPL-2.1 / Apache-2.0 および個別の第三者ライセンス, [Arduino ESP32](https://github.com/espressif/arduino-esp32) |
 
@@ -37,4 +37,6 @@ Python Worker は liquidctl 1.16.0 を別プロセスで使用し、Control Hub 
 
 この公開は開発用ソースとテスト素材を対象にしています。アプリ・ファームウェア・ランタイムをまとめた配布物を作る場合は、その配布物に含める全依存関係の通知・対応ソース・再リンク資料を別途同梱してください。
 
-FlowDeck は NZXT、ASRock、M5Stack、Microsoft 等の公式製品ではありません。各名称・商標はそれぞれの権利者に帰属します。
+FlowDeck は NZXT、ASRock、GUITION、Microsoft 等の公式製品ではありません。各名称・商標はそれぞれの権利者に帰属します。
+
+Dial の基板配線は [GUITION K5-series](https://github.com/guitionofficial/K5-series/tree/faf15c076362151d6932e95409532fb9bf0325ab) の公開回路図・ピン定義を参照しています。`firmware/dial/src/guition_st77916.h` の LCD 初期化表は、メーカーサンプルの `scr_st77916.h`（Git blob `388c074c73a915b3aba1f46a7a9837850b65ac48`）のレジスタ設定値・送信順・待機時間を Arduino_GFX の形式で記述しています。参照元と SHA-256 は同ファイルとファームウェアの README に記載しています。参照元の当該ファイルに適用されるライセンス表記は確認できておらず、これらのメーカー由来の設定に FlowDeck の MIT License を付与するものではありません。Dial の独自実装にはルートの MIT License を適用します。

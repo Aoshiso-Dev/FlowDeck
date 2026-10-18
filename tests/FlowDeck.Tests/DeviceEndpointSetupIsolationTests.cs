@@ -130,6 +130,8 @@ public partial class DeviceEndpointSetupTests
         demo.Hubs[0].Disconnected = true; await demo.Runtime.PollAsync(); await client.RefreshAsync(true);
         Assert.Equal(Outcome.Confirmed, (await client.ApplySetupAsync(await client.PreviewSetupAsync(DeviceControlSetupRemoval.Capture(client.Snapshot!, target)))).Outcome);
         Assert.True(client.Snapshot!.State.Endpoints.Single(e => e.Target == other).Owned);
+        Assert.DoesNotContain(client.Snapshot.Configuration.Configuration.Cooling.Endpoints, e => e.Target == target);
+        Assert.Equal(0, demo.Hubs[0].Writes); Assert.Equal(1, demo.Hubs[1].Writes);
         demo.Hubs[0].Disconnected = false; await demo.Runtime.PollAsync(); await demo.Runtime.PollAsync(); await client.RefreshAsync(true);
         Assert.NotEqual(Outcome.Confirmed, (await Duty(client, target, 62)).Outcome);
         Assert.Equal(0, demo.Hubs[0].Writes); Assert.Equal(1, demo.Hubs[1].Writes);

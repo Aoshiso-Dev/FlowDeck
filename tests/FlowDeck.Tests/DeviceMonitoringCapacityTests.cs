@@ -80,7 +80,7 @@ public class DeviceMonitoringCapacityTests
         var old = draft.VisibleCandidates[0]; draft.Select(old, true);
         var reduced = State(1); reduced = reduced with { Inventory = reduced.Inventory with { TopologyRevision = 2 } };
         draft.Update(new(2, []), new(2, []), reduced, Generation, 0, true);
-        Assert.Equal(0, draft.Page); Assert.Equal(2, draft.CandidateCount); Assert.True(draft.IsSelected(old));
+        Assert.Equal(0, draft.Page); Assert.Equal(1, draft.CandidateCount); Assert.True(draft.IsSelected(old));
         Assert.True(draft.Conflict); Assert.False(draft.CanRegister); draft.Reset(); Assert.False(draft.Dirty);
     }
     [Fact] public async Task ServiceRejectsOverflowAtomicallyAndRemovingADisplayItemAllowsExplicitReplacement()

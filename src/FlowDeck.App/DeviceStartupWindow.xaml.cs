@@ -25,13 +25,13 @@ public partial class DeviceStartupWindow : Window
         Func<Window, Task<bool>>? setup = null)
     {
         this.store = store; this.connect = connect; this.setup = setup ?? ServiceSetupWindow.RunAsync; preferences = store.Load();
-        ThemeManager.Apply(preferences.Theme); InitializeComponent();
+        ThemeManager.Apply(preferences.Theme, store.AccentColor); InitializeComponent();
         ThemeChoice.SelectedValue = preferences.Theme;
         PreferenceError.Text = store.LoadWarning ?? "";
         ThemeChoice.SelectionChanged += (_, _) =>
         {
             if (ThemeChoice.SelectedValue is not string theme || theme == preferences.Theme) return;
-            preferences = preferences with { Theme = theme }; ThemeManager.Apply(theme);
+            preferences = preferences with { Theme = theme }; ThemeManager.Apply(theme, store.AccentColor);
             var value = preferences;
             preferenceSave = SaveThemeAsync(preferenceSave, value);
         };
@@ -40,7 +40,7 @@ public partial class DeviceStartupWindow : Window
             if (closed) return;
             if (settingUp) { e.Cancel = true; return; }
             closing = true; stop.Cancel();
-            if (busy) { e.Cancel = true; StatusText.Text = "接続を終了しています…"; RefreshButtons(); }
+            if (busy) { e.Cancel = true; StatusText.Text = "接続終了中…"; RefreshButtons(); }
             else { closed = true; completion.TrySetResult(null); }
         };
     }
@@ -49,9 +49,9 @@ public partial class DeviceStartupWindow : Window
         await previous;
         try { await store.SaveAsync(value); PreferenceError.Text = ""; }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.Security.SecurityException)
-        { PreferenceError.Text = "配色を保存できませんでした"; }
+        { PreferenceError.Text = "テーマの保存失敗"; }
     }
-    internal void ApplySystemTheme() => ThemeManager.Apply(preferences.Theme);
+    internal void ApplySystemTheme() => ThemeManager.Apply(preferences.Theme, store.AccentColor);
     private void RefreshButtons()
     {
         RetryButton.IsEnabled = !busy && !closing && !settingUp;
@@ -68,7 +68,7 @@ public partial class DeviceStartupWindow : Window
         settingUp = true; RefreshButtons();
         var reconnect = false;
         try { reconnect = await setup(this); }
-        catch (Exception) { NextActionText.Text = "導入画面を開けませんでした。もう一度お試しください。"; }
+        catch (Exception) { NextActionText.Text = "導入画面の起動失敗 · 再試行"; }
         finally { settingUp = false; RefreshButtons(); }
         if (reconnect) await ConnectAsync();
     }
@@ -79,18 +79,36 @@ public partial class DeviceStartupWindow : Window
     }
     private async Task ConnectCoreAsync()
     {
-        busy = true; State = null; RefreshButtons(); StatusText.Text = "接続しています…"; NextActionText.Text = "";
+        busy = true; State = null; RefreshButtons(); StatusText.Text = "接続中…"; NextActionText.Text = "";
         DeviceWorkspaceClient? accepted = null;
         try
         {
             await using var result = await connect(stop.Token);
             stop.Token.ThrowIfCancellationRequested();
-            State = result.State; StatusText.Text = result.Status; NextActionText.Text = result.NextAction;
+            State = result.State;
+            StatusText.Text = result.State switch
+            {
+                DeviceStartupState.Connected => "接続済み",
+                DeviceStartupState.NotInstalled => "サービス未導入",
+                DeviceStartupState.WaitingForService => "サービス接続待ち",
+                DeviceStartupState.AccessDenied => "接続元・権限の確認が必要",
+                DeviceStartupState.Incompatible => "サービス更新が必要",
+                _ => "サービス接続失敗"
+            };
+            NextActionText.Text = result.State switch
+            {
+                DeviceStartupState.Connected => "",
+                DeviceStartupState.NotInstalled => "サービスの導入・再接続",
+                DeviceStartupState.WaitingForService => "サービス起動後に再接続",
+                DeviceStartupState.AccessDenied => "アクセス権・実行元の確認",
+                DeviceStartupState.Incompatible => "対応サービスへ更新",
+                _ => "サービス状態の確認・再接続"
+            };
             if (result.State == DeviceStartupState.Connected) accepted = result.TakeClient();
         }
         catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
         catch (Exception)
-        { State = DeviceStartupState.Unavailable; StatusText.Text = "サービスに接続できません"; NextActionText.Text = "サービスの状態を確認して再接続してください。"; }
+        { State = DeviceStartupState.Unavailable; StatusText.Text = "サービス接続失敗"; NextActionText.Text = "サービス状態の確認・再接続"; }
         finally
         {
             busy = false;

@@ -15,7 +15,6 @@ public partial class DeviceLightingRuntimeTests
         public TaskCompletionSource? Entered, Continue;
         public TaskCompletionSource? EndEntered, ContinueEnd;
         public Action? AfterWrite;
-        public DeviceDriverResult? NativeResult;
         public readonly List<RgbColor> Frames = [];
         public RgbColor Color = new(9, 8, 7);
         public DeviceLightingStopReason? EndReason;
@@ -28,7 +27,6 @@ public partial class DeviceLightingRuntimeTests
         { Opens++; return Task.FromResult<IDeviceLightingStream>(new Stream(this, p, Color, Locator)); }
         public Task<DeviceDriverResult> ApplyAsync(DeviceEndpointAction action, CancellationToken ct)
         {
-            if (action.Operation == DeviceOperation.SetLighting && NativeResult is { } result) return Task.FromResult(result);
             if (action.Operation == DeviceOperation.SetLighting) { NativeWrites++; Color = action.Lighting!.EffectId == "off" ? new(0, 0, 0) : action.Lighting.Colors[0].Scale(action.Lighting.Brightness / 100d); }
             return Task.FromResult(new DeviceDriverResult(Outcome.WrittenUnverified, "sent", ReportedLighting: new("fixed", [Color])));
         }

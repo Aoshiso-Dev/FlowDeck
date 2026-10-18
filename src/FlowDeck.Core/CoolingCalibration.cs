@@ -9,7 +9,7 @@ public static class CoolingCalibrationRules
 {
     public static bool Valid(PhysicalDeviceBinding? b)=>b is not null&&DeviceConfigurationRules.Key(b.DeviceId)&&DeviceConfigurationRules.Key(b.DefinitionId)&&
         DeviceConfigurationRules.Text(b.ProviderIdentity,2048)&&b.Fingerprint is { Length:64 }&&b.Fingerprint.All(Uri.IsHexDigit);
-    public static bool Valid(CoolingCalibrationRequest? r)=>r is { Confirmed:true,Duty:>=1 and <=100,BeforeDuty:>=0 and <=100 }&&Valid(r.Binding);
+    public static bool Valid(CoolingCalibrationRequest? r)=>r is { Duty:>=1 and <=100,BeforeDuty:>=0 and <=100 }&&Valid(r.Binding);
     public static bool Valid(CoolingCalibrationResult? r)=>r is null||r.Duty is >=1 and <=100&&r.Samples is >=0 and <=10000&&
         r.Outcome is Outcome.Confirmed or Outcome.Rejected or Outcome.Failed or Outcome.Unknown&&r.Message is { Length:<=16384 }&&
         (r.Before is null||r.Before.Duty is >=0 and <=100&&double.IsFinite(r.Before.Rpm)&&r.Before.Rpm>0)&&

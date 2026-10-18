@@ -79,7 +79,7 @@ public sealed partial class RuntimeHost
         var current = owner.Snapshot;
         if (!ReferenceEquals(owner, Coordinator) || current.DeviceGeneration != start.DeviceGeneration || current.LightingRevision != sent.LightingRevision)
             return new(false, false, true, "接続または照明が変更されたため、自動復帰を取り消しました");
-        // Expected revision is checked atomically by the coordinator, including a new M5GO request between this check and dispatch.
+        // Expected revision is checked atomically by the coordinator, including another request between this check and dispatch.
         var restored = await owner.RequestAsync(new(Guid.NewGuid().ToString("N"), "識別点灯の復帰", owner.Epoch, sent.LightingRevision, "SetLighting",
             LightingEffect: original, LightingChannels: [target.Channel]));
         if (restored.Outcome != Outcome.WrittenUnverified)

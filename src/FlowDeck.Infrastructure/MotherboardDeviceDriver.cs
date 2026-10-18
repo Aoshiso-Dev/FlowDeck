@@ -10,7 +10,10 @@ public sealed record MotherboardCoolingIdentity(string NativeId, string Connecti
 }
 public enum MotherboardFanOperation { Read, Write, Release }
 public sealed record MotherboardFanCommand(MotherboardCoolingIdentity Identity, string EndpointId, MotherboardFanOperation Operation,
-    int? Duty = null, int? ExpectedDuty = null, long? Deadline = null);
+    int? Duty = null, int? ExpectedDuty = null, long? Deadline = null)
+{
+    internal MotherboardFanControlSnapshot? ExpectedControl { get; init; }
+}
 public interface IMotherboardCoolingBackend
 {
     Task<CpuFanReading?> ExecuteFanAsync(MotherboardFanCommand command, IFanRecoveryJournal journal, CancellationToken ct);
@@ -19,7 +22,7 @@ internal sealed class MotherboardCommandRejectedException(string message, Device
 { public DeviceDriverFailure Failure { get; } = failure; }
 
 /// <summary>One board, shared telemetry and individually configured cooling endpoints. The backend owns the sole LHM handle.</summary>
-public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, IDeviceTelemetrySource, ILegacyMigrationSource, IDeviceSetupDriver, IDeviceCoolingCalibrationDriver
+public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, IDeviceTelemetrySource, ILegacyMigrationSource, IDeviceSetupDriver, IDeviceCoolingCalibrationDriver, IDeviceCurrentConnectionControlDriver, IDeviceGuardedCoolingAcquisition
 {
     private readonly HardwareSensorProvider owner;
     private readonly HardwareSensorDeviceDriver sensors;
@@ -30,6 +33,10 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
     private readonly SemaphoreSlim io = new(1);
     private readonly Dictionary<string, (CpuFanReading Reading, long Revision)> measured = [];
     private readonly HashSet<string> attempted = [];
+    // The runtime reserves ownership before calling this driver, including calls that
+    // are rejected before a write. Keep their release acknowledgements separate from
+    // actual write attempts; this set never authorizes writes or adopts a journal.
+    private readonly HashSet<string> releasePending = [];
     private Dictionary<string, CoolingEndpointConfiguration> cooling = [];
     private FanRecoveryJournal? journal;
     private PhysicalDeviceBinding? binding;
@@ -76,7 +83,7 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
             lock (gate)
             {
                 ObjectDisposedException.ThrowIf(disposed, this);
-                if (calibrating.Count>0 || attempted.Count != 0 || journal?.Pending.Length > 0) throw new IOException("端子の制御を終了してから設定を変更してください");
+                if (calibrating.Count>0 || attempted.Count != 0 || releasePending.Count != 0 || journal?.Pending.Length > 0) throw new IOException("端子の制御を終了してから設定を変更してください");
                 reload = identity != MotherboardCoolingIdentity.From(current) || journal is null || recoveryError is not null;
             }
             var nextJournal = reload ? LoadJournal(current) : journal;
@@ -104,7 +111,7 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
         var duty = current.Sensors.SingleOrDefault(s => s.Feature == DeviceFeature.DutyRead && s.HardwareId == port.HardwareId && s.Id == port.HardwareId + "/control/" + port.Channel);
         if (requireCachedTelemetry && new[] { rpm, duty }.Any(s => s?.Value is null || s.Problem is not null || clock.GetElapsedTime(s.Timestamp).TotalSeconds is < 0 or >= 3))
             return "端子の新しい実測値を取得できません";
-        if (!cooling.TryGetValue(endpointId, out var config) || !config.WiringConfirmed) return "端子ごとの配線と最低出力を確認してください";
+        if (!cooling.TryGetValue(endpointId, out var config)) return "接続したファン・ポンプの最低出力と異常時出力を設定してください";
         if (DeviceConfigurationRules.SafetyReadiness(config.Safety) is { } error) return error;
         if (config.Safety.ExitAction != CoolingExitAction.ReleaseToDevice) return "マザー管理へ戻す終了方法を指定してください";
         if (config.Safety.Stop is not null || config.Safety.Minimum < 1) return "この端子ドライバーは停止出力に対応していません";
@@ -172,15 +179,23 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
     }
     public async Task<DeviceDriverResult> ApplyCoolingAsync(CoolingActuation actuation, CancellationToken ct)
     {
+        // Cancellation while waiting for I/O still owes the runtime a release result.
+        lock (gate) if (Definition?.Ports.Any(p => p.Id == actuation.EndpointId) == true) releasePending.Add(actuation.EndpointId);
         await io.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             CoolingSafety safety;
+            bool firstAcquisition;
             lock (gate)
             {
+                // A release may have completed while this call was waiting for I/O.
+                if (Definition?.Ports.Any(p => p.Id == actuation.EndpointId) == true) releasePending.Add(actuation.EndpointId);
                 if (Ready(actuation.EndpointId, requireCachedTelemetry: !actuation.Fallback) is { } error) return new(Outcome.Rejected, error);
                 safety = Contract.Copy(cooling[actuation.EndpointId].Safety);
                 if (!DeviceConfigurationRules.SameSafety(safety, actuation.Safety)) return new(Outcome.Rejected, "安全条件が変更されています");
+                var port = Definition!.Ports.Single(p => p.Id == actuation.EndpointId);
+                firstAcquisition = port.Chip == "NCT6799D" && !actuation.Fallback && !attempted.Contains(actuation.EndpointId) && journal is not null &&
+                    !journal.Pending.Any(p => p.Chip == port.Chip && p.Channel == port.Channel);
             }
             var before = await ExecuteAsync(Command(actuation.EndpointId, MotherboardFanOperation.Read), ct).ConfigureAwait(false)
                 ?? throw new IOException("端子の実測がありません");
@@ -194,7 +209,9 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
                 if (duty is < 1 or > 100 || duty < safety.Minimum) return new(Outcome.Rejected, "端子の許容出力範囲外です");
                 attempted.Add(actuation.EndpointId);
             }
-            var actual = await ExecuteAsync(Command(actuation.EndpointId, MotherboardFanOperation.Write, duty, current, deadline), ct).ConfigureAwait(false);
+            var write = Command(actuation.EndpointId, MotherboardFanOperation.Write, duty, current, deadline) with {
+                ExpectedControl = firstAcquisition && before is MotherboardFanReading captured ? captured.Control : null };
+            var actual = await ExecuteAsync(write, ct).ConfigureAwait(false);
             for (var i = 0; i < 10 && (actual is null || Math.Round(actual.Duty) != duty); i++)
             {
                 await Task.Delay(100, ct).ConfigureAwait(false);
@@ -220,7 +237,7 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
     {
         if (recoveryError is not null || journal is null) return new(Outcome.Unknown, recoveryError ?? "復旧記録がありません");
         var reading = await ExecuteAsync(Command(endpoint, MotherboardFanOperation.Release), ct).ConfigureAwait(false);
-        lock (gate) { attempted.Remove(endpoint); calibrating.Remove(endpoint); }
+        lock (gate) { attempted.Remove(endpoint); releasePending.Remove(endpoint); calibrating.Remove(endpoint); }
         return new(Outcome.Confirmed, "変更前のマザー管理設定へ戻しました", reading is null ? null : (int)Math.Round(reading.Duty));
     }
     public async Task<DeviceDriverReleaseResult[]> ReleaseAsync(DeviceReleaseReason reason, CancellationToken ct)
@@ -229,7 +246,7 @@ public sealed partial class MotherboardDeviceDriver : IConfiguredCoolingDriver, 
         try
         {
             string[] endpoints;
-            lock (gate) endpoints = attempted.Union((journal?.Pending ?? []).Select(p => MotherboardDefinitionCatalog.BuiltIn.Boards
+            lock (gate) endpoints = attempted.Union(releasePending).Union((journal?.Pending ?? []).Select(p => MotherboardDefinitionCatalog.BuiltIn.Boards
                 .Single(b => b.Id == identity!.DefinitionId).Ports.Single(port => port.Chip == p.Chip && port.Channel == p.Channel).Id)).Order().ToArray();
             var result = new List<DeviceDriverReleaseResult>();
             foreach (var endpoint in endpoints)

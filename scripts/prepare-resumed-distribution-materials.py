@@ -1,4 +1,4 @@
-"""Extend verified r4 materials with stable native and firmware inputs, entirely offline."""
+"""Prepare desktop distribution materials from verified baseline and native inputs offline."""
 import argparse
 import importlib.util
 import io
@@ -32,7 +32,7 @@ def prepare(destination):
     stage.mkdir(parents=True)
     manifest = base.read_json(previous / 'materials.json')
     files = {}
-    components = manifest['components']
+    components, desktop_files = base.desktop_materials(manifest)
     by_id = {c['id'].casefold(): c for c in components}
 
     def put(name, data):
@@ -45,9 +45,11 @@ def prepare(destination):
         files[name] = {'length': len(data), 'sha256': base.digest(data)}
         return name
 
-    for name in manifest['files']:
-        put('metadata/base-README.md' if name == 'README.md' else name, (previous / name).read_bytes())
-    put('metadata/base-materials.json', (previous / 'materials.json').read_bytes())
+    for name in desktop_files:
+        if name in ('README.md', 'recipes/prepare-distribution-notices.py'):
+            continue
+        put(name, (previous / name).read_bytes())
+    put('recipes/prepare-distribution-notices.py', (ROOT / 'scripts/prepare-distribution-notices.py').read_bytes())
     put('metadata/resumed-input-lock.json', lock_path.read_bytes())
     terms = []
     for download in lock['downloads']:
@@ -118,33 +120,18 @@ def prepare(destination):
                                               if i['path'].lower().startswith(('msvcp', 'vcruntime', 'concrt'))}})
     put('metadata/openrgb-helper-runtime.json', (helper / 'openrgb-helper-runtime.json').read_bytes())
 
-    relink = ROOT / 'artifacts/firmware-relink-20260929'
-    for path in sorted(relink.rglob('*')):
-        if path.is_file():
-            put('firmware-relink/' + path.relative_to(relink).as_posix(), path.read_bytes())
-    tool_notices = ROOT / '.tools/pio-core/packages/toolchain-xtensa-esp32/share/licenses'
-    c = {'id': 'firmware/Xtensa-runtime-notices', 'version': '8.4.0+2021r2-patch5', 'notices': []}
-    for path in sorted(tool_notices.rglob('*')):
-        if path.is_file():
-            c['notices'].append(put('notices/firmware/Xtensa/' + path.relative_to(tool_notices).as_posix(), path.read_bytes()))
-    components.append(c)
     for name in ['prepare-resumed-distribution-materials.py', 'msvc_environment.py', 'build-pawniolib.py',
-                 'build-openrgb-source.py', 'prepare-openrgb-stable-source.py', 'package-openrgb-helper.py',
-                 'capture-firmware-relink.py', 'prepare-firmware-relink.py', 'relink-firmware.py']:
+                 'build-openrgb-source.py', 'prepare-openrgb-stable-source.py', 'package-openrgb-helper.py']:
         put('recipes/resumed/' + name, (ROOT / 'scripts' / name).read_bytes())
-    for name in ['firmware-portable-relinked/verification.json', 'firmware-portable-relinked/image-verification.json',
-                 'platformio-framework-comparison.json', 'research/firmware-included-archives.json']:
-        put('metadata/firmware/' + Path(name).name, (ROOT / 'artifacts/resume-20260929' / name).read_bytes())
     pending = [
         'Integrate and verify this material bundle against the next actual GUI/service package.',
-        'Finish correspondence/notice review for prebuilt SDK libraries and native third-party components; collected sources alone are not a source rebuild proof.',
+        'Finish correspondence/notice review for native third-party components; collected sources alone are not a source rebuild proof.',
         'Finish public-distribution terms and notices; this development bundle is not a public-release approval.',
         'Real hardware acceptance and separate-PC installation remain unverified.'
     ]
-    lines = ['# Third-party distribution materials r5', '',
-             'Extends verified r4 without changing that bundle. Uses stable MSVC, source-built PawnIOLib, fixed SDK sources and tested firmware relink inputs.', '',
+    lines = ['# Third-party desktop distribution materials', '',
+             'Uses verified baseline materials, stable MSVC and source-built PawnIOLib. Optional Dial firmware is built and distributed separately with its own notices.', '',
              'The original package-inventory.json is retained as baseline NuGet/Python evidence. Current native binary inputs are recorded in metadata/openrgb-stable and in the native components below.', '',
-             'Three collected host-only CLI/test source inputs are retained in the research cache, and excluded from this firmware distribution bundle.', '',
              '| Component | Version | Source material |', '| --- | --- | --- |']
     lines += ['| ' + c['id'] + ' | ' + c['version'] + ' | ' + c.get('source', 'See notice/provenance') + ' |' for c in components]
     lines += ['', '## Remaining verification', ''] + ['- ' + p for p in pending]

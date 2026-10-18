@@ -47,7 +47,7 @@ public sealed partial class FlowDeckViewModel
     public string? LightingGroupError => host.GroupLibraryError;
     public bool HasLightingGroupError => host.GroupLibraryError is not null;
     public bool HasMissingGroupTargets => LightingGroupSummary.Contains("未検出");
-    public string SyncTargetsSummary => "同期する照明 · " + SyncBoardChoices.Count(t => t.Selected);
+    public string SyncTargetsSummary => "同期対象 · " + SyncBoardChoices.Count(t => t.Selected);
     public string LightingScopeName => CurrentLightingGroup?.Name ?? "すべての照明";
     public string LightsOffLabel => CurrentLightingGroup is null ? "一括消灯" : "グループ消灯";
     public string LightingGroupSummary => CurrentLightingGroup is { } g ? $"NZXT {g.Hub.Length} · マザー {g.Board.Length}" +
@@ -84,14 +84,14 @@ public sealed partial class FlowDeckViewModel
         DeleteLightingGroup = Command(_ => Edit(async () =>
         {
             var group = CurrentLightingGroup!; await host.DeleteLightingGroupAsync(group.Id); deletedLightingGroup = group;
-            RefreshLightingGroups(); lightingGroupResult = "削除しました";
+            RefreshLightingGroups(); lightingGroupResult = "削除済み";
         }), _ => LightingScenesIdle && CurrentLightingGroup is not null);
         UndoDeleteLightingGroup = Command(_ => Edit(async () =>
         {
             var group = deletedLightingGroup!; await host.SaveLightingGroupAsync(group); deletedLightingGroup = null;
-            RefreshLightingGroups(group.Id); lightingGroupResult = "削除を取り消しました";
+            RefreshLightingGroups(group.Id); lightingGroupResult = "削除取消済み";
         }), _ => LightingScenesIdle && deletedLightingGroup is not null);
-        ReloadLightingGroups = Command(_ => Edit(async () => { var id = CurrentLightingGroup?.Id; await host.LoadLightingGroupsAsync(); RefreshLightingGroups(id); lightingGroupResult = "再読み込みしました"; }), _ => LightingScenesIdle);
+        ReloadLightingGroups = Command(_ => Edit(async () => { var id = CurrentLightingGroup?.Id; await host.LoadLightingGroupsAsync(); RefreshLightingGroups(id); lightingGroupResult = "再読込済み"; }), _ => LightingScenesIdle);
     }
     private void RefreshLightingGroups(string? select = null)
     {

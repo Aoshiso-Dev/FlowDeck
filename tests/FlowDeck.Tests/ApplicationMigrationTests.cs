@@ -15,13 +15,13 @@ public sealed class ApplicationMigrationTests
         var root = CreateRoot(); var old = Path.Combine(root, "NzxtControlHub");
         Directory.CreateDirectory(Path.Combine(old, "hardware", "logs"));
         File.WriteAllText(Path.Combine(old, "hardware", "settings.json"), "{\"ui\":{\"theme\":\"dark\"}}");
-        File.WriteAllBytes(Path.Combine(old, "hardware", "m5-wifi.protected"), [1, 7, 3, 9]);
+        File.WriteAllBytes(Path.Combine(old, "hardware", "private.protected"), [1, 7, 3, 9]);
         File.WriteAllText(Path.Combine(old, "hardware", "logs", "control.jsonl"), "legacy log");
         var current = ApplicationDataMigration.EnsureRoot(root);
         Assert.Equal(Path.Combine(root, "FlowDeck"), current);
         Assert.Equal(File.ReadAllText(Path.Combine(old, "hardware", "settings.json")), File.ReadAllText(Path.Combine(current, "hardware", "settings.json")));
-        Assert.Equal(new byte[] { 1, 7, 3, 9 }, File.ReadAllBytes(Path.Combine(current, "hardware", "m5-wifi.protected")));
-        Assert.True(File.Exists(Path.Combine(old, "hardware", "m5-wifi.protected")));
+        Assert.Equal(new byte[] { 1, 7, 3, 9 }, File.ReadAllBytes(Path.Combine(current, "hardware", "private.protected")));
+        Assert.True(File.Exists(Path.Combine(old, "hardware", "private.protected")));
         Assert.Equal("legacy log", File.ReadAllText(Path.Combine(current, "hardware", "logs", "control.jsonl")));
     }
     [Fact]

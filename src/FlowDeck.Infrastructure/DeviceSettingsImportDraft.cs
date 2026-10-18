@@ -29,10 +29,9 @@ public sealed class DeviceSettingsImportDraft
         foreach(var item in archive.Configuration.Dashboard.Items) Need(item.Target,item.Measurement);
         foreach(var rule in archive.Configuration.Preferences.Notifications.Rules??[]) Need(rule.Target,rule.Measurement);
         var panelKinds = new Dictionary<EndpointReference,DeviceKind>();
-        var panel = archive.Configuration.Preferences.M5Selection;
+        var panel = archive.Configuration.Preferences.DialDisplay;
         if(panel?.Cpu is { } panelCpu) { Need(panelCpu,DeviceFeature.Temperature); panelKinds[panelCpu]=DeviceKind.Processor; }
         if(panel?.Gpu is { } panelGpu) { Need(panelGpu,DeviceFeature.Temperature); panelKinds[panelGpu]=DeviceKind.Graphics; }
-        foreach(var item in panel?.Motherboard??[]) { Need(item.Target,item.Measurement); panelKinds[item.Target]=DeviceKind.Motherboard; }
         foreach(var endpoint in archive.Configuration.Cooling.Endpoints)
         {
             foreach(var rule in endpoint.Safety.ManualProtection) Need(rule.Sensor,DeviceFeature.Temperature);
@@ -120,15 +119,9 @@ public sealed class DeviceSettingsImportDraft
             SavedSynchronization=source.Lighting.SavedSynchronization?.Select(Sync).ToArray(),SavedFrameGroups=source.Lighting.SavedFrameGroups?.Select(g=>g.Select(Map).ToArray()).ToArray(),
             TargetAdjustments=source.Lighting.TargetAdjustments?.Select(a=>a with { Target=Map(a.Target) }).ToArray() };
         var preferences=(SameInstallation?source:DeviceConfigurationCodec.Portable(source)).Preferences;
-        if(preferences.M5Selection is { } selectedPanel)
-        {
-            var keepHub = selectedPanel.Hub is { } hub && TrustedDevice(hub.DeviceId) && source.Bindings.Devices.Contains(hub);
-            if(!keepHub) selectedPanel=selectedPanel.WithoutControl();
-            selectedPanel=selectedPanel with { Cpu=selectedPanel.Cpu is { } cpu?Map(cpu):null, Gpu=selectedPanel.Gpu is { } gpu?Map(gpu):null,
-                Motherboard=selectedPanel.Motherboard.Select(i=>i with { Target=Map(i.Target) }).ToArray() };
-            preferences=preferences with { M5Selection=selectedPanel };
-        }
-        preferences=preferences with { M5ConnectOnStart=false };
+        if(preferences.DialDisplay is { } selectedPanel)
+            preferences=preferences with { DialDisplay=selectedPanel with {
+                Cpu=selectedPanel.Cpu is { } cpu?Map(cpu):null, Gpu=selectedPanel.Gpu is { } gpu?Map(gpu):null } };
         preferences=preferences with { Startup=preferences.Startup with { ResumeControl=false },Notifications=preferences.Notifications with {
             Rules=preferences.Notifications.Rules?.Select(r=>r with { Target=Map(r.Target) }).ToArray() } };
         var next=new DeviceConfigurationPackage(new(2,devices),new(2,installation,source.Bindings.Devices.Where(b=>TrustedDevice(b.DeviceId)&&devices.Any(d=>d.Id==b.DeviceId)).ToArray()),

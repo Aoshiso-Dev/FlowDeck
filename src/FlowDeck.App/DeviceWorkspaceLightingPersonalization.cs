@@ -16,13 +16,13 @@ public sealed partial class DeviceWorkspaceViewModel
     public DeviceLightAliasDraft? LightAliasDraft { get; private set; }
     public DeviceLightRow? LightAliasTarget
     {
-        get => lightAliasTarget;
+        get => LightAliasTargets.FirstOrDefault(row => row.Target == lightAliasTarget?.Target);
         set { if (personalizationBusy || identificationBusy || reconcilingAliasTargets || !Set(ref lightAliasTarget, value)) return; identificationMessage=""; ReloadLightAlias(); }
     }
-    public string LightAlias { get => LightAliasDraft?.Name ?? ""; set { if (LightAliasDraft is not { } draft || draft.Name == value) return; draft.Name = value; Notify(nameof(LightAlias)); PublishLightPersonalization(); } }
-    public bool HasLightAliasTarget => LightAliasDraft is not null;
+    public string LightAlias { get => HasLightAliasTarget ? LightAliasDraft!.Name : ""; set { if (!HasLightAliasTarget || LightAliasDraft is not { } draft || draft.Name == value) return; draft.Name = value; Notify(nameof(LightAlias)); PublishLightPersonalization(); } }
+    public bool HasLightAliasTarget => LightAliasTarget is not null && LightAliasDraft is not null;
     public string LightAliasStatus => LightAliasDraft?.Problem ?? (LightAliasDraft?.Dirty == true ? "未保存" : "");
-    public bool CanSaveLightAlias => LightPersonalizationSupported && LightingIdle && LightAliasDraft is { Dirty: true, Problem: null };
+    public bool CanSaveLightAlias => HasLightAliasTarget && LightPersonalizationSupported && LightingIdle && LightAliasDraft is { Dirty: true, Problem: null };
     public ICommand SaveLightAlias => new AsyncCommand(_ => SaveLightAliasAsync(), _ => CanSaveLightAlias, e => Notice = e.Message);
     public ICommand ReloadLightAliasCommand => new AsyncCommand(_ => { ReloadLightAlias(); return Task.CompletedTask; }, _ => LightingIdle && LightAliasTarget is { } row &&
         client.Snapshot?.Configuration.Configuration.Devices.Devices.Any(d => d.Id == row.Target.DeviceId && d.Endpoints.Any(e => e.Id == row.Target.EndpointId && e.Kind == EndpointKind.Lighting)) == true, e => Notice = e.Message);
@@ -34,19 +34,23 @@ public sealed partial class DeviceWorkspaceViewModel
     internal void RenderLightPersonalization(DeviceWorkspaceSnapshot snapshot)
     {
         var config = snapshot.Configuration.Configuration;
-        var registered = Lights.Where(l => config.Devices.Devices.Any(d => d.Id == l.Target.DeviceId && d.Endpoints.Any(e => e.Id == l.Target.EndpointId && e.Kind == EndpointKind.Lighting))).ToList();
-        var currentRegistered = lightAliasTarget is not null && registered.Contains(lightAliasTarget);
-        // Keep a removed selection in the list so ComboBox reconciliation cannot discard its text.
-        if (lightAliasTarget is not null && !currentRegistered) registered.Add(lightAliasTarget);
+        var wasVisible = LightAliasTarget is not null;
+        var registered = Lights.Where(l => snapshot.Connected && snapshot.State.Inventory.Devices.Any(d =>
+                d.Connected && d.Device.Id == l.Target.DeviceId && d.Device.Endpoints.Any(e => e.Id == l.Target.EndpointId)) &&
+            config.Devices.Devices.Any(d => d.Id == l.Target.DeviceId && d.Endpoints.Any(e => e.Id == l.Target.EndpointId && e.Kind == EndpointKind.Lighting))).ToList();
+        var currentTarget = registered.FirstOrDefault(row => row.Target == lightAliasTarget?.Target);
+        var currentRegistered = currentTarget is not null;
+        // Keep the draft internally while its device is absent, and restore its visible selection on reconnect.
+        if (currentTarget is not null) lightAliasTarget = currentTarget;
         reconcilingAliasTargets = true;
         try
         {
-            // Do not replace or temporarily remove the selected ComboBox item while reconciling.
             foreach (var old in LightAliasTargets.Where(r => !registered.Contains(r)).ToArray()) LightAliasTargets.Remove(old);
             foreach (var row in registered) if (!LightAliasTargets.Contains(row)) LightAliasTargets.Add(row);
         }
         finally { reconcilingAliasTargets = false; }
         Notify(nameof(LightAliasTarget));
+        if (wasVisible != currentRegistered) Notify(nameof(LightAlias));
         if (!personalizationBusy)
         {
             if (LightAliasDraft is { Dirty: false } && currentRegistered)
@@ -73,12 +77,13 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         Render(); if (!CanSaveLightAlias) return;
         var edit = LightAliasDraft!.Capture();
+        using var status = BeginStatus("照明名を保存中");
         var reply = await SaveLightPersonalizationAsync(edit);
-        Notice = reply.Message; ReloadLightAlias();
+        ReportResult(reply.Message, reply.Outcome); ReloadLightAlias();
     }
     private Task SaveLightColorsAsync(bool recent, Color[] colors)
     {
-        if (!LightingIdle || !LightPersonalizationSupported) throw new IOException("照明設定を保存できる接続を確認してください");
+        if (!LightingIdle || !LightPersonalizationSupported) throw new IOException("照明設定の保存不可 · 接続確認が必要");
         return SaveLightPersonalizationAsync(DeviceLightingPersonalization.Capture(client.Snapshot!,
             recent ? LightingLibraryOperation.RememberColors : LightingLibraryOperation.ToggleFavorite,
             colors: colors.Select(c => new RgbColor(c.R, c.G, c.B)).ToArray()));

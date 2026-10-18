@@ -7,25 +7,6 @@ public sealed record DeviceNotificationEdit(string Epoch, string Session, string
 public sealed partial class DeviceWorkspaceClient
 {
     public bool SupportsNotifications => client.Hello?.Features.Contains("notifications-v2") == true;
-    public async Task ReportM5ConnectionAsync(string owner, Func<DeviceM5NotificationReport> observe, CancellationToken ct = default)
-    {
-        await operations.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            EnsureOpen();
-            if (client.Hello?.Epoch + "/" + client.Hello?.Session != owner)
-                throw new IOException("M5GOの通知対象の接続が変更されました");
-            if (client.Hello!.Features.Contains(DeviceM5NotificationReport.Feature) != true)
-                throw new IOException("M5GOの接続通知に対応するサービスの更新が必要です");
-            // Observe after queueing, never send a connected/disconnected value cached behind a slow command.
-            ct.ThrowIfCancellationRequested();
-            // Cancellation may abandon the queue, but must not close the shared pipe after submission.
-            var reply = await client.SendAsync(client.Request(DeviceOperation.ReportM5Connection) with { M5Connection = observe() }).ConfigureAwait(false);
-            if (!reply.Success) throw new IOException(reply.Error ?? "M5GOの通知状態を更新できません");
-        }
-        catch (Exception e) { if (!client.Connected) RecordError(e); throw; }
-        finally { operations.Release(); }
-    }
     private void EnsureNotifications()
     {
         EnsureOpen();

@@ -55,7 +55,7 @@ public sealed partial class CoolingServiceRuntime : IAsyncDisposable
         if (this.allowedSids.Count == 0) throw new ArgumentException("操作を許可するWindowsユーザーが必要です");
         ValidateConfiguration(ServiceFanConfiguration.From(settings));
         // Only a later, explicit startup-resume operation may consume a server-owned confirmed policy.
-        Coordinator = new(hub, temperatures, settings with { Startup = new(), PythonPath = null, M5 = new() }, log);
+        Coordinator = new(hub, temperatures, settings with { Startup = new(), PythonPath = null }, log);
         Fans = new(drivers, () => Coordinator.Snapshot.Sensors.Concat(motherboard.Board.Sensors.Where(s => s.Kind == "temperature")
             .Select(s => new SensorReading(s.Id, s.SourceName, "motherboard", motherboard.Board.Error is null && s.Problem is null ? s.Value : null,
                 motherboard.Board.Timestamp ?? 0))).ToArray(), log);

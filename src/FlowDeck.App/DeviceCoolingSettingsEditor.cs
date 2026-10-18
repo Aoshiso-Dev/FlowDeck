@@ -64,7 +64,6 @@ public sealed partial class DeviceCoolingSettingsEditor : Observable
     public ObservableCollection<DeviceTemperatureEditor> Protection { get; }=[];
     private DeviceCoolingProfileEditor? selectedProfile;
     private CoolingSensorChoice? selectedSensor, protectionSensor;
-    private DeviceEndpointSetupPreview? preview;
     private bool busy;
     public DeviceCoolingSettingsEditor(DeviceWorkspaceSnapshot snapshot, EndpointReference target)
     {
@@ -81,15 +80,10 @@ public sealed partial class DeviceCoolingSettingsEditor : Observable
     public CoolingSensorChoice? SelectedSensor { get=>selectedSensor; set=>Set(ref selectedSensor,value); }
     public CoolingSensorChoice? ProtectionSensor { get=>protectionSensor; set=>Set(ref protectionSensor,value); }
     public bool HasProfile=>SelectedProfile is not null;
-    public bool Confirmed { get=>Draft.Confirmed; set { Draft.Confirmed=value; preview=null; Publish(); } }
     public bool Editable=>!busy;
-    public bool CanPreview=>!busy&&Draft.Problem is null;
-    public bool CanSave=>CanPreview&&preview is not null;
-    public bool HasPreview=>preview is not null;
-    public string PreviewText=>preview is null?"":string.Join(Environment.NewLine,preview.Edit.Changes);
-    public string Status=>busy?"処理中":Draft.Problem??"差分を確認できます";
+    public bool CanSave=>!busy&&Draft.Problem is null;
+    public string Status=>busy?"処理中":Draft.Problem??"";
     public string MinimumLabel=>$"端子の最低出力 {Draft.Safety.Minimum}%";
-    public DeviceEndpointSetupPreview? Preview=>preview;
     public ICommand AddProfile=>new AsyncCommand(_=>{ var p=new DeviceCoolingProfileEditor(new("curve-"+Guid.NewGuid().ToString("N"),"新しいカーブ",0,[],3,2),Sensor,Changed); Profiles.Add(p); SelectedProfile=p; return Task.CompletedTask; },_=>Editable&&Profiles.Count<32);
     public ICommand DeleteProfile=>new AsyncCommand(_=>{ if(SelectedProfile is { } p) Profiles.Remove(p); SelectedProfile=Profiles.FirstOrDefault(); return Task.CompletedTask; },_=>Editable&&SelectedProfile is not null);
     public ICommand AddCurve=>new AsyncCommand(_=>{ var s=SelectedSensor!; SelectedProfile!.Curves.Add(new(s,new(s.Target,[new(30,100),new(90,100)],95,85),Changed)); return Task.CompletedTask; },
@@ -99,9 +93,9 @@ public sealed partial class DeviceCoolingSettingsEditor : Observable
         _=>Editable&&ProtectionSensor is { } s&&Protection.Count<32&&Protection.All(c=>c.Sensor.Target!=s.Target));
     public ICommand RemoveProtection=>new AsyncCommand(p=>{ Protection.Remove((DeviceTemperatureEditor)p!); return Task.CompletedTask; },p=>Editable&&p is DeviceTemperatureEditor);
     private void Changed()
-    { Draft.Change(Draft.Safety with { ManualProtection=Protection.Select(p=>p.Rule).ToArray(),Stop=StopEnabled?new(StopConditions.Select(r=>r.Rule).ToArray(),RestartDuty,RestartSeconds):null },Profiles.Select(p=>p.Value).ToArray()); preview=null; Publish(); }
+    { Draft.Change(Draft.Safety with { ManualProtection=Protection.Select(p=>p.Rule).ToArray(),Stop=StopEnabled?new(StopConditions.Select(r=>r.Rule).ToArray(),RestartDuty,RestartSeconds):null },Profiles.Select(p=>p.Value).ToArray()); Publish(); }
     private void Publish()
-    { foreach(var n in new[]{nameof(Confirmed),nameof(CanPreview),nameof(CanSave),nameof(HasPreview),nameof(PreviewText),nameof(Status),nameof(Editable)}) Notify(n); CommandManager.InvalidateRequerySuggested(); }
+    { foreach(var n in new[]{nameof(CanSave),nameof(Status),nameof(Editable)}) Notify(n); CommandManager.InvalidateRequerySuggested(); }
     public void Update(DeviceWorkspaceSnapshot snapshot,bool blocked)
     {
         busy=blocked; Draft.Update(snapshot);
@@ -109,7 +103,6 @@ public sealed partial class DeviceCoolingSettingsEditor : Observable
         foreach(var r in StopConditions) r.Update(snapshot);
         Publish();
     }
-    public void SetPreview(DeviceEndpointSetupPreview? value) { preview=value; Publish(); }
 }
 
 public sealed partial class DeviceCoolingRow
@@ -125,7 +118,6 @@ public sealed partial class DeviceCoolingRow
 public sealed partial class DeviceWorkspaceViewModel
 {
     public ICommand EditCoolingSettings=>new AsyncCommand(p=> { OpenCoolingSettings((DeviceCoolingRow)p!); return Task.CompletedTask; },p=>SetupIdle&&SetupSupported&&p is DeviceCoolingRow, e=>Notice=e.Message);
-    public ICommand PreviewCoolingSettings=>new AsyncCommand(p=>PreviewCoolingSettingsAsync((DeviceCoolingSettingsEditor)p!),p=>SetupIdle&&p is DeviceCoolingSettingsEditor { CanPreview:true },e=>Notice=e.Message);
     public ICommand SaveCoolingSettings=>new AsyncCommand(p=>SaveCoolingSettingsAsync((DeviceCoolingSettingsEditor)p!),p=>SetupIdle&&p is DeviceCoolingSettingsEditor { CanSave:true },e=>Notice=e.Message);
     public ICommand ReloadCoolingSettings=>new AsyncCommand(p=>ReloadCoolingSettingsAsync((DeviceCoolingSettingsEditor)p!),_=>SetupIdle,e=>Notice=e.Message);
     public void OpenCoolingSettings(DeviceCoolingRow row)
@@ -136,18 +128,11 @@ public sealed partial class DeviceWorkspaceViewModel
         try { await client.RefreshAsync(true); Cooling.Single(r=>r.Draft.Target==editor.Draft.Target).SetSettingsEditor(new(client.Snapshot!,editor.Draft.Target)); }
         finally { setupBusy=false; Render(); }
     }
-    public async Task PreviewCoolingSettingsAsync(DeviceCoolingSettingsEditor editor)
-    {
-        Render(); if(!SetupIdle||!editor.CanPreview) return;
-        var edit=editor.Draft.Capture(); setupBusy=true; ClearConfigurationPreviews(); Render();
-        try { editor.SetPreview(await client.PreviewSetupAsync(edit)); Notice="変更内容を確認してください"; }
-        finally { setupBusy=false; Render(); }
-    }
     public async Task SaveCoolingSettingsAsync(DeviceCoolingSettingsEditor editor)
     {
         Render(); if(!SetupIdle||!editor.CanSave) return;
-        var preview=editor.Preview!; setupBusy=true; editor.SetPreview(null); Render();
-        try { var result=await client.ApplySetupAsync(preview); Notice=result.Message;
+        var edit=editor.Draft.Capture(); setupBusy=true; ClearConfigurationPreviews(); Render();
+        try { var preview=await client.PreviewSetupAsync(edit); var result=await client.ApplySetupAsync(preview); Notice=result.Message;
             if(result.Outcome==Outcome.Confirmed) Cooling.Single(r=>r.Draft.Target==editor.Draft.Target).SetSettingsEditor(null); }
         finally { setupBusy=false; Render(); }
     }

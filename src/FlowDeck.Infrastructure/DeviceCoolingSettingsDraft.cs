@@ -13,6 +13,7 @@ public sealed class DeviceCoolingSettingsDraft
     public EndpointReference Target { get; }
     public CoolingSafety Safety { get; private set; }
     public CoolingTemperatureProfile[] Profiles { get; private set; }
+    // Legacy caller compatibility only; readiness is determined from actual settings and observations.
     public bool Confirmed { get; set; }
     public bool Conflict { get; private set; }
     public bool StopSupported { get; }
@@ -23,9 +24,9 @@ public sealed class DeviceCoolingSettingsDraft
         original = Contract.Copy(snapshot); latest = original; Target = target;
         var config = original.Configuration.Configuration;
         saved = config.Cooling.Endpoints.SingleOrDefault(e => e.Target == target) ?? throw new IOException("先に端子を設定してください");
-        if (!saved.WiringConfirmed || !original.Configuration.Candidates.Any(b => b.DeviceId == target.DeviceId && config.Bindings.Devices.Contains(b)) ||
+        if (!original.Configuration.Candidates.Any(b => b.DeviceId == target.DeviceId) ||
             !(original.Configuration.Setup ?? []).Any(s => s.Target == target && s.Options.CoolingExitActions.Length > 0))
-            throw new IOException("先に端子の配線と出力を確認してください");
+            throw new IOException("現在の機器と冷却設定を取得できません");
         Safety = Contract.Copy(saved.Safety); Profiles = Contract.Copy(saved.Profiles);
         StopSupported = original.Configuration.Setup!.Single(s=>s.Target==target).Options.CoolingStopSupported;
         Pump = config.Devices.Devices.Single(d=>d.Id==target.DeviceId).Endpoints.Single(e=>e.Id==target.EndpointId).Role=="pump" ||
@@ -39,7 +40,7 @@ public sealed class DeviceCoolingSettingsDraft
         Update(snapshot);
     }
     public void Change(CoolingSafety safety, CoolingTemperatureProfile[] profiles)
-    { Safety = Contract.Copy(safety); Profiles = Contract.Copy(profiles); Confirmed = false; }
+    { Safety = Contract.Copy(safety); Profiles = Contract.Copy(profiles); }
     private EndpointReference[] Required => Safety.ManualProtection.Select(r => r.Sensor).Concat(Safety.Stop?.Temperatures.Select(t => t.Sensor) ?? [])
         .Concat(Profiles.SelectMany(p => p.Curves.Select(c => c.Sensor))).Distinct().ToArray();
     public void Update(DeviceWorkspaceSnapshot snapshot)
@@ -75,7 +76,7 @@ public sealed class DeviceCoolingSettingsDraft
             foreach (var target in Required)
                 if (!Sensors.Any(s => s.Target == target) || !original.Configuration.Candidates.Any(b => b.DeviceId == target.DeviceId) || Temperature(latest,target) is null)
                     return "必要な温度を取得できません: " + (Sensors.SingleOrDefault(s => s.Target == target)?.Name ?? target.EndpointId);
-            return Confirmed ? null : "温度カーブ・保護・停止条件の確認が必要です";
+            return null;
         }
     }
     public DeviceEndpointSetupEdit Capture()
@@ -101,8 +102,7 @@ public sealed class DeviceCoolingSettingsDraft
             if (!bindings.Contains(binding))
             {
                 rebound.Add(group.Key); bindings.RemoveAll(b => b.DeviceId == group.Key); bindings.Add(binding);
-                endpoints = endpoints.Select(e => e.Setup is { } setup ? e with { Setup=setup with { LedCountConfirmed=false } } : e).ToList();
-                changes.Add("温度源の関連付け: " + registered.Name + " → 現在の個体・構成（同じ機器の制御端子は再確認）");
+                changes.Add("温度源の関連付け: " + registered.Name + " → 現在の個体・構成");
             }
             devices.RemoveAll(d => d.Id == group.Key); devices.Add(registered with { Endpoints=endpoints.ToArray() });
         }
@@ -112,10 +112,10 @@ public sealed class DeviceCoolingSettingsDraft
             return Contract.Copy(p with { Revision=same ? old!.Revision : checked((old?.Revision ?? 0)+1) });
         }).ToArray();
         var cooling = config.Cooling.Endpoints.Select(e => e.Target == Target ? e with { Safety=Safety,Profiles=profiles,SavedPolicy=null,ResumeOnStart=false } :
-            rebound.Contains(e.Target.DeviceId) ? e with { WiringConfirmed=false,SavedPolicy=null,ResumeOnStart=false } : e).ToArray();
+            rebound.Contains(e.Target.DeviceId) || e.SavedPolicy is { } policy && DeviceCoolingPolicy.Required(policy, e.Safety).Any(s => rebound.Contains(s.DeviceId))
+                ? e with { ResumeOnStart=false } : e).ToArray();
         var next = config with { Devices=config.Devices with { Devices=devices.ToArray() },Bindings=config.Bindings with { Devices=bindings.ToArray() },
-            Cooling=config.Cooling with { Endpoints=cooling },Lighting=config.Lighting with { Endpoints=config.Lighting.Endpoints?.Select(e =>
-                rebound.Contains(e.Target.DeviceId) ? e with { WiringConfirmed=false } : e).ToArray() } };
+            Cooling=config.Cooling with { Endpoints=cooling } };
         DeviceConfigurationCodec.Validate(next);
         foreach (var old in saved.Profiles.Where(p => profiles.All(n => n.Id != p.Id))) changes.Add("カーブ削除: " + old.Name);
         string Sensor(EndpointReference target) => Sensors.Single(s => s.Target == target).Name;

@@ -76,9 +76,8 @@ public sealed partial class DeviceProviderReplacementTests
         Assert.True(r.Independent.Driver.Owned); Assert.Equal(independentReleases,r.Independent.Driver.Releases);
         Assert.False((await r.Runtime.ExecuteAsync(stale)).Success);
         var catalog = DeviceCatalogPresentation.Build(new(state,new("generation",config,[]),0,true,null));
-        var saved = catalog.Single(d => d.Id == "old-0");
-        Assert.Equal("保存した機器名",saved.Name); Assert.Equal("未接続",saved.Status);
-        Assert.Equal("保存したファン名",Assert.Single(saved.Endpoints).Name); Assert.Empty(saved.Endpoints[0].Capabilities);
+        Assert.DoesNotContain(catalog,d=>d.Id=="old-0");
+        Assert.Equal(state.Inventory.Devices.Select(d=>d.Device.Id),catalog.Select(d=>d.Id));
         Assert.Equal(before,DeviceConfigurationCodec.SerializePackage(config));
         Assert.True((await r.Runtime.ExecuteAsync(r.Request("next-0"))).Success);
     }
@@ -163,9 +162,12 @@ public sealed partial class DeviceProviderReplacementTests
         Assert.Equal(failTarget,originalGeneration==r.Store.ReadActivePointer());
         Assert.True(r.Independent.Driver.Owned); Assert.Equal(releases,r.Independent.Driver.Releases); Assert.False(history.Disposed);
         state=r.Startup.Runtime.State(); Assert.Equal(32,state.Inventory.Devices.Length); Assert.All(state.Inventory.Devices,d=>Assert.True(d.Connected));
-        var old=DeviceCatalogPresentation.Build(new(state,new(r.Startup.Generation.Id,stored,[]),0,true,null)).Single(d=>d.Id=="rgb");
-        Assert.Equal("rgb",old.Name); Assert.Equal("Fan",Assert.Single(old.Endpoints).Name);
-        if(!failTarget) { Assert.Equal("未接続",old.Status); Assert.Empty(old.Endpoints[0].Capabilities); }
+        var catalog=DeviceCatalogPresentation.Build(new(state,new(r.Startup.Generation.Id,stored,[]),0,true,null));
+        if(failTarget) {
+            var old=Assert.Single(catalog,d=>d.Id=="rgb");
+            Assert.Equal("rgb",old.Name); Assert.Equal("Fan",Assert.Single(old.Endpoints).Name);
+        }
+        else Assert.DoesNotContain(catalog,d=>d.Id=="rgb");
     }
     [Fact]
     public async Task FullLiveRegistryCannotBePrunedToMakeRoomForAnotherProvider()

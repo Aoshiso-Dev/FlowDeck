@@ -37,6 +37,13 @@ public static class DeviceSettingsArchives
         {
             using var json=JsonDocument.Parse(bytes); SettingsTransfer.NoDuplicates(json.RootElement);
             var archive=json.RootElement.Deserialize<DeviceSettingsArchive>(Contract.Json)??throw new IOException("設定ファイルが空です");
+            if (archive.Sha256 != Hash(archive))
+            {
+                var original = json.RootElement.EnumerateObject().Where(p => !p.Name.Equals("sha256", StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(p => p.Name, p => p.Value);
+                if (archive.Sha256 != SettingsTransfer.Hash(original)) throw new IOException("設定ファイルの整合性を確認できません");
+                archive = archive with { Sha256 = Hash(archive) };
+            }
             Validate(archive); return archive;
         }
         catch(Exception e) when(e is JsonException or ArgumentException or NullReferenceException)

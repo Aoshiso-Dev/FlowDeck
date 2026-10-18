@@ -153,10 +153,10 @@ public sealed class EneMemoryBackendTests
         var c = Assert.Single(await backend.DiscoverAsync(default));
         Assert.Equal(0, await backend.ExecuteAsync(c, false, s => s.Read(0x8020), default)); Assert.Equal(1, a.ShortIdentifications);
         clock.Advance(2.1); var opens = a.Opens;
-        await Assert.ThrowsAsync<IOException>(() => backend.ExecuteAsync(c, false, s => s.Read(0x8020), default)); Assert.Equal(opens, a.Opens);
+        await Assert.ThrowsAsync<EneMemoryFreshnessException>(() => backend.ExecuteAsync(c, false, s => s.Read(0x8020), default)); Assert.Equal(opens, a.Opens);
         Assert.Equal(c, Assert.Single(await backend.DiscoverAsync(default)));
         a.BeforeData = (_, write) => { if (write) clock.Advance(2.1); };
-        await Assert.ThrowsAsync<IOException>(() => backend.ExecuteAsync(c, false, s => { s.WritePixel(0, 1, 2, 3, () => { }); return true; }, default));
+        await Assert.ThrowsAsync<EneMemoryFreshnessException>(() => backend.ExecuteAsync(c, false, s => { s.WritePixel(0, 1, 2, 3, () => { }); return true; }, default));
         Assert.Empty(a.Writes); backend.Check(c);
     }
     [Fact]

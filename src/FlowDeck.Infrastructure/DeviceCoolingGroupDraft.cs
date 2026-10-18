@@ -46,8 +46,15 @@ public sealed class DeviceCoolingGroupDraft
 {
     private DeviceWorkspaceSnapshot latest;
     private DeviceWorkspaceSnapshot? editing;
+    private readonly int baselineDuty;
+    private readonly bool baselineFixedMode, baselineAutomaticMode, baselineUniformDuty, baselineUniformProfile;
+    private readonly string? baselineProfile;
     public EndpointGroup Group { get; }
-    public bool Dirty=>editing is not null;
+    public bool ModeChanged=>editing is not null&&(Automatic?!baselineAutomaticMode:!baselineFixedMode);
+    public bool DutyChanged=>editing is not null&&!Automatic&&(!baselineUniformDuty||Duty!=baselineDuty);
+    public bool ProfileChanged=>editing is not null&&Automatic&&(!baselineUniformProfile||ProfileKey(Profile)!=baselineProfile);
+    public bool Dirty=>ModeChanged||DutyChanged||ProfileChanged;
+    public long EditRevision { get; private set; }
     public bool Conflict { get; private set; }
     public int Duty { get; private set; }=50;
     public CoolingTemperatureProfile? Profile { get; private set; }
@@ -56,7 +63,7 @@ public sealed class DeviceCoolingGroupDraft
     {
         latest=Contract.Copy(snapshot); Group=Contract.Copy(snapshot.Configuration.Configuration.Cooling.Groups.Single(g=>g.Id==id));
         var rows=Group.Targets.Select(t=>snapshot.State.Endpoints.SingleOrDefault(e=>e.Target==t)).ToArray();
-        var requested=rows.All(r=>r?.Owned==true)?rows.Select(r=>r!.RequestedDuty).Distinct().ToArray():[];
+        var requested=rows.All(r=>r?.Owned==true)?rows.Select(r=>r!.RequestedDuty??r.Cooling?.TargetDuty).Distinct().ToArray():[];
         if(requested is [{ } duty]) Duty=duty;
         else if(rows.All(r=>r?.Owned==false))
         {
@@ -66,9 +73,23 @@ public sealed class DeviceCoolingGroupDraft
         var saved=Group.Targets.Select(t=>snapshot.Configuration.Configuration.Cooling.Endpoints.SingleOrDefault(e=>e.Target==t)?.SavedPolicy?.Profile).ToArray();
         if(rows.All(r=>r?.Owned==true&&r.Cooling?.Mode==FanMode.Auto)&&saved.All(p=>p is not null)&&saved.Select(SettingsTransfer.Canonical).Distinct().Count()==1)
         { Automatic=true; Profile=Contract.Copy(saved[0]); }
+        baselineFixedMode=rows.All(r=>r?.Owned==true&&r.Cooling?.Mode!=FanMode.Auto);
+        baselineAutomaticMode=rows.All(r=>r?.Owned==true&&r.Cooling?.Mode==FanMode.Auto);
+        baselineDuty=Duty; baselineUniformDuty=requested is [{ }];
+        baselineUniformProfile=Automatic&&rows.All(r=>r?.Cooling is { } running&&running.ProfileId==Profile!.Id&&running.ProfileRevision==Profile.Revision);
+        baselineProfile=ProfileKey(Profile);
     }
+    private static string? ProfileKey(CoolingTemperatureProfile? profile)=>profile is null?null:SettingsTransfer.Canonical(profile);
     public void Change(int duty,bool automatic,CoolingTemperatureProfile? profile)
-    { editing??=Contract.Copy(latest); Duty=Math.Clamp(duty,0,100); Automatic=automatic; Profile=Contract.Copy(profile); }
+    {
+        duty=Math.Clamp(duty,0,100);
+        if(Duty==duty&&Automatic==automatic&&ProfileKey(Profile)==ProfileKey(profile)&&
+            (editing is not null||(automatic?baselineAutomaticMode&&baselineUniformProfile:baselineFixedMode&&baselineUniformDuty))) return;
+        EditRevision++; editing??=Contract.Copy(latest); Duty=duty; Automatic=automatic; Profile=Contract.Copy(profile);
+        // Returning the active inputs to their original values cancels the local edit only.
+        // A version conflict remains latched until the user explicitly reloads the group.
+        if(!Dirty&&!Conflict) editing=null;
+    }
     public void Update(DeviceWorkspaceSnapshot snapshot)
     {
         latest=snapshot;
@@ -111,9 +132,21 @@ public sealed class DeviceCoolingGroupDraft
     {
         var kind=operation??(Automatic?DeviceOperation.SetAutomatic:DeviceOperation.SetDuty);
         if(Problem(kind) is { } problem) throw new InvalidOperationException(problem);
+        if((kind is DeviceOperation.SetDuty or DeviceOperation.SetAutomatic)&&!Dirty) throw new InvalidOperationException("変更はありません");
         var snapshot=editing??latest;
         return new(snapshot.State.Inventory.Epoch,snapshot.State.Inventory.TopologyRevision,new(snapshot.Configuration.Generation,Group.Id,Group.Revision),
             Group.Targets.Select(t=>{ var row=snapshot.State.Endpoints.Single(e=>e.Target==t); return new DeviceTargetVersion(t,row.Generation,row.PolicyRevision); }).ToArray(),
             kind,kind==DeviceOperation.SetDuty?Duty:null,kind==DeviceOperation.SetAutomatic?Profile:null);
     }
+    public bool Confirmed(CoolingGroupControlEdit edit,long editRevision,DeviceOperationResult result)=>
+        EditRevision==editRevision&&edit.Group.Id==Group.Id&&result.Outcome==Outcome.Confirmed&&
+        latest.State.Inventory.Epoch==edit.Epoch&&latest.State.Inventory.TopologyRevision==edit.Topology&&
+        latest.Configuration.Configuration.Cooling.Groups.SingleOrDefault(g=>g.Id==edit.Group.Id) is { } currentGroup&&
+        currentGroup.Revision==edit.Group.ExpectedRevision&&currentGroup.Targets.ToHashSet().SetEquals(edit.Targets.Select(t=>t.Target))&&
+        result.Targets.Length==edit.Targets.Length&&result.Targets.Select(t=>t.Target).Distinct().Count()==edit.Targets.Length&&
+        edit.Targets.All(target=>result.Targets.Any(r=>r.Target==target.Target&&r.Generation==target.Generation&&
+            r.Outcome==Outcome.Confirmed&&r.Persistence is not { State:not DevicePolicySaveState.Saved }&&
+            latest.State.Inventory.Devices.SingleOrDefault(d=>d.Device.Id==r.Target.DeviceId)?.Generation==r.Generation&&
+            latest.State.Endpoints.SingleOrDefault(e=>e.Target==r.Target) is { } current&&
+            current.Generation==r.Generation&&current.PolicyRevision==r.PolicyRevision));
 }

@@ -4,6 +4,7 @@
 .tools/
 .pio/
 artifacts/
+outputs/
 dist/
 **/__pycache__/
 .vs/
@@ -29,7 +30,6 @@ dist/
 # Local deployment launchers and private development/acceptance records
 /Start-FlowDeck*.cmd
 /引き継ぎ_作業再開.md
-/M5GO_NZXT_ControlHub_画面仕様書.md
 /NZXT_ControlHub_CSharp_システム設計仕様書.md
 /NZXT_ControlHub_Windows_GUI仕様書.md
 /images/

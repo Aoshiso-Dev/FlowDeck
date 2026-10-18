@@ -17,6 +17,121 @@ public class DeviceCoolingGroupTests
         await client.RefreshAsync(true); var draft=new DeviceCoolingGroupDraft(client.Snapshot!,id); draft.Change(duty,profile is not null,profile);
         return await client.ApplyCoolingGroupAsync(draft.Capture());
     }
+    private static DeviceWorkspaceSnapshot WithOwnedDuties(DeviceWorkspaceSnapshot snapshot,params (EndpointReference Target,int Duty)[] policies)=>
+        snapshot with { State=snapshot.State with { Endpoints=snapshot.State.Endpoints.Select(e=>policies.Any(p=>p.Target==e.Target)
+            ?e with { Owned=true,RequestedDuty=policies.Single(p=>p.Target==e.Target).Duty,Cooling=new(FanMode.Manual,policies.Single(p=>p.Target==e.Target).Duty,false,null,false,false) }:e).ToArray() } };
+    [Fact] public async Task UnchangedGroupControlsCannotApplyAndReturningTheirValuesCancelsTheLocalEdit()
+    {
+        using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();
+        var target=new EndpointReference(demo.DeviceIds[0],"fan1"); var id=await Group(client,target);
+        var snapshot=WithOwnedDuties(client.Snapshot!,(target,45));
+        var draft=new DeviceCoolingGroupDraft(snapshot,id); var original=draft.Duty;
+        Assert.False(draft.Dirty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        draft.Change(66,false,null); Assert.True(draft.Dirty&&draft.DutyChanged); Assert.False(draft.ModeChanged||draft.ProfileChanged);
+        draft.Update(snapshot); Assert.Equal(66,draft.Duty);
+        draft.Change(original,false,null); Assert.False(draft.Dirty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        var profile=client.Snapshot!.Configuration.Configuration.Cooling.Endpoints.Single(e=>e.Target==target).Profiles.Single();
+        draft.Change(original,true,profile); Assert.True(draft.Dirty&&draft.ModeChanged&&draft.ProfileChanged); Assert.False(draft.DutyChanged);
+        draft.Change(original,false,profile); Assert.False(draft.Dirty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+    }
+    [Fact] public async Task ReturningGroupValuesDoesNotForgetAnObservedVersionConflict()
+    {
+        using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();
+        var target=new EndpointReference(demo.DeviceIds[0],"fan1"); var id=await Group(client,target); var snapshot=WithOwnedDuties(client.Snapshot!,(target,45));
+        var draft=new DeviceCoolingGroupDraft(snapshot,id); var original=draft.Duty; draft.Change(66,false,null);
+        draft.Update(snapshot with { Configuration=snapshot.Configuration with { Generation="changed" } });
+        draft.Change(original,false,null); Assert.False(draft.Dirty); Assert.True(draft.Conflict);
+        draft.Update(snapshot); draft.Change(66,false,null);
+        Assert.True(draft.Dirty&&draft.Conflict); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+    }
+    [Theory]
+    [InlineData("confirmed",true)] [InlineData("partial",false)] [InlineData("missing",false)] [InlineData("duplicate",false)]
+    [InlineData("wrong-target",false)] [InlineData("wrong-generation",false)] [InlineData("target-rejected",false)]
+    [InlineData("save-failed",false)] [InlineData("save-superseded",false)] [InlineData("session-only",false)] [InlineData("new-edit",false)]
+    [InlineData("latest-epoch",false)] [InlineData("latest-topology",false)] [InlineData("latest-generation",false)] [InlineData("latest-policy",false)]
+    [InlineData("snapshot-before-result",false)]
+    [InlineData("latest-group-revision",false)] [InlineData("latest-group-targets",false)] [InlineData("latest-group-removed",false)]
+    public async Task GroupCompletionRequiresTheSameEditAndEveryTargetsConfirmedSavedResult(string change,bool accepted)
+    {
+        using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();
+        var a=new EndpointReference(demo.DeviceIds[0],"fan1"); var b=new EndpointReference(demo.DeviceIds[1],"fan1"); var id=await Group(client,a,b);
+        var draft=new DeviceCoolingGroupDraft(client.Snapshot!,id); draft.Change(66,false,null); var edit=draft.Capture(); var revision=draft.EditRevision;
+        var result=new DeviceOperationResult("request","test",Outcome.Confirmed,DateTimeOffset.UtcNow,
+            edit.Targets.Select(t=>new DeviceTargetResult(t.Target,t.Generation,t.ExpectedPolicyRevision+1,Outcome.Confirmed,"確認",Persistence:new(DevicePolicySaveState.Saved,"保存済み"))).ToArray(),"確認");
+        var latest=client.Snapshot!;
+        if(change!="snapshot-before-result") latest=latest with { Configuration=latest.Configuration with { Generation="self-apply-saved" },
+            State=latest.State with { Endpoints=latest.State.Endpoints.Select(e=>result.Targets.SingleOrDefault(r=>r.Target==e.Target) is { } r?e with { PolicyRevision=r.PolicyRevision }:e).ToArray() } };
+        latest=change switch {
+            "latest-epoch"=>latest with { State=latest.State with { Inventory=latest.State.Inventory with { Epoch="replacement" } } },
+            "latest-topology"=>latest with { State=latest.State with { Inventory=latest.State.Inventory with { TopologyRevision=latest.State.Inventory.TopologyRevision+1 } } },
+            "latest-generation"=>latest with { State=latest.State with { Inventory=latest.State.Inventory with { Devices=latest.State.Inventory.Devices.Select(d=>d.Device.Id==a.DeviceId?d with { Generation=d.Generation+1 }:d).ToArray() },
+                Endpoints=latest.State.Endpoints.Select(e=>e.Target==a?e with { Generation=e.Generation+1 }:e).ToArray() } },
+            "latest-policy"=>latest with { State=latest.State with { Endpoints=latest.State.Endpoints.Select(e=>e.Target==a?e with { PolicyRevision=e.PolicyRevision+1 }:e).ToArray() } },
+            _=>latest };
+        if(change.StartsWith("latest-group-",StringComparison.Ordinal))
+        {
+            var config=latest.Configuration.Configuration;
+            var groups=change=="latest-group-removed"?config.Cooling.Groups.Where(g=>g.Id!=id).ToArray():
+                config.Cooling.Groups.Select(g=>g.Id!=id?g:change=="latest-group-revision"?g with { Revision=g.Revision+1 }:g with { Targets=[a] }).ToArray();
+            latest=latest with { Configuration=latest.Configuration with { Configuration=config with { Cooling=config.Cooling with { Groups=groups } } } };
+        }
+        draft.Update(latest);
+        var first=result.Targets[0]; var second=result.Targets[1];
+        result=change switch {
+            "partial"=>result with { Outcome=Outcome.Partial },
+            "missing"=>result with { Targets=[first] },
+            "duplicate"=>result with { Targets=[first,first] },
+            "wrong-target"=>result with { Targets=[first,second with { Target=new("other","fan1") }] },
+            "wrong-generation"=>result with { Targets=[first,second with { Generation=second.Generation+1 }] },
+            "target-rejected"=>result with { Targets=[first,second with { Outcome=Outcome.Rejected }] },
+            "save-failed"=>result with { Targets=[first,second with { Persistence=new(DevicePolicySaveState.Failed,"保存失敗") }] },
+            "save-superseded"=>result with { Targets=[first,second with { Persistence=new(DevicePolicySaveState.Superseded,"別の設定") }] },
+            "session-only"=>result with { Targets=[first,second with { Persistence=new(DevicePolicySaveState.SessionOnly,"保存なし") }] },
+            _=>result };
+        if(change=="new-edit") draft.Change(71,false,null);
+        Assert.Equal(accepted,draft.Confirmed(edit,revision,result));
+        Assert.True(draft.Dirty); Assert.Equal(change=="new-edit"?71:66,draft.Duty);
+        Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+    }
+    [Theory][InlineData("mixed")][InlineData("managed")]
+    public async Task ExplicitFixedSelectionCanUnifyMixedOrDeviceManagedMembersAtTheDisplayedValue(string kind)
+    {
+        using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();
+        var a=new EndpointReference(demo.DeviceIds[0],"fan1"); var b=new EndpointReference(demo.DeviceIds[1],"fan1"); var id=await Group(client,a,b);
+        var snapshot=kind=="mixed"?WithOwnedDuties(client.Snapshot!,(a,45),(b,60)):client.Snapshot!;
+        var draft=new DeviceCoolingGroupDraft(snapshot,id); var shown=kind=="mixed"?50:45;
+        Assert.Equal(shown,draft.Duty); Assert.False(draft.Dirty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        draft.Change(shown,false,null);
+        Assert.True(draft.Dirty); Assert.Equal(shown,draft.Capture().Duty);
+        draft.Change(shown+1,false,null); draft.Change(shown,false,null);
+        Assert.True(draft.Dirty); Assert.Equal(shown,draft.Capture().Duty);
+        var cancelled=new DeviceCoolingGroupDraft(snapshot,id); Assert.False(cancelled.Dirty);
+        Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+    }
+    [Theory][InlineData("same")][InlineData("different-id")][InlineData("different-revision")][InlineData("unknown")]
+    public async Task AutomaticBaselineMustMatchTheRunningProfileNotJustAnOlderSavedPolicy(string kind)
+    {
+        using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();
+        var a=new EndpointReference(demo.DeviceIds[0],"fan1"); var b=new EndpointReference(demo.DeviceIds[1],"fan1"); var id=await Group(client,a,b);
+        var snapshot=client.Snapshot!; var config=snapshot.Configuration.Configuration;
+        var profile=config.Cooling.Endpoints.Single(e=>e.Target==a).Profiles.Single();
+        config=config with { Cooling=config.Cooling with { Endpoints=config.Cooling.Endpoints.Select(e=>e.Target==a||e.Target==b?
+            e with { SavedPolicy=new(FanMode.Auto,Profile:profile,SafetySnapshot:e.Safety) }:e).ToArray() } };
+        snapshot=snapshot with { Configuration=snapshot.Configuration with { Configuration=config },
+            State=snapshot.State with { Endpoints=snapshot.State.Endpoints.Select(e=>e.Target==a||e.Target==b?
+                e with { Owned=true,RequestedDuty=null,Cooling=new(FanMode.Auto,45,false,null,false,false,
+                    kind=="unknown"?null:kind=="different-id"?"new-running-profile":profile.Id,
+                    kind=="unknown"?null:kind=="different-revision"?profile.Revision+1:profile.Revision) }:e).ToArray() } };
+        var draft=new DeviceCoolingGroupDraft(snapshot,id); Assert.True(draft.Automatic); Assert.False(draft.Dirty);
+        draft.Change(draft.Duty,true,draft.Profile);
+        Assert.Equal(kind!="same",draft.Dirty); Assert.Equal(kind!="same",draft.ProfileChanged);
+        Assert.False(draft.ModeChanged);
+        if(kind=="same") Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        else Assert.Equal(profile.Id,draft.Capture().Profile!.Id);
+        Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+    }
     [Fact] public async Task GroupsAcrossControllersClampIndependentlyAndPersistTheRequestedPolicy()
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path); await using var client=demo.CreateClient(); await client.ConnectAsync();

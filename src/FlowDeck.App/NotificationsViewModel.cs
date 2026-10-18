@@ -66,7 +66,7 @@ public sealed partial class FlowDeckViewModel
     public double NotificationHysteresisMaximum => NotificationIsFan ? 10000 : 40;
     public string NotificationThresholdLabel => $"{NotificationThreshold:0.#}" + (NotificationIsFan ? " RPM未満" : "°C以上");
     public string NotificationHysteresisLabel => $"{NotificationHysteresis:0.#}" + (NotificationIsFan ? " RPM" : "°C");
-    public string NotificationSummary => !host.NotificationOptions.Enabled ? "通知は無効" : ActiveNotifications.Count == 0 ? "現在の通知なし" : $"通知中 · {ActiveNotifications.Count}件";
+    public string NotificationSummary => !host.NotificationOptions.Enabled ? "無効" : ActiveNotifications.Count == 0 ? "通知なし" : $"通知中 · {ActiveNotifications.Count}件";
     public string NotificationResult => host.NotificationError ?? host.NotificationRuntimeError ?? notificationResult;
     public bool NotificationIdle => !notificationBusy;
     public bool CanSaveNotification => NotificationIdle && host.NotificationError is null;
@@ -120,9 +120,9 @@ public sealed partial class FlowDeckViewModel
             await host.SaveNotificationsAsync(host.NotificationOptions with { Enabled = NotificationsEnabled,Desktop = NotificationsDesktop,Recovery = NotificationsRecovery,
                 ControlFaults = NotificationsFaults,Disconnects = NotificationsDisconnects,OperationFailures = NotificationsOperations,
                 DelaySeconds = NotificationDelay,RecoverySeconds = NotificationRecoveryDelay,RepeatSeconds = NotificationRepeat });
-            notificationResult = "通知設定を保存しました";
+            notificationResult = "保存済み";
         }),_ => CanSaveNotification);
-        ReloadNotifications = Command(_ => Edit(async () => { await host.LoadNotificationsAsync(); LoadNotificationSettings(); notificationResult = "再読み込みしました"; }),_ => NotificationIdle);
+        ReloadNotifications = Command(_ => Edit(async () => { await host.LoadNotificationsAsync(); LoadNotificationSettings(); notificationResult = "再読込済み"; }),_ => NotificationIdle);
         NewNotificationRule = Command(_ =>
         {
             NotificationRule = null; notificationTarget = null; NotificationTarget = NotificationTargets.FirstOrDefault();
@@ -136,14 +136,14 @@ public sealed partial class FlowDeckViewModel
             var rules = (host.NotificationOptions.Rules ?? []).ToList(); var index = rules.FindIndex(r => r.Id == rule.Id);
             if(index < 0) rules.Add(rule); else rules[index] = rule;
             await host.SaveNotificationsAsync(host.NotificationOptions with { Rules = rules.ToArray() });
-            LoadNotificationRules(rule.Id); notificationResult = "通知条件を保存しました";
+            LoadNotificationRules(rule.Id); notificationResult = "条件を保存済み";
         }),_ => CanSaveNotification && NotificationTarget is not null && !string.IsNullOrWhiteSpace(NotificationName));
         DeleteNotificationRule = Command(_ => Edit(async () =>
         {
             await host.SaveNotificationsAsync(host.NotificationOptions with { Rules = (host.NotificationOptions.Rules ?? []).Where(r => r.Id != NotificationRule!.Rule.Id).ToArray() });
-            LoadNotificationRules(); notificationResult = "通知条件を削除しました";
+            LoadNotificationRules(); notificationResult = "条件を削除済み";
         }),_ => CanSaveNotification && NotificationRule is not null);
-        TestNotification = Command(_ => { host.TestNotification(); notificationResult = Demo ? "デモ通知を記録しました" : "Windowsへ通知を要求しました"; RefreshNotifications(); Refresh(); return Task.CompletedTask; },
+        TestNotification = Command(_ => { host.TestNotification(); notificationResult = Demo ? "デモ通知を記録済み" : "Windows通知を要求済み"; RefreshNotifications(); Refresh(); return Task.CompletedTask; },
             _ => NotificationIdle && host.NotificationOptions.Enabled && host.NotificationOptions.Desktop);
     }
     private void EnsureNotificationTarget(NotificationRule rule)
@@ -163,7 +163,7 @@ public sealed partial class FlowDeckViewModel
         NotificationsFaults = s.ControlFaults; NotificationsDisconnects = s.Disconnects; NotificationsOperations = s.OperationFailures;
         NotificationDelay = s.DelaySeconds; NotificationRecoveryDelay = s.RecoverySeconds; NotificationRepeat = s.RepeatSeconds;
         NotificationRepeatChoices.Clear();
-        foreach(var seconds in new[] {0,60,300,900,3600,s.RepeatSeconds}.Distinct().Order()) NotificationRepeatChoices.Add(new(seconds,seconds == 0 ? "繰り返さない" : $"{seconds / 60d:0.#} 分ごと"));
+        foreach(var seconds in new[] {0,60,300,900,3600,s.RepeatSeconds}.Distinct().Order()) NotificationRepeatChoices.Add(new(seconds,seconds == 0 ? "なし" : $"{seconds / 60d:0.#} 分ごと"));
         notificationTargetSignature = ""; NotificationTargets.Clear(); notificationTarget = null; RefreshNotifications();
         LoadNotificationRules(); NotificationTarget = NotificationTargets.FirstOrDefault(); notificationResult = ""; Refresh();
     }

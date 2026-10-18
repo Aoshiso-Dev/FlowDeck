@@ -26,9 +26,8 @@ public static partial class SmokeRunner
             Check(host.CpuFan.State.Target == 42, "Motherboard slider applies only the selected service fan");
             vm.CpuFanRestore.Execute(null); await Until(() => !host.CpuFan.State.Managing && vm.BoardFanCanSelect);
             Check(vm.CpuFanDuty == "65", "Restoring motherboard management updates the slider from reported duty");
-            vm.PreviewOpen = true; vm.VirtualButton.Execute("B"); vm.VirtualButton.Execute("C"); vm.VirtualButton.Execute("B");
+            vm.ManualDuty = 59; vm.ApplyFan.Execute(null);
             await Until(() => remote.Snapshot.ConfirmedDuty == 59);
-            Check(vm.VirtualDisplay.Length > 0, "Virtual M5GO commands use the service coordinator and receive results");
             await host.ServicePowerAsync(false);
             Check(!remote.Connected && !remote.Snapshot.HubReady, "GUI power suspension releases the service owner and invalidates readings");
             await host.ServicePowerAsync(true); await Until(() => remote.Connected && remote.Snapshot.Managing && remote.Snapshot.ConfirmedDuty == 59);

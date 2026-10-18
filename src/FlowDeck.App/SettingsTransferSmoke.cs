@@ -12,7 +12,7 @@ public static partial class SmokeRunner
     {
         var core = host.Coordinator; var snapshot = core.Snapshot; var writes = ((DemoHub)host.Hub).Writes; var rgb = SettingsTransfer.Hash(host.Rgb);
         vm.SelectedPage = 10; window.PageScroll.ScrollToTop(); window.Width = 1200; window.Height = 1000; await Settle();
-        check(window.SettingsTransferPanel.IsVisible && vm.PageTitle == "設定の書き出し・復元", "Settings transfer has a dedicated page under Settings");
+        check(window.SettingsTransferPanel.IsVisible && vm.PageTitle == "書き出し・復元", "Settings transfer has a dedicated page under Settings");
         var export = Path.Combine(output, "export.flowdeck.json"); await vm.ExportSettingsFileAsync(export);
         check(File.Exists(export) && vm.SettingsTransferResult.Contains("書き出し"), "Export captures the complete persisted settings without a hardware operation");
         var archive = SettingsTransfer.Read(await File.ReadAllBytesAsync(export));
@@ -41,7 +41,7 @@ public static partial class SmokeRunner
         check(core.Snapshot.ControlRevision == snapshot.ControlRevision && core.Snapshot.LightingRevision == snapshot.LightingRevision && ((DemoHub)host.Hub).Writes == writes &&
             SettingsTransfer.Hash(host.Rgb) == rgb, "Export, review and queue leave all current fan and RGB outputs unchanged");
         vm.CancelSettingsRestore.Execute(null); await Until(() => vm.SettingsTransferIdle && !vm.SettingsHasPending);
-        check(vm.SettingsTransferResult.Contains("取り消し"), "A queued restore can be cancelled without restarting");
+        check(vm.SettingsTransferResult.Contains("取消済み"), "A queued restore can be cancelled without restarting");
         await File.WriteAllTextAsync(source, "{invalid"); await vm.PreviewSettingsFileAsync(source);
         check(!vm.SettingsHasPreview && !vm.ScheduleSettingsRestore.CanExecute(null), "An invalid input clears the previous preview and cannot be scheduled");
         // Isolated real RuntimeHost lifecycle, using demo adapters only.

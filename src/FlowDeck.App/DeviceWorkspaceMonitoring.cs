@@ -35,7 +35,7 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool MonitoringIdle => !monitoringBusy && !dashboardBusy && !setupBusy && !closing && client.Snapshot is { Connected: true, ExitAttempted: false };
     public bool CanRegisterMonitoring => MonitoringIdle && client.SupportsMonitoringRegistration && MonitoringDraft.CanRegister;
     public string MonitoringStatus => monitoringBusy ? "追加中" : !client.SupportsMonitoringRegistration ? "サービスの更新が必要" :
-        MonitoringDraft.Conflict ? "構成が変わりました。再取得してください" :
+        MonitoringDraft.Conflict ? "構成変更あり · 要再取得" :
         $"登録 {MonitoringDraft.RegisteredCount}/{DeviceDashboard.MaximumSavedItems} · 選択 {MonitoringDraft.SelectedCount}" +
         (MonitoringDraft.RemainingSlots == 0 ? " · 登録上限" : "");
     public ICommand RegisterMonitoring => new AsyncCommand(_ => RegisterMonitoringAsync(), _ => CanRegisterMonitoring, e => Notice = e.Message);
@@ -64,7 +64,8 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         if (!CanRegisterMonitoring) return;
         Render(); var edit = MonitoringDraft.Capture(); monitoringBusy = true; Render();
-        try { var result = await client.RegisterMonitoringAsync(edit); MonitoringDraft.Reset(); Notice = result.Message; }
+        using var status = BeginStatus("監視項目を登録中");
+        try { var result = await client.RegisterMonitoringAsync(edit); MonitoringDraft.Reset(); ReportResult(result.Message, result.Outcome); }
         finally { monitoringBusy = false; Render(); }
     }
     public async Task ReloadMonitoringAsync()

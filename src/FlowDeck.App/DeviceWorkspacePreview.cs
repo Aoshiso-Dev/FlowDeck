@@ -11,10 +11,48 @@ public static class DeviceWorkspacePreview
 {
     public static async Task RunAsync(FlowDeckApplication app, string[] args)
     {
-        var options = DeviceWorkspaceOptions.Parse(args);
+        var statusBar = args.Contains("--status-bar");
+        var connectionStatus = args.Contains("--connection-status");
+        var layoutReview = args.Contains("--layout-review");
+        var coolingLayout = args.Contains("--cooling-layout");
+        var simpleUx = args.Contains("--simple-ux");
+        var dial = args.Contains("--dial-preview");
+        if (dial && (args.Count(a => a == "--dial-preview") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--dial-preview" or "--data-dir"))))
+            throw new ArgumentException("Dial preview requires the isolated built-in DEMO and no other scenario.");
+        if (simpleUx && (args.Count(a => a == "--simple-ux") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--simple-ux" or "--data-dir"))))
+            throw new ArgumentException("Simple-UX smoke requires the isolated built-in DEMO and no other scenario.");
+        if (coolingLayout && (args.Count(a => a == "--cooling-layout") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--cooling-layout" or "--data-dir"))))
+            throw new ArgumentException("Cooling-layout smoke requires the isolated built-in DEMO and no other scenario.");
+        if (layoutReview && (args.Count(a => a == "--layout-review") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--layout-review" or "--data-dir"))))
+            throw new ArgumentException("Layout-review smoke requires the isolated built-in DEMO and no other scenario.");
+        if (connectionStatus && (args.Count(a => a == "--connection-status") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--connection-status" or "--data-dir"))))
+            throw new ArgumentException("Connection-status smoke requires the isolated built-in DEMO and no other scenario.");
+        if (statusBar && (args.Count(a => a == "--status-bar") != 1 || !args.Contains("--demo") ||
+            !args.Contains("--smoke") || !args.Contains("--data-dir") ||
+            args.Where(a => a.StartsWith("--", StringComparison.Ordinal)).Any(a => a is not
+                ("--devices-preview" or "--demo" or "--smoke" or "--status-bar" or "--data-dir"))))
+            throw new ArgumentException("Status-bar smoke requires the isolated built-in DEMO and no other scenario.");
+        var options = DeviceWorkspaceOptions.Parse(args.Where(a => !(statusBar && a == "--status-bar") &&
+            !(connectionStatus && a == "--connection-status") && !(layoutReview && a == "--layout-review") &&
+            !(coolingLayout && a == "--cooling-layout") && !(simpleUx && a == "--simple-ux") && !(dial && a == "--dial-preview")).ToArray());
         var directory = options.Directory; Directory.CreateDirectory(directory);
+        if (connectionStatus) { await SmokeRunner.RunDeviceConnectionStatusHostAsync(app, directory); return; }
         DemoDeviceWorkspace? demo = null; DeviceWorkspaceClient? client = null;
-        DeviceM5Session? m5 = null; DemoM5LinkFactory? m5Factory = null;
         UserPreferenceChangedEventHandler? preferenceChanged = null;
         TextWriterTraceListener? listener = null;
         try
@@ -23,17 +61,16 @@ public static class DeviceWorkspacePreview
             else { demo = await DemoDeviceWorkspace.CreateAsync(Path.Combine(directory, "run-" + Guid.NewGuid().ToString("N")), monitoringOnly: options.MonitoringSetup || options.EndpointSetup || options.CoolingCalibration, providerRouting: options.ProviderRoutes, manySetupCandidates: options.EndpointSetup); client = demo.CreateClient(); }
             if (options.External && options.Smoke)
             { await DeviceWorkspaceInstalled.RunAsync(app, client, directory, startInTray: false, smoke: true); client = null; return; }
-            if (options.M5Connection) { m5Factory = new(); m5 = new(client, m5Factory); }
             var loginRegistration = new DemoLoginStartupRegistration();
             var login = new DeviceLoginStartup(Environment.ProcessPath!, loginRegistration, _ => true);
-            var model = new DeviceWorkspaceViewModel(client, new DeviceUiPreferencesStore(Path.Combine(directory, "ui.json")), m5, login);
+            var model = new DeviceWorkspaceViewModel(client, new DeviceUiPreferencesStore(Path.Combine(directory, "ui.json")), login);
             listener = new TextWriterTraceListener(Path.Combine(directory, "bindings.log"));
             PresentationTraceSources.DataBindingSource.Listeners.Add(listener);
             PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
             await model.InitializeAsync(); ThemeManager.Apply(model.Theme);
             var window = new Window { Title = "FlowDeck · DEMO", Width = 1120, Height = 820, MinWidth = 960, MinHeight = 640,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen, DataContext = model,
-                Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/FlowDeck.ico")),
+                Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/FlowDeck.ico")),
                 Content = new DeviceWorkspaceView() };
             preferenceChanged = (_, _) => app.Dispatcher.BeginInvoke(model.ApplySystemTheme);
             SystemEvents.UserPreferenceChanged += preferenceChanged;
@@ -49,7 +86,12 @@ public static class DeviceWorkspacePreview
             app.MainWindow = window; window.Show();
             if (options.Smoke)
             {
-                var result = options.CacheRetirement ? await SmokeRunner.RunDeviceCacheRetirementAsync(model, demo!, client, window, directory) :
+                var result = dial ? await SmokeRunner.RunDeviceDialAsync(model, demo!, client, window, directory) :
+                    simpleUx ? await SmokeRunner.RunDeviceSimpleUxAsync(model, demo!, client, window, directory) :
+                    coolingLayout ? await SmokeRunner.RunDeviceCoolingLayoutAsync(model, demo!, client, window, directory) :
+                    layoutReview ? await SmokeRunner.RunDeviceLayoutReviewAsync(model, demo!, client, window, directory) :
+                    statusBar ? await SmokeRunner.RunDeviceStatusBarAsync(model, demo!, client, window, directory) :
+                    options.CacheRetirement ? await SmokeRunner.RunDeviceCacheRetirementAsync(model, demo!, client, window, directory) :
                     options.RegistrationRemoval ? await SmokeRunner.RunDeviceRegistrationRemovalAsync(model, demo!, client, window, directory) :
                     options.ProviderRoutes ? await SmokeRunner.RunDeviceProviderRoutesAsync(model, demo!, client, window, directory) :
                     options.LoginStartup ? await SmokeRunner.RunDeviceLoginStartupAsync(model, demo!, client, loginRegistration, window, directory) :
@@ -60,8 +102,6 @@ public static class DeviceWorkspacePreview
                     options.NativeLighting ? await SmokeRunner.RunDeviceNativeLightingAsync(model, demo!, client, window, directory) :
                     options.LightingLevels ? await SmokeRunner.RunDeviceLightingLevelsAsync(model, demo!, client, window, directory) :
                     options.LightingLibrary ? await SmokeRunner.RunDeviceLightingLibraryAsync(model, demo!, client, window, directory) :
-                    options.M5Connection ? await SmokeRunner.RunDeviceM5ConnectionAsync(model, demo!, m5Factory!, window, directory) :
-                    options.M5Settings ? await SmokeRunner.RunDeviceM5SettingsAsync(model, demo!, client, window, directory) :
                     options.Notifications ? await SmokeRunner.RunDeviceNotificationsAsync(model, demo!, window, directory) :
                     options.CoolingCalibration ? await SmokeRunner.RunDeviceCoolingCalibrationAsync(model, demo!, window, directory) :
                     options.CoolingGroups ? await SmokeRunner.RunDeviceCoolingGroupsAsync(model, demo!, window, directory) :
@@ -71,9 +111,8 @@ public static class DeviceWorkspacePreview
                     options.EndpointSetup ? await SmokeRunner.RunDeviceEndpointSetupAsync(model, demo!, window, directory) :
                     options.MonitoringSetup ? await SmokeRunner.RunDeviceMonitoringSetupAsync(model, demo!, window, directory) :
                     demo is null ? await SmokeRunner.RunExternalDeviceWorkspaceAsync(model, client, window, directory) :
-                    await SmokeRunner.RunDeviceWorkspaceAsync(model, demo, window, directory);
+                    await SmokeRunner.RunDeviceWorkspaceAsync(model, demo, client, window, directory);
                 await model.FlushUiAsync();
-                if (m5 is not null) { await m5.DisposeAsync(); m5 = null; }
                 await client.DisposeAsync(); client = null; if (demo is not null) { await demo.DisposeAsync(); demo = null; }
                 window.Close(); app.Shutdown(result); return;
             }
@@ -95,8 +134,7 @@ public static class DeviceWorkspacePreview
         catch (Exception e) { await File.WriteAllTextAsync(Path.Combine(directory, "failure.txt"), e.ToString()); app.Shutdown(1); }
         finally { if (listener is not null) { PresentationTraceSources.DataBindingSource.Listeners.Remove(listener); listener.Dispose(); }
             if (preferenceChanged is not null) SystemEvents.UserPreferenceChanged -= preferenceChanged;
-            try { if (m5 is not null) await m5.DisposeAsync(); }
-            finally { if (client is not null) await client.DisposeAsync(); if (demo is not null) await demo.DisposeAsync(); } }
+            if (client is not null) await client.DisposeAsync(); if (demo is not null) await demo.DisposeAsync(); }
         app.Shutdown();
     }
 }

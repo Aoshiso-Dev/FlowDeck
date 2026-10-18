@@ -66,7 +66,7 @@ internal sealed class HubDeviceDefinitionCatalog
     private static bool Texts(IReadOnlyList<string>? values, int maximum, int length) => values is { Count: > 0 } && values.Count <= maximum &&
         values.All(v => DeviceConfigurationRules.Text(v, length)) && values.Distinct(StringComparer.Ordinal).Count() == values.Count;
     private static bool Valid(HubDriverDefinition? d) => d is not null && DeviceConfigurationRules.Key(d.Id) && d.Revision >= 1 &&
-        d.Driver == DeviceM5Selection.HubProvider && d.DriverRevision == 1 && DeviceConfigurationRules.Text(d.Name, 160) &&
+        d.Driver == HubDeviceDriver.Provider && d.DriverRevision == 1 && DeviceConfigurationRules.Text(d.Name, 160) &&
         d.Transport == new HubTransportDefinition(0x1e71, 0x2022, 1, "3.13.", "1.16.0") &&
         d.Cooling is { ExitAction: CoolingExitAction.FixedDuty } cooling &&
         Exact(cooling.Endpoints, "fan1", "fan2", "fan3", "fan4", "fan5") &&

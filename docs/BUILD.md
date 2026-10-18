@@ -10,7 +10,7 @@
 - `pip`を利用できるPython。Worker用Pythonは次のスクリプトで別途構築します
 - 初回のNuGet・Pythonパッケージ取得用のインターネット接続
 
-アプリは`net10.0-windows`、`win-x64`を対象とします。M5GO・PlatformIO・OpenRGBのビルド環境は、通常のC#ビルドとDEMOには不要です。
+アプリは`net10.0-windows`、`win-x64`を対象とします。Dial・PlatformIO・OpenRGBのビルド環境は、通常のC#ビルドとDEMOには不要です。
 
 ## Pythonの準備
 
@@ -53,21 +53,19 @@ dotnet run --project src/FlowDeck.App/FlowDeck.App.csproj -c Release --no-build 
 
 `build.ps1 -Test`はこの画面試験を自動では実行しません。
 
-## M5GOファームウェア（任意）
+## Dialファームウェア（任意）
 
-M5GOを使わない場合、この手順は不要です。対象機種と操作は[ファームウェアのREADME](../firmware/m5go/README.md)を参照してください。
+GUITIONダイヤル端末の対象基板、依存関係、ビルド・ホスト試験は[ファームウェアのREADME](../firmware/dial/README.md)を参照してください。アプリとサービスのパッケージ作成にファームウェアは必要ありません。
 
 ```powershell
-python -m venv .tools/platformio
-./.tools/platformio/Scripts/python.exe -m pip install platformio==6.1.18
-./scripts/build-firmware.ps1
+./scripts/build-dial-firmware.ps1
 ```
 
-既定では空いている`N:`を一時的に割り当て、日本語パスを扱えないESP32ツールチェーンへ短いパスを渡します。使用中なら`-DriveLetter`に別の未使用ドライブ文字（D〜Z）を指定してください。終了時に割り当てを解除します。`-UploadPort`を指定しない限り、端末への書き込みは行いません。
+このスクリプトはビルドのみを実行し、シリアルポートの接続や端末への書き込みを行いません。
 
 ## 配布物の構築範囲
 
-公開リポジトリには完成したGUI／サービスの配布版、埋め込みPythonの構築済み環境、M5GOの生成済みファームウェア、OpenRGBの完成ランタイム、ローカルの配布素材一式を含めていません。
+公開リポジトリには完成したGUI／サービスの配布版、埋め込みPythonの構築済み環境、Dialの生成済みファームウェア、OpenRGBの完成ランタイム、ローカルの配布素材一式を含めていません。
 
 `scripts/package.ps1`と`scripts/package-service.ps1`は、これらを準備した開発環境で使用するスクリプトです。特に`copy-distribution-materials.ps1`は`third-party/distribution-materials.bundle.json`が指す素材一式と、そのハッシュ・ライセンス・対応ソースの整合性を確認します。必要な素材がないclone直後の状態では、パッケージ作成は完了しません。
 

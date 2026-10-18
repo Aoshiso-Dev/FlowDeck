@@ -1,18 +1,18 @@
 <UserControl x:Class="FlowDeck.App.DeviceDiagnosticsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
- <Expander Header="診断" IsExpanded="{Binding DiagnosticsExpanded}" Margin="0,0,0,22">
-  <Border Style="{StaticResource Card}" Margin="0,12,0,0"><StackPanel>
-   <TextBlock Text="基本情報・機器の対応状況" FontWeight="SemiBold"/>
+ <Expander Header="診断" Style="{StaticResource SettingsSectionExpander}" IsExpanded="{Binding DiagnosticsExpanded}" Margin="0,0,0,22">
+  <StackPanel>
+   <TextBlock Text="基本情報・機器対応" FontWeight="SemiBold"/>
    <WrapPanel Margin="0,14,0,0" IsEnabled="{Binding DiagnosticsIdle}">
     <CheckBox Content="温度・回転数" IsChecked="{Binding DiagnosticMeasurements}" Margin="0,0,22,12"/>
-    <CheckBox Content="操作・復元の履歴" IsChecked="{Binding DiagnosticOperations}" Margin="0,0,22,12"/>
+    <CheckBox Content="操作・復元履歴" IsChecked="{Binding DiagnosticOperations}" Margin="0,0,22,12"/>
     <CheckBox Content="構成・安全設定" IsChecked="{Binding DiagnosticConfiguration}" Margin="0,0,0,12"/>
    </WrapPanel>
    <TextBlock Text="個人情報・認証情報：除外" Style="{StaticResource Muted}"/>
    <TextBlock Text="{Binding DiagnosticsSummary}" TextWrapping="Wrap" Margin="0,14,0,0"/>
    <TextBlock Text="{Binding DiagnosticsVersions}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,0"/>
-   <WrapPanel Margin="0,14,0,0"><Button Content="診断を作成" Command="{Binding CreateDiagnostics}"/><Button Content="書き出す" Command="{Binding SaveDiagnostics}"/>
+   <WrapPanel Margin="0,14,0,0"><Button Content="作成" MinWidth="72" Command="{Binding CreateDiagnostics}"/><Button Content="書き出し" MinWidth="72" Command="{Binding SaveDiagnostics}"/>
     <TextBlock Text="{Binding DiagnosticsStatus}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0" TextWrapping="Wrap"/>
    </WrapPanel>
-  </StackPanel></Border>
+  </StackPanel>
  </Expander>
 </UserControl>

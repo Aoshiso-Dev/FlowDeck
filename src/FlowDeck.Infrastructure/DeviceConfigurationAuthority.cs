@@ -7,7 +7,7 @@ public sealed record ConfigurationApplication(int Version, string RequestId, Con
     string Phase, string? Error = null);
 
 /// <summary>Service-owned configuration transfer and transactional adoption. Only one authenticated owner's bounded upload is retained.</summary>
-public sealed partial class DeviceConfigurationAuthority : IDeviceCoolingGroups, IDeviceCoolingPersistence, IDeviceCoolingCalibrationPersistence, IDeviceLightingLibrary, IDeviceLightingPersistence, IDeviceLightingAdjustments, IDeviceNotificationConfiguration, IDeviceM5ConfigurationHandler, IDeviceOpenRgbInspectionHandler, IDeviceProviderRoutingHandler, IDeviceNamingConfigurationHandler, IDeviceOpenRgbRuntimeInspectionHandler, IDeviceChunkedConfigurationSnapshotHandler, IDeviceCacheRetirementHandler
+public sealed partial class DeviceConfigurationAuthority : IDeviceCoolingGroups, IDeviceCoolingPersistence, IDeviceCoolingCalibrationPersistence, IDeviceLightingLibrary, IDeviceLightingPersistence, IDeviceLightingAdjustments, IDeviceNotificationConfiguration, IDeviceDialDisplayConfigurationHandler, IDeviceOpenRgbInspectionHandler, IDeviceProviderRoutingHandler, IDeviceNamingConfigurationHandler, IDeviceOpenRgbRuntimeInspectionHandler, IDeviceChunkedConfigurationSnapshotHandler, IDeviceCacheRetirementHandler
 {
     private sealed class Upload(string expected, byte[] bytes, string digest)
     {
@@ -77,7 +77,7 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceCoolingGroups,
         {
             if (store.ReadActivePointer() != generation) throw new IOException("サービス外で設定世代が変更されました。再起動して確認してください");
         }
-        catch { Interlocked.Increment(ref connectionPreparationRevision); throw; }
+        catch { currentConfigurationInvalid = true; Interlocked.Increment(ref connectionPreparationRevision); throw; }
     }
     private Upload CurrentUpload(string? id) => upload is { } value && value.Id == id ? value : throw new IOException("この接続の設定転送がありません");
     public async Task<DeviceConfigurationReply> ExecuteAsync(DeviceConfigurationRequest request, string requestId, string owner,
@@ -121,10 +121,10 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceCoolingGroups,
                         return Reply("検出履歴を整理しました。保存した名前・設定は保持されています") with { CacheRetirement = retirement };
                     }
                     finally { await access.WaitAsync().ConfigureAwait(false); applyingConfiguration = false; }
+                case DeviceConfigurationOperation.SaveDialDisplay:
+                    return SaveDialDisplay(request, runtime);
                 case DeviceConfigurationOperation.SaveDeviceName:
                     return SaveDeviceName(request);
-                case DeviceConfigurationOperation.SaveM5:
-                    return SaveM5(request, runtime);
                 case DeviceConfigurationOperation.SaveNotifications:
                     if (request.ExpectedGeneration != generation.Id) throw new IOException("編集元の通知設定が変更されました。現在の設定を読み込んでください");
                     if (Same(configuration.Preferences.Notifications, request.Notifications)) return Reply("通知設定に変更はありません", changed: []);
@@ -258,6 +258,17 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceCoolingGroups,
                 // Configure may require live definitions or telemetry. Still revoke cached permission on an absent device;
                 // reconnecting it must not resurrect settings removed while it was disconnected.
                 (driver as IDeviceConfigurationRevocation)?.RevokeConfiguration();
+                continue;
+            }
+            if (driver is IDeviceCurrentConnectionControlDriver current && candidate is not null)
+            {
+                current.ConfigureCurrentConnection(candidate, bound,
+                    value.Cooling.Endpoints.Where(c => c.Target.DeviceId == driver.DeviceId).Select(c =>
+                        c with { SavedPolicy = matches ? c.SavedPolicy : null,
+                            ResumeOnStart = matches && c.ResumeOnStart && value.Preferences.Startup.ResumeControl }).ToArray(),
+                    (value.Lighting.Endpoints ?? []).Where(e => e.Target.DeviceId == driver.DeviceId).ToArray(),
+                    value.Devices.Devices.SingleOrDefault(d => d.Id == driver.DeviceId)?.Endpoints ?? []);
+                if (matches) active.Add(bound!);
                 continue;
             }
             if (driver is IConfiguredCoolingDriver cooling)

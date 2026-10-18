@@ -43,8 +43,10 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceIndividualCool
             if (!lighting && reference == target) continue;
             var before = old.Cooling.Endpoints.SingleOrDefault(e => e.Target == reference);
             var after = next.Cooling.Endpoints.SingleOrDefault(e => e.Target == reference);
-            Require(Same(before, after) || rebound.Contains(reference.DeviceId) && before is not null &&
-                Same(before with { WiringConfirmed = false, SavedPolicy = null, ResumeOnStart = false }, after));
+            Require(before is not null && (rebound.Contains(reference.DeviceId) || before.SavedPolicy is { } saved &&
+                DeviceCoolingPolicy.Required(saved, before.Safety).Any(s => rebound.Contains(s.DeviceId))) ?
+                Same(before with { ResumeOnStart = false }, after) ||
+                Same(before with { WiringConfirmed = false, SavedPolicy = null, ResumeOnStart = false }, after) : Same(before, after));
         }
         foreach (var reference in (old.Lighting.Endpoints ?? []).Concat(next.Lighting.Endpoints ?? []).Select(e => e.Target).Distinct())
         {
@@ -53,6 +55,10 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceIndividualCool
             var after = next.Lighting.Endpoints?.SingleOrDefault(e => e.Target == reference);
             Require(Same(before, after) || rebound.Contains(reference.DeviceId) && before is not null && Same(before with { WiringConfirmed = false }, after));
         }
+        foreach (var endpoint in next.Cooling.Endpoints)
+            if (rebound.Contains(endpoint.Target.DeviceId) || endpoint.SavedPolicy is { } saved &&
+                DeviceCoolingPolicy.Required(saved, endpoint.Safety).Any(s => rebound.Contains(s.DeviceId)))
+                Require(!endpoint.ResumeOnStart);
         return scope;
     }
 
@@ -62,6 +68,14 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceIndividualCool
         var active = ConfigureDrivers(value, installation, drivers, continuing);
         if (!scope.ReboundDevices.Contains(scope.Target.DeviceId) && drivers.SingleOrDefault(d => d.DeviceId == scope.Target.DeviceId) is { } driver)
         {
+            if (driver.Observe() is null && driver is IDeviceCurrentConnectionControlDriver && driver is IDeviceConfigurationRevocation absent)
+            {
+                // A disconnected current-connection driver has no endpoint authority to update.
+                // Revoke only cached settings; pending recovery records remain intact. Its next
+                // connection preparation will read the newly saved settings without emitting output.
+                absent.RevokeConfiguration();
+                return active;
+            }
             if (scope.IsLighting)
             {
                 if (driver is not IIndividualLightingConfiguration light) throw new IOException("照明端子単位の設定に対応していません");

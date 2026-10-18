@@ -29,14 +29,14 @@ public class SettingsTransferTests
     [Fact] public void AllConfigurationSectionsRoundTripWithoutSecretsRuntimeAcknowledgementsOrExecutablePaths()
     {
         var folder = Folder(); var content = Content(); var settings = DemoHub.CreateSettings() with
-        { PythonPath = @"C:\private\python.exe", M5 = new("COM14", "private-device", "B", "auto", "192.168.1.19", "private-interface"), Startup = new(true, true), LastConfirmedPolicy = new(FanMode.Manual, 50), Ui = new("light", 40, 60) };
+        { PythonPath = @"C:\private\python.exe", Startup = new(true, true), LastConfirmedPolicy = new(FanMode.Manual, 50), Ui = new("light", 40, 60) };
         Save(folder, content, settings);
-        File.WriteAllText(Path.Combine(folder, "m5-wifi.protected"), "DO-NOT-READ-SECRET");
+        File.WriteAllText(Path.Combine(folder, "private.protected"), "DO-NOT-READ-SECRET");
         // Keep the protected file exclusively locked: export must not even open it.
-        using var secret = File.Open(Path.Combine(folder, "m5-wifi.protected"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        using var secret = File.Open(Path.Combine(folder, "private.protected"), FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         var destination = Path.Combine(Folder(), "settings.flowdeck.json"); var archive = new SettingsTransferStore(folder).Export(destination);
         var json = File.ReadAllText(destination);
-        foreach (var forbidden in new[] { "DO-NOT-READ-SECRET", "private", "COM14", "192.168.1.19" }) Assert.DoesNotContain(forbidden, json);
+        foreach (var forbidden in new[] { "DO-NOT-READ-SECRET", "private" }) Assert.DoesNotContain(forbidden, json);
         Assert.False(archive.Content.Settings.Hardware.WiringConfirmed); Assert.Null(archive.Content.Settings.LastConfirmedPolicy); Assert.Null(archive.Content.Settings.PythonPath);
         Assert.Equal(SettingsTransfer.Canonical(archive), SettingsTransfer.Canonical(SettingsTransfer.Read(File.ReadAllBytes(destination))));
         Assert.Single(archive.Content.Scenes.Scenes!); Assert.Single(archive.Content.Groups.Groups!); Assert.Equal(2, archive.Content.Adjustments.Count);
@@ -73,7 +73,7 @@ public class SettingsTransferTests
     {
         var c = Content();
         foreach (var s in new[] { c.Settings with { PythonPath = "evil.exe" }, c.Settings with { Startup = new(true, true) },
-            c.Settings with { M5 = new(Port: "COM2") }, c.Settings with { LastConfirmedPolicy = new(FanMode.Manual, 90) },
+            c.Settings with { LastConfirmedPolicy = new(FanMode.Manual, 90) },
             c.Settings with { Limits = c.Settings.Limits with { Minimum = 0 } }, c.Settings with { Ui = new("unsupported") },
             c.Settings with { Hardware = c.Settings.Hardware with { Fans = ["fan1", "fan1"] } },
             c.Settings with { Profiles = [c.Settings.Profiles[0] with { Cpu = new("cpu", [new(40, 90), new(30, 80)], 90, 75) }, c.Settings.Profiles[1], c.Settings.Profiles[2]] } })
@@ -119,14 +119,14 @@ public class SettingsTransferTests
     }
     [Fact] public async Task StartupRestoresSettingsAsDraftsPreservesLocalEnvironmentAndCreatesUsableBackup()
     {
-        var folder = Folder(); var c = Content(); Save(folder, c, new AppSettings { PythonPath = "local-python.exe", M5 = new("COM14", "local-id", "A", "auto", "192.168.1.19"), Startup = new(true, true), Ui = new(Left: 44, Top: 66) });
+        var folder = Folder(); var c = Content(); Save(folder, c, new AppSettings { PythonPath = "local-python.exe", Startup = new(true, true), Ui = new(Left: 44, Top: 66) });
         var store = new SettingsTransferStore(folder); store.Schedule(store.Preview(Changed(c))); var result = store.ApplyAtStartup();
         Assert.True(result.Restored); Assert.False(store.HasPending); Assert.True(File.Exists(result.BackupPath));
         Assert.Equal("#12ABFF", SettingsTransfer.Read(File.ReadAllBytes(result.BackupPath!)).Content.Palette.Favorites.Single());
         var current = await new JsonSettingsStore(folder).LoadAsync();
         Assert.Equal("dark", current.Ui.Theme); Assert.Equal(21, current.Limits.Minimum); Assert.False(current.Hardware.WiringConfirmed);
         Assert.False(current.CpuFan.WiringConfirmed); Assert.All(current.BoardFans.Values, f => Assert.False(f.WiringConfirmed)); Assert.Null(current.LastConfirmedPolicy);
-        Assert.True(current.Startup.Login); Assert.False(current.Startup.ResumeControl); Assert.Equal("COM14", current.M5.Port); Assert.Equal("local-python.exe", current.PythonPath);
+        Assert.True(current.Startup.Login); Assert.False(current.Startup.ResumeControl); Assert.Equal("local-python.exe", current.PythonPath);
         Assert.Equal(44, current.Ui.Left); Assert.Equal(66, current.Ui.Top);
         Assert.False((await new LightingAdjustmentStore(folder, GroupId).LoadAsync()).Applied); Assert.False(store.ApplyAtStartup().Attempted);
     }
@@ -159,7 +159,7 @@ public class SettingsTransferTests
         File.WriteAllText(journalPath, JsonSerializer.Serialize(journal, Contract.Json)); var partiallyWritten = Files(folder);
         Assert.Throws<IOException>(() => new SettingsTransferStore(folder).ApplyAtStartup()); Same(partiallyWritten, Files(folder));
         Assert.False(File.Exists(Path.Combine(folder, "..", "outside.json")));
-        foreach (var file in new[] { "../settings.json", "m5-wifi.protected", "lighting-adjustment-../.json", "settings.json:stream" }) Assert.False(SettingsTransferStore.Allowed(file));
+        foreach (var file in new[] { "../settings.json", "private.protected", "lighting-adjustment-../.json", "settings.json:stream" }) Assert.False(SettingsTransferStore.Allowed(file));
     }
     [Fact] public void CorruptCurrentFilesAreNotSilentlyReplacedWithDefaultsDuringExportOrRestore()
     {

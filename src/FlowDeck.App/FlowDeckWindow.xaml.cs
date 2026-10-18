@@ -10,16 +10,12 @@ namespace FlowDeck.App;
 public partial class FlowDeckWindow : Window
 {
     private readonly FlowDeckApplication app;
-    private bool longPress;
-    private readonly DispatcherTimer holdTimer;
     public FlowDeckWindow(FlowDeckApplication app, FlowDeckViewModel model)
     {
         this.app = app; InitializeComponent(); DataContext = model;
         CpuFanCard.DataContext = model;
         BoardFanList.ItemContainerGenerator.StatusChanged += (_, _) => QueueBoardEditor();
         BoardFanList.Loaded += (_, _) => QueueBoardEditor();
-        holdTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
-        holdTimer.Tick += (_, _) => { holdTimer.Stop(); longPress = true; model.VirtualButton.Execute("long"); };
         Closing += OnClosing;
         model.PropertyChanged += (_, e) =>
         {
@@ -79,16 +75,5 @@ public partial class FlowDeckWindow : Window
     {
         if (app.Exiting) return;
         e.Cancel = true; app.HideToTray();
-    }
-    private void BDown(object sender, MouseButtonEventArgs e) { longPress = false; holdTimer.Start(); }
-    private async void PairWifiClick(object sender, RoutedEventArgs e)
-    {
-        var password = WifiPassword.Password; WifiPassword.Clear();
-        await ((FlowDeckViewModel)DataContext).PairWifiAsync(password);
-    }
-    private void BUp(object sender, MouseButtonEventArgs e) => holdTimer.Stop();
-    private void BClick(object sender, RoutedEventArgs e)
-    {
-        holdTimer.Stop(); if (!longPress) ((FlowDeckViewModel)DataContext).VirtualButton.Execute("B"); longPress = false;
     }
 }

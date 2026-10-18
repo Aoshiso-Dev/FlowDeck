@@ -108,6 +108,9 @@ public sealed partial class OpenRgbDeviceDriverTests
         var stream = Assert.IsAssignableFrom<ISelectiveDeviceLightingStream>(await r.Driver().OpenLightingStreamAsync([r.Zone(0), r.Zone(1)], Animation, default));
         await stream.WriteAsync(Frame(1, new(0, 0, 255)), default); r.Server.IgnoreWriteNumber = r.Server.WriteCount + 1;
         var first = await stream.EndSelectedAsync([r.Zone(0)], default); Assert.Equal(Outcome.Unknown, Assert.Single(first).Result.Outcome);
+        Assert.Equal(DeviceAvailability.Failed, r.Driver().Observe()!.Endpoints.Single(e => e.Id == r.Zone(1))
+            .Capabilities.Single(c => c.Feature == DeviceFeature.FixedColor).Availability);
+        Assert.True(r.Driver().AllowsCurrentConnectionControl(r.Zone(0), DeviceFeature.RestoreLighting));
         var intent = new OpenRgbLightingRecovery(r.Directory, r.Driver().DeviceId, null).Pending!;
         Assert.Equal(new RgbColor(100, 50, 20), intent.Exit.Colors[0]);
         r.Server.IgnoreWriteNumber = 0; Assert.Equal(Outcome.WrittenUnverified, Assert.Single(await stream.EndSelectedAsync([r.Zone(0)], default)).Result.Outcome);

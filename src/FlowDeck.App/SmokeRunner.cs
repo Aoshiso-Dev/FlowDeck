@@ -111,14 +111,9 @@ public static partial class SmokeRunner
             vm.ApplyFan.Execute(null);
             await Until(() => host.Coordinator.Snapshot.Mode == FanMode.Manual && !host.Coordinator.Snapshot.FanBusy);
             Check(host.Coordinator.Snapshot.ConfirmedDuty == 54, "All five reported duties confirmed at 54%");
-            await Settle(); vm.PreviewOpen = true;
-            vm.VirtualButton.Execute("B"); vm.VirtualButton.Execute("C"); vm.VirtualButton.Execute("long");
-            Check(host.Coordinator.Snapshot.ConfirmedDuty == 54, "Virtual B long press discards edit");
-            vm.VirtualButton.Execute("B"); vm.VirtualButton.Execute("C"); vm.VirtualButton.Execute("B");
+            await Settle(); vm.ManualDuty = 59; vm.ApplyFan.Execute(null);
             await Until(() => host.Coordinator.Snapshot.ConfirmedDuty == 59);
             await Settle();
-            Check(vm.M5Sync.Contains("同期済み"), "M5 synchronization waits for stateApplied");
-            vm.SelectedPage = 3; await Settle(); Capture(window, output, "m5go-preview"); vm.PreviewOpen = false;
             vm.SelectLight.Execute("purple"); vm.ApplyLight.Execute(null);
             await Until(() => host.Coordinator.Snapshot.Lighting.Outcome == Outcome.WrittenUnverified);
             Check(host.Coordinator.Snapshot.ConfirmedDuty == 59, "Lighting is writtenUnverified and leaves fan policy unchanged");
@@ -231,11 +226,11 @@ public static partial class SmokeRunner
             Check(((FlowDeck.Infrastructure.DemoHub)host.Hub).LightEffects["led1"].Colors[0] == new RgbColor(52,137,255),
                 "Stopping synchronization settles NZXT at the same solid color");
             vm.HubLightMode = "color-cycle"; vm.ApplyHubLight.Execute(null); await Until(() => host.LightingSynchronized && host.LightingFrames >= 2);
-            var m5Override = await host.Coordinator.RequestAsync(new("sync-m5-override", "M5GO", host.Coordinator.Epoch,
+            var pcOverride = await host.Coordinator.RequestAsync(new("sync-pc-override", "PC", host.Coordinator.Epoch,
                 host.Coordinator.Snapshot.LightingRevision, "SetLighting", Lighting: "white"));
             await Until(() => !host.LightingSynchronized); await Settle();
-            Check(m5Override.Outcome == Outcome.WrittenUnverified && host.Coordinator.Snapshot.Lighting.LastSent == "white",
-                "M5 lighting changes stop synchronization and are not overwritten by old frames");
+            Check(pcOverride.Outcome == Outcome.WrittenUnverified && host.Coordinator.Snapshot.Lighting.LastSent == "white",
+                "PC lighting changes stop synchronization and are not overwritten by old frames");
             await host.StopLightingSyncAsync();
             vm.RevertHubLight.Execute(null); vm.HubLightMode = "super-rainbow"; vm.HubLightReverse = true;
             vm.ApplyHubLight.Execute(null); await Until(() => host.Coordinator.Snapshot.Lighting.Effect?.Mode == "super-rainbow");
@@ -277,7 +272,7 @@ public static partial class SmokeRunner
             void OverrideScene(OperationResult r)
             {
                 if (r.Source == "照明シーン" && r.Outcome == Outcome.WrittenUnverified && competing is null)
-                    competing = host.Coordinator.RequestAsync(new("scene-m5-override", "M5GO", host.Coordinator.Epoch,
+                    competing = host.Coordinator.RequestAsync(new("scene-pc-override", "PC", host.Coordinator.Epoch,
                         host.Coordinator.Snapshot.LightingRevision, "SetLighting", Lighting: "white"));
             }
             host.Coordinator.OperationCompleted += OverrideScene;
@@ -285,7 +280,7 @@ public static partial class SmokeRunner
             try { interrupted = await host.ApplyLightingSceneAsync(deskScene); if (competing is not null) await competing; }
             finally { host.Coordinator.OperationCompleted -= OverrideScene; }
             Check(!interrupted.Succeeded && interrupted.Rows.Any(r => r.Result == "未完了") && host.Coordinator.Snapshot.Lighting.LastSent == "white" && ReferenceEquals(host.Rgb, stableBoard),
-                "A newer M5 operation interrupts scene recall and leaves pending motherboard targets untouched");
+                "A newer PC operation interrupts scene recall and leaves pending motherboard targets untouched");
             await Until(() => vm.CanApplyHubLight);
             vm.RevertHubLight.Execute(null); vm.HubLightSync = true; vm.HubLightMode = "breathing"; vm.HubLightSpeed = 3;
             vm.SelectHubLightColor.Execute("blue"); vm.ApplyHubLight.Execute(null); await Until(() => host.LightingSynchronized && vm.HubLightIdle);
@@ -370,18 +365,14 @@ public static partial class SmokeRunner
                 "Master brightness slider remains usable at minimum window width");
             Capture(window, output, "lighting-brightness-minimum");
             await RunLightingGroupChecksAsync(host, vm, window, output, Check);
-            await RunM5LightingChecksAsync(host, vm, window, output, Check);
             await RunLightingIdentificationChecksAsync(host, vm, window, output, Check);
             window.Width = 1200; window.Height = 820; window.HubColorPicker.DetailsExpander.IsExpanded = false; ThemeManager.Apply("light");
             vm.SelectedPage = 5; await Settle();
             Check(vm.BoardSensors.Any(r => r.Kind == "回転数") && vm.BoardSensors.Any(r => r.Kind == "電圧"), "Motherboard page lists RPM and voltage independently of CPU/GPU");
             var boardRevision = host.Coordinator.Snapshot.ControlRevision;
-            vm.BoardSensors[0].DisplayName = "テスト温度"; vm.BoardSensors[0].ShowOnM5 = true;
+            vm.BoardSensors[0].DisplayName = "テスト温度";
             vm.SaveMotherboard.Execute(null);
             await Until(() => host.Coordinator.Settings.Motherboard.Sensors?.Any(s => s.DisplayName == "テスト温度") == true);
-            vm.VirtualButton.Execute("long"); await Settle();
-            Check(vm.VirtualDisplay.Contains("テスト温度"), "M5 motherboard page shows selected sensor");
-            vm.VirtualButton.Execute("B");
             Check(host.Coordinator.Snapshot.ControlRevision == boardRevision, "Motherboard display and navigation do not change fan control");
             vm.RefreshRgb.Execute(null); await Settle();
             Check(vm.RgbZones.Count == 4, "RGB inventory displays demo zones without hardware writes");
@@ -489,10 +480,9 @@ public static partial class SmokeRunner
             ThemeManager.Apply("dark"); await Settle(); Capture(window, output, "motherboard-controls-dark"); ThemeManager.Apply("light"); await Settle();
             await RunCurveEditorChecksAsync(host, vm, window, output, Check);
             vm.SelectedPage = 3; await Settle();
-            var originalSsid = vm.WifiSsid; var originalPython = vm.PythonPath;
-            await CheckDraftInputAsync(window.WifiSsidBox, vm, "検証ネットワーク", () => vm.WifiSsid, Check);
+            var originalPython = vm.PythonPath;
             await CheckDraftInputAsync(window.PythonPathBox, vm, @"C:\検証用\python.exe", () => vm.PythonPath, Check);
-            vm.WifiSsid = originalSsid; vm.PythonPath = originalPython; vm.Refresh();
+            vm.PythonPath = originalPython; vm.Refresh();
             await RunNotificationChecksAsync(app, host, vm, window, output, Check);
             await RunSettingsTransferChecksAsync(host, vm, window, output, Check);
             window.BoardFanSetupExpander.IsExpanded = true; await Settle(); window.BoardFanSetupExpander.BringIntoView(); await Settle();
@@ -513,7 +503,6 @@ public static partial class SmokeRunner
                     var offset = window.PageScroll.VerticalOffset;
                     ScrollBar.PageDownCommand.Execute(null, scroll); await Settle();
                     Check(window.PageScroll.VerticalOffset > offset, "Custom scrollbar page command scrolls the settings form");
-                    window.M5ConnectionCard.BringIntoView(new Rect(0, 0, window.M5ConnectionCard.ActualWidth, 470)); await Settle(); Capture(window, output, "wifi-settings-light");
                 }
                 window.PageScroll.ScrollToBottom(); await Settle(); Capture(window, output, $"page-{page}-bottom-light");
                 window.PageScroll.ScrollToTop();

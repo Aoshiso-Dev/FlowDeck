@@ -16,9 +16,9 @@ public sealed class JsonSettingsStore(string directory) : ISettingsStore
         {
             var settings = JsonSerializer.Deserialize<AppSettings>(await File.ReadAllTextAsync(path), Contract.Json);
             if (settings is null || settings.SchemaVersion != 1 || settings.Profiles is null || settings.Hardware is null ||
-                settings.Limits is null || settings.Ui is null || settings.M5 is null || settings.Startup is null || MotherboardFans.ValidateSettings(settings.BoardFans) is not null ||
+                settings.Limits is null || settings.Ui is null || settings.Startup is null || MotherboardFans.ValidateSettings(settings.BoardFans) is not null ||
                 settings.LightingPorts is null || settings.LightingPorts.Count > 5 || settings.LightingPorts.Any(p => p.Key is not ("led1" or "led2" or "led3" or "led4" or "led5") || p.Value is null || string.IsNullOrWhiteSpace(p.Value.HubId) || p.Value.Outcome == Outcome.WrittenUnverified && !HubLighting.Valid(p.Value.Effect)) ||
-                settings.Lighting is null || settings.Lighting.Effect is not null && !HubLighting.Valid(settings.Lighting.Effect) || MotherboardDisplay.Validate(settings.Motherboard) is not null || DashboardDisplay.Validate(settings.Dashboard) is not null || CpuFanController.Validate(settings.CpuFan) is not null || CpuFanController.Validate(settings.ChassisFan, "CHA_FAN1") is not null || settings.M5.Transport is not ("usb" or "wifi" or "auto") || settings.M5.WifiPort != 47631 ||
+                settings.Lighting is null || settings.Lighting.Effect is not null && !HubLighting.Valid(settings.Lighting.Effect) || MotherboardDisplay.Validate(settings.Motherboard) is not null || DashboardDisplay.Validate(settings.Dashboard) is not null || CpuFanController.Validate(settings.CpuFan) is not null || CpuFanController.Validate(settings.ChassisFan, "CHA_FAN1") is not null ||
                 settings.Profiles.Select(p => p.Id).Distinct().Count() != 3 ||
                 !new[] { "quiet", "balanced", "cool" }.All(id => settings.Profiles.Any(p => p.Id == id)))
                 throw new JsonException("未対応または不正な設定形式");

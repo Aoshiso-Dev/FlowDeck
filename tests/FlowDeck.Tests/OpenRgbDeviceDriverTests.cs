@@ -69,7 +69,7 @@ public sealed partial class OpenRgbDeviceDriverTests
                 var package = new DeviceConfigurationPackage(new(2, devices.Select(d => new RegisteredDevice(d.Id, d.Name, d.Provider, d.Kind,
                     d.Endpoints.Select(e => new RegisteredEndpoint(e.Id, e.Name, e.Kind)).ToArray())).ToArray()),
                     new(2, Installation, Provider.CachedDrivers.Cast<IPhysicalDeviceDriver>().Select(d => d.BindingCandidate!).ToArray()),
-                    new(2, [], []), new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(), new(Rules: []), new([], [])),
+                    new(2, [], []), new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(Rules: []), new([], [])),
                     new(2, "native-v2", new('a', 64), [], []));
                 var store = DeviceConfigurationCodec.Store(configurationDirectory.Path); store.Activate(store.Stage(DeviceConfigurationCodec.Write(package)));
                 Authority = new(store, Installation, store.ReadActive()!); Runtime.InstallConfigurationHandler(Authority);

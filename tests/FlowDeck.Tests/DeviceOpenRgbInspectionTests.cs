@@ -8,7 +8,7 @@ namespace FlowDeck.Tests;
 public sealed class DeviceOpenRgbInspectionTests
 {
     [Theory]
-    [InlineData("--notifications")] [InlineData("--lighting-identification")] [InlineData("--m5-connection")]
+    [InlineData("--notifications")] [InlineData("--lighting-identification")]
     public void InspectionSmokeRequiresTheIsolatedDemoAndCannotMixScenarios(string other)
     {
         string[] args = ["--devices-preview", "--demo", "--smoke", "--openrgb-inspection", "--data-dir", Path.GetTempPath()];

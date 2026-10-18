@@ -77,7 +77,7 @@ public sealed class LightingAnimator : IAsyncDisposable
         catch (Exception e) { Error = e.Message; started.TrySetException(e); }
         finally
         {
-            // A deliberate stop settles at the selected solid color. Never overwrite a newer Hub/M5 request.
+            // A deliberate stop settles at the selected solid color. Never overwrite a newer Hub request.
             if (stop.IsCancellationRequested && Error is null && target.IsCurrent)
             {
                 try

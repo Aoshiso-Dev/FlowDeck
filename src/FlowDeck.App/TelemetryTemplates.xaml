@@ -10,7 +10,7 @@
     <Grid Width="114" Height="108" HorizontalAlignment="Center" Margin="0,7,0,0" ToolTip="{Binding ScaleDescription}">
      <local:TelemetryMeter Circular="True" Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Visibility="{Binding Circular,Converter={StaticResource TelemetryVisibility}}"/>
      <local:TelemetryMeter Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Height="9" VerticalAlignment="Bottom" Margin="0,0,0,10" Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"/>
-     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,4,0,0"><TextBlock Text="{Binding DisplayValue}" FontSize="27" FontWeight="Light" HorizontalAlignment="Center"/><TextBlock Text="°C" Style="{DynamicResource Muted}" FontSize="11" HorizontalAlignment="Center"/></StackPanel>
+     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,4,0,0"><TextBlock Text="{Binding DisplayValue}" FontSize="27" FontWeight="Normal" HorizontalAlignment="Center"/><TextBlock Text="°C" Style="{DynamicResource Muted}" FontSize="11" HorizontalAlignment="Center"/></StackPanel>
     </Grid>
     <TextBlock Text="{Binding Connection}" Foreground="{DynamicResource MutedBrush}" FontSize="10" HorizontalAlignment="Center" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" MaxWidth="175" ToolTip="{Binding Connection}"/>
     <TextBlock Text="{Binding State}" FontSize="10" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Value}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
@@ -21,10 +21,10 @@
   <StackPanel ToolTip="{Binding ScaleDescription}">
    <Grid Width="92" Height="86" HorizontalAlignment="Right" Visibility="{Binding Circular,Converter={StaticResource TelemetryVisibility}}">
     <local:TelemetryMeter Circular="True" Value="{Binding Value}" Maximum="{Binding ScaleMaximum}"/>
-    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Light" HorizontalAlignment="Center"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" HorizontalAlignment="Center"/></StackPanel>
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Normal" HorizontalAlignment="Center"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" HorizontalAlignment="Center"/></StackPanel>
    </Grid>
    <StackPanel Visibility="{Binding Inline,Converter={StaticResource TelemetryVisibility}}">
-   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Light"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="5,0,0,3" VerticalAlignment="Bottom"/></StackPanel>
+   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><TextBlock Text="{Binding DisplayValue}" FontSize="17" FontWeight="Normal"/><TextBlock Text="RPM" Foreground="{DynamicResource MutedBrush}" FontSize="10" Margin="5,0,0,3" VerticalAlignment="Bottom"/></StackPanel>
    <local:TelemetryMeter Value="{Binding Value}" Maximum="{Binding ScaleMaximum}" Height="9" Margin="0,3,0,0" Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"/>
    <DockPanel Visibility="{Binding Bar,Converter={StaticResource TelemetryVisibility}}"><TextBlock Text="0" Foreground="{DynamicResource MutedBrush}" FontSize="9"/><TextBlock Text="{Binding ScaleMaximum,StringFormat={}{0:N0}}" Foreground="{DynamicResource MutedBrush}" FontSize="9" HorizontalAlignment="Right"/></DockPanel>
    </StackPanel>

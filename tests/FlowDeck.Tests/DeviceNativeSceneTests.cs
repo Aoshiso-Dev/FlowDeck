@@ -10,7 +10,7 @@ public class DeviceNativeSceneTests
     private static DeviceWorkspaceSnapshot Snapshot(bool sameProvider = false)
     {
         var config = new DeviceConfigurationPackage(new(2, new[] { A, B }.Select(t => new RegisteredDevice(t.DeviceId, "照明", "demo", DeviceKind.Controller, [new(t.EndpointId, "RGB", EndpointKind.Lighting)])).ToArray()),
-            new(2, new('a', 32), []), new(2, [], []), new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
+            new(2, new('a', 32), []), new(2, [], []), new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
         var devices = new[] { A, B }.Select(t => new DeviceInstance(new(t.DeviceId, "demo", "照明", DeviceKind.Controller, IdentityConfidence.SerialBound, t.DeviceId, null, [t.DeviceId],
             [new(t.EndpointId, "RGB", EndpointKind.Lighting, new[] { DeviceFeature.FixedColor, DeviceFeature.NativeEffect, DeviceFeature.ColorFrames }.Select(f => new DeviceCapability(f,
                 ImplementationSupport.Supported, VerificationEvidence.Automated, DeviceAvailability.Ready)).ToArray(), NativeLightingEffects: t == A || sameProvider ? BuiltInLightingEffects.Hub() : BuiltInLightingEffects.Memory())]), 1, true)).ToArray();

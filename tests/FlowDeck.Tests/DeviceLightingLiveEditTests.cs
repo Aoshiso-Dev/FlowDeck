@@ -82,7 +82,9 @@ public sealed partial class DeviceLightingCompositionTests
         var reply = await r.Runtime.ExecuteAsync(r.Request(DeviceOperation.SetLighting, "led1") with { Lighting = new("fixed", [Red]) });
         Assert.Equal(Outcome.Unknown, reply.Result!.Outcome);
         Assert.True(DeviceLighting.SameProgram(cycle, r.Authority.Configuration.Lighting.Preferences!.Single(p => p.Target == Target(r, "led1")).Program));
-        Assert.NotEqual(Red, r.Hub.Colors["led1"].Colors[0]); Assert.All(r.Runtime.State().Endpoints.Where(e => e.Lighting is not null), e => Assert.False(e.Lighting!.Running));
+        Assert.Equal(new RgbColor(9, 8, 7), Assert.Single(r.Hub.Colors["led1"].Colors));
+        Assert.Equal("led2", Assert.Single(r.Journal.Pending).Channel); Assert.Equal(0, r.Hub.Fans.Writes);
+        Assert.All(r.Runtime.State().Endpoints.Where(e => e.Lighting is not null), e => Assert.False(e.Lighting!.Running));
         r.Hub.FailChannel = null;
     }
 }

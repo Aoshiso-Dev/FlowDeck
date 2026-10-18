@@ -20,7 +20,7 @@
      <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,0,0,8"/>
     </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
     <TextBlock x:Name="BlockersText" TextWrapping="Wrap" Margin="0,12,0,12"/>
-    <Expander Header="確認した配布物と操作ユーザー" Margin="0,12,0,16">
+    <Expander Header="配布物・操作ユーザー" Margin="0,12,0,16">
      <TextBlock x:Name="DetailsText" TextWrapping="Wrap" Margin="0,12,0,0"/>
     </Expander>
    </StackPanel>

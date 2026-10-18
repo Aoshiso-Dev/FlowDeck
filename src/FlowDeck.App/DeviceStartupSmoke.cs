@@ -53,6 +53,7 @@ public static partial class SmokeRunner
             await accepted!.RefreshAsync(); Check(accepted.Snapshot!.State is not null, "Transferred session remains usable after the startup window closes");
             await accepted.DisposeAsync();
             window = null;
+            await store.SaveAsync(store.Load(), accentColor: "#A3D936");
 
             var began = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); var cancelled = false; var attempts = 0;
             window = new(store, async ct =>
@@ -90,7 +91,7 @@ public static partial class SmokeRunner
                         await Settle(); Capture(workspace, output, "startup-connected-workspace");
                         Check(client.Snapshot.Session == session && model.DashboardTemperatures.Count > 0 && model.DashboardFans.Count > 0,
                             "The normal workspace initializes its temperature and RPM views using the transferred session");
-                        Check(model.Theme == "dark", "The normal workspace retains the theme selected before connection");
+                        Check(model.Theme == "dark" && model.AccentColor == "#A3D936", "The normal workspace retains the theme and local accent selected before connection");
                         await client.RefreshAsync();
                     }
                     finally { workspace.Close(); }

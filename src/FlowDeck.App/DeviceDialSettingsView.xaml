@@ -1,0 +1,36 @@
+<UserControl x:Class="FlowDeck.App.DeviceDialSettingsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <Expander Header="ESP32 ダイヤル" Style="{StaticResource SettingsSectionExpander}" Margin="0,0,0,22" Visibility="{Binding DialSupported,Converter={StaticResource BoolVisibility}}">
+  <StackPanel Margin="0,12,0,0">
+   <WrapPanel Margin="0,0,0,4" AutomationProperties.AutomationId="DialModeLegend">
+    <StackPanel Orientation="Horizontal" Margin="0,0,24,8">
+     <Border Width="32" Height="32" Background="#172027" CornerRadius="16" Margin="0,0,8,0">
+      <Path Width="23" Height="23" Stretch="Uniform" Fill="#A3D936" AutomationProperties.AutomationId="DialFanIcon" AutomationProperties.Name="全ファンの羽根アイコン" Data="M11,10 C5,10 2,7 4,4 C6,1 12,3 12,8 Z M14,11 C14,5 17,2 20,4 C23,6 21,12 16,12 Z M13,14 C19,14 22,17 20,20 C18,23 12,21 12,16 Z M10,13 C10,19 7,22 4,20 C1,18 3,12 8,12 Z M14,12 A2,2 0 1 1 10,12 A2,2 0 1 1 14,12 Z"/>
+     </Border>
+     <TextBlock Text="全ファン" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+     <Border Width="32" Height="32" Background="#172027" CornerRadius="16" Margin="0,0,8,0">
+      <Path Width="18" Height="23" Stretch="Uniform" Fill="#4DB8FF" AutomationProperties.AutomationId="DialPumpIcon" AutomationProperties.Name="ポンプの水滴アイコン" Data="M12,2 C10,6 4,11 4,15 A8,8 0 0 0 20,15 C20,11 14,6 12,2 Z"/>
+     </Border>
+     <TextBlock Text="ポンプ" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    </StackPanel>
+   </WrapPanel>
+   <TextBlock Text="USBポート" Style="{StaticResource Label}"/>
+   <DockPanel Margin="0,0,0,12"><Button DockPanel.Dock="Right" Content="更新" Command="{Binding RefreshDialPorts}"/>
+    <ComboBox ItemsSource="{Binding DialPorts}" SelectedItem="{Binding DialPort}" IsEnabled="{Binding CanEditDial}" AutomationProperties.Name="ダイヤルのUSBポート"/>
+   </DockPanel>
+   <TextBlock Text="{Binding DialStatus}" FontSize="16" FontWeight="SemiBold"/>
+   <TextBlock Text="{Binding DialIdentity}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+   <WrapPanel><Button Content="接続" Command="{Binding ConnectDial}"/><Button Content="切断" Command="{Binding DisconnectDial}"/><Button Content="登録" Command="{Binding RegisterDial}"/></WrapPanel>
+   <TextBlock Text="{Binding DialMessage}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+   <StackPanel Margin="0,18,0,0" Visibility="{Binding DialDisplaySupported,Converter={StaticResource BoolVisibility}}">
+    <TextBlock Text="温度表示" FontWeight="SemiBold"/>
+    <TextBlock Text="CPU" Style="{StaticResource Label}"/>
+    <ComboBox ItemsSource="{Binding DialCpuSensors}" SelectedItem="{Binding DialCpuSensor}" DisplayMemberPath="Name" IsEnabled="{Binding DialDisplayIdle}" AutomationProperties.Name="ダイヤルのCPU温度"/>
+    <TextBlock Text="GPU" Style="{StaticResource Label}"/>
+    <ComboBox ItemsSource="{Binding DialGpuSensors}" SelectedItem="{Binding DialGpuSensor}" DisplayMemberPath="Name" IsEnabled="{Binding DialDisplayIdle}" AutomationProperties.Name="ダイヤルのGPU温度"/>
+    <WrapPanel Margin="0,12,0,0"><Button Content="表示を保存" Command="{Binding SaveDialDisplay}"/><Button Content="再読込" Command="{Binding ReloadDialDisplay}"/><TextBlock Text="{Binding DialDisplayStatus}" VerticalAlignment="Center"/></WrapPanel>
+   </StackPanel>
+  </StackPanel>
+ </Expander>
+</UserControl>

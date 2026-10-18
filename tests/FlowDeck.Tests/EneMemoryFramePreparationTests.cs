@@ -91,9 +91,9 @@ public sealed class EneMemoryFramePreparationTests
         public EneMemoryRecoveryRecord? Pending => new EneMemoryRecovery(Directory, Memory.DeviceId).Pending;
         private DeviceServiceHello hello = null!;
         private long sequence;
-        public Rig()
+        public Rig(Func<EneMemoryTransport, EneMemoryTransport>? transport = null)
         {
-            Source = new(Guid.NewGuid().ToString("N"), Directory, "boot", new EneMemoryDeviceBackend([Rack.Transport()], Clock));
+            Source = new(Guid.NewGuid().ToString("N"), Directory, "boot", new EneMemoryDeviceBackend([transport?.Invoke(Rack.Transport()) ?? Rack.Transport()], Clock));
             Runtime = new([Fan], ["user"], new TestLog(), Clock, providers: [new Provider(Source, Hooks)]);
         }
         public async Task<Rig> Open()

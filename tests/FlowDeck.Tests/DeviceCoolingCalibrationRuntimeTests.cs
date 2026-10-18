@@ -129,7 +129,7 @@ public class DeviceCoolingCalibrationRuntimeTests
         Assert.Empty(r.Journal().Pending); Assert.Null(r.Driver.ValidateCalibrationStart("fan1",r.Driver.BindingCandidate!));
     }
     [Theory] [InlineData("confirm")] [InlineData("zero")] [InlineData("multiple")] [InlineData("smuggled")] [InlineData("mismatch")]
-    public async Task ProtocolRequiresExplicitSingleTargetAndRejectsTrialPayloadOnOrdinaryOperations(string kind)
+    public async Task CalibrationUsesTheExplicitOperationAndPreservesTargetPayloadAndFullOutputGuards(string kind)
     {
         await using var r=await Rig.Create(); var request=r.Request();
         request=kind switch {
@@ -139,6 +139,14 @@ public class DeviceCoolingCalibrationRuntimeTests
             "smuggled"=>request with { Operation=DeviceOperation.SetDuty,Duty=100 },
             _=>request with { Calibration=request.Calibration! with { Binding=request.Calibration.Binding with { DeviceId="different-device" } } }
         };
+        if(kind=="confirm")
+        {
+            var parsed=DeviceServiceProtocol.Read(JsonSerializer.SerializeToUtf8Bytes(request,Contract.Json));
+            Assert.False(parsed.Calibration!.Confirmed);
+            // The obsolete acknowledgement cannot replace the actual successful full-output trial.
+            Assert.False((await r.Runtime.ExecuteAsync(parsed with { Calibration=parsed.Calibration with { Duty=30 } })).Success);
+            Assert.Equal(0,r.Hub.Writes); return;
+        }
         Assert.Throws<IOException>(()=>DeviceServiceProtocol.Read(JsonSerializer.SerializeToUtf8Bytes(request,Contract.Json))); Assert.Equal(0,r.Hub.Writes);
     }
 }

@@ -5,7 +5,7 @@ namespace FlowDeck.Infrastructure;
 /// <summary>Compiled Control Hub driver. Uses a dedicated adapter/worker and never selects by enumeration index.</summary>
 public sealed partial class HubDeviceDriver : IDevicePollingDriver, IDeviceTelemetrySource, IConfiguredCoolingDriver, IConfiguredLightingDriver, IDeviceLightingCompositionDriver, ILegacyMigrationSource, IDeviceSetupDriver, IDeviceCoolingCalibrationDriver
 {
-    public const string Provider = DeviceM5Selection.HubProvider, Definition = DeviceM5Selection.HubDefinition;
+    public const string Provider = "nzxt-control-hub", Definition = "nzxt-control-hub-1e71-2022-v1";
     internal static HubDriverDefinition DefinitionData { get; } = HubDeviceDefinitionCatalog.BuiltIn.Get(Definition);
     private static readonly string DefinitionDigest = DefinitionData.Digest;
     private readonly IHubEndpointAdapter adapter;
@@ -96,6 +96,7 @@ public sealed partial class HubDeviceDriver : IDevicePollingDriver, IDeviceTelem
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             if (lightingPreparing || calibrating.Count>0 || journal.Pending.Length != 0 || lightingJournal.Pending.Length != 0) throw new IOException("端子の制御を終了してから設定を変更してください");
+            currentControlBinding = null;
             this.binding = binding; cooling = values.ToDictionary(c => c.Target.EndpointId);
         }
     }
@@ -240,10 +241,10 @@ public sealed partial class HubDeviceDriver : IDevicePollingDriver, IDeviceTelem
         if (!connected || status is null) return "Hubが切断されています";
         if (!adapter.SupportsFanEndpoints) return "Workerの更新が必要です";
         if (policy && !adapter.SupportsFanDeadlines) return "温度の有効期限を確認できるWorkerへ更新してください";
-        if (binding is null || binding != candidate) return "Hubの個体・構成の関連付けを確認してください";
+        if (binding is null || binding != candidate || CurrentControlConnectionChanged) return "Hubの現在の個体・接続情報を再取得してください";
         if (status.Channels.SingleOrDefault(c => c.Id == channel) is not { Presence: Presence.Present, Duty: >= 0, ControlMode: "PWM" or "DC" })
             return "接続した端子の現在の出力を取得できません";
-        if (!cooling.TryGetValue(channel, out var config) || !config.WiringConfirmed) return "端子の配線・冷却設定を確認してください";
+        if (!cooling.TryGetValue(channel, out var config)) return "端子の最低・異常時・終了時の出力を設定してください";
         if (DeviceConfigurationRules.SafetyReadiness(config.Safety) is { } error) return error;
         if (config.Safety.ExitAction != DefinitionData.Cooling.ExitAction) return "このHubでは終了時の固定出力を指定してください";
         if (config.Safety.Stop is not null && !DefinitionData.Cooling.StopSupported) return "このHub定義ではファン停止に対応していません";

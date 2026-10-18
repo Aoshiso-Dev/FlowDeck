@@ -49,14 +49,16 @@ public sealed partial class EneMemoryDeviceDriverTests
             d.ConfigureLighting(d.BindingCandidate, [new(new(d.DeviceId, Endpoint), true, new(exit, exitColor))],
                 [new(Endpoint, "RGB", EndpointKind.Lighting, Setup: new(LedCount: count, LedCountConfirmed: true))]);
         }
-        public Task<DeviceServiceReply> Command(DeviceOperation operation, byte[] addresses, LightingProgram? program = null)
+        public DeviceServiceRequest Capture(DeviceOperation operation, byte[] addresses, LightingProgram? program = null)
         {
             var state = Runtime.State(); var versions = addresses.Select(a => state.Endpoints.Single(e => e.Target.DeviceId == Id(a)))
                 .Select(e => new DeviceTargetVersion(e.Target, e.Generation, e.PolicyRevision)).ToArray();
-            return Runtime.ExecuteAsync(new(2, hello.Epoch, hello.Session, Guid.NewGuid().ToString("N"), ++sequence, "test", operation,
+            return new(2, hello.Epoch, hello.Session, Guid.NewGuid().ToString("N"), ++sequence, "test", operation,
                 operation == DeviceOperation.ReleaseSession ? 0 : state.Inventory.TopologyRevision,
-                operation == DeviceOperation.ReleaseSession ? null : versions, Lighting: program)).WaitAsync(TimeSpan.FromSeconds(10));
+                operation == DeviceOperation.ReleaseSession ? null : versions, Lighting: program);
         }
+        public Task<DeviceServiceReply> Command(DeviceOperation operation, byte[] addresses, LightingProgram? program = null) =>
+            Runtime.ExecuteAsync(Capture(operation, addresses, program)).WaitAsync(TimeSpan.FromSeconds(10));
         public Task<DeviceServiceReply> Start(params byte[] addresses) => Command(DeviceOperation.SetLighting, addresses,
             new("color-cycle", [new(100, 50, 20)], 4, Brightness: 50));
         public Task Tick(double seconds) { Clock.Advance(seconds); return Runtime.TickLightingAsync().WaitAsync(TimeSpan.FromSeconds(10)); }
@@ -117,10 +119,10 @@ public sealed partial class EneMemoryDeviceDriverTests
         Assert.True(EneMemoryProtocol.Same(original, Snapshot(rack))); Assert.Null(r.Pending());
     }
     [Fact]
-    public async Task SetupAndUnsupportedProgramsAreRejectedBeforeAnyOutput()
+    public async Task UnconfiguredConnectionsAndUnsupportedProgramsAreRejectedBeforeAnyOutput()
     {
         var rack = new Rack(0x71); await using var r = await new Rig(rack).Open(configure: false);
-        Assert.False((await r.Start(0x71)).Success); r.Configure(count: 7); r.Runtime.Refresh(); Assert.False((await r.Start(0x71)).Success);
+        Assert.False((await r.Start(0x71)).Success);
         r.Configure(); r.Runtime.Refresh();
         foreach (var program in new LightingProgram[] { new("native/ene-memory/5", [new(1, 2, 3)]), new("native/ene-memory/4", [], Brightness: 50),
             new("fixed", [new(1, 2, 3)], Reverse: true), new("fixed", [new(1, 2, 3)], LedColors: [new(1, 2, 3)]) })

@@ -17,6 +17,7 @@ public sealed class DeviceCoolingStartupRow(DeviceCoolingStartupDraft draft,Cool
 public sealed partial class DeviceWorkspaceViewModel
 {
     private DeviceCoolingStartupDraft? startupDraft;
+    private DeviceCoolingStartupRow[] startupRows=[];
     public ObservableCollection<DeviceCoolingStartupRow> StartupRows { get; }=[];
     public bool StartupSupported=>client.SupportsCoolingStartup;
     public bool StartupIdle=>SetupIdle;
@@ -34,15 +35,19 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         if(startupDraft is null||!startupDraft.Dirty&&(startupDraft.Generation!=snapshot.Configuration.Generation||startupDraft.Conflict))
         {
-            startupDraft=new(snapshot); StartupRows.Clear();
-            foreach(var candidate in startupDraft.Candidates) StartupRows.Add(new(startupDraft,candidate,PublishStartup,e=>Notice=e));
+            startupDraft=new(snapshot);
+            startupRows=startupDraft.Candidates.Select(candidate=>new DeviceCoolingStartupRow(startupDraft,candidate,PublishStartup,e=>Notice=e)).ToArray();
         }
-        startupDraft.Update(snapshot); PublishStartup();
+        startupDraft.Update(snapshot);
+        Reconcile(StartupRows,startupRows.Where(r=>snapshot.Connected&&snapshot.State.Inventory.Devices.Any(d=>
+            d.Connected&&d.Device.Id==r.Target.DeviceId&&d.Device.Endpoints.Any(e=>e.Id==r.Target.EndpointId))).ToArray());
+        PublishStartup();
     }
     public async Task SaveStartupAsync()
     {
         Render(); if(!CanSaveStartup) return; var edit=startupDraft!.Capture(); setupBusy=true; ClearConfigurationPreviews(); Render();
-        try { var result=await client.SaveCoolingStartupAsync(edit); Notice=result.Message; if(result.Outcome==Outcome.Confirmed) startupDraft=null; }
+        using var status = BeginStatus("起動設定を保存中");
+        try { var result=await client.SaveCoolingStartupAsync(edit); ReportResult(result.Message, result.Outcome); if(result.Outcome==Outcome.Confirmed) startupDraft=null; }
         finally { setupBusy=false; Render(); }
     }
     public async Task ReloadStartupAsync()
@@ -53,8 +58,8 @@ public sealed partial class DeviceWorkspaceViewModel
     }
     public async Task RestoreStartupAsync()
     {
-        var previousNotice=Notice;
-        if(client.Snapshot?.Configuration.Configuration.Preferences.Startup.ResumeControl==true) Notice="起動時の冷却を確認しています";
+        using var status = client.Snapshot?.Configuration.Configuration.Preferences.Startup.ResumeControl==true
+            ? BeginStatus("起動時の冷却を確認中") : null;
         setupBusy=true; Render();
         try
         {
@@ -62,11 +67,11 @@ public sealed partial class DeviceWorkspaceViewModel
             if(results.Length>0&&!closing)
             {
                 var failures=results.Where(r=>r.Outcome!=Outcome.Confirmed).ToArray();
-                Notice=$"起動時の冷却: {results.Length-failures.Length}端子を再開"+(failures.Length==0?"":$" / {failures.Length}端子は未再開: "+string.Join(" / ",failures.Select(f=>StartupRows.FirstOrDefault(r=>r.Target==f.Target)?.Name+"「"+f.Message+"」")));
+                var message=$"起動時の冷却: {results.Length-failures.Length}端子を再開"+(failures.Length==0?"":$" / {failures.Length}端子は未再開: "+string.Join(" / ",failures.Select(f=>startupRows.FirstOrDefault(r=>r.Target==f.Target)?.Name+"「"+f.Message+"」")));
+                ReportResult(message, failures.Length == 0 ? Outcome.Confirmed : failures[0].Outcome);
             }
-            else if(!closing) Notice=previousNotice;
         }
-        catch(Exception e) { if(!closing) Notice="起動時の冷却を再開できません: "+e.Message; }
+        catch(Exception e) { if(!closing) Notice="起動時の冷却再開失敗: "+e.Message; }
         finally { setupBusy=false; Render(); }
     }
 }

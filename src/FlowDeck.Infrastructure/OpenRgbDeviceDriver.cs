@@ -3,7 +3,7 @@ using FlowDeck.Core;
 namespace FlowDeck.Infrastructure;
 
 internal sealed partial class OpenRgbDeviceDriver : IConfiguredLightingDriver, IDeviceLightingCompositionDriver,
-    IDeviceLightingBatchDriver, IDevicePollingDriver, IDeviceSetupDriver, IDevicePhasedOperation
+    IDeviceLightingBatchDriver, IDevicePollingDriver, IDeviceSetupDriver, IDevicePhasedOperation, IDeviceCurrentConnectionControlDriver
 {
     private sealed class Slot(int key, OpenRgbLightingRecovery journal)
     {
@@ -72,31 +72,32 @@ internal sealed partial class OpenRgbDeviceDriver : IConfiguredLightingDriver, I
             if (disposed || nativeShutdown || current?.Connection != expected.Connection || current?.Snapshot.Target != expected.Snapshot.Target || Candidate() != expectedBinding)
                 throw new IOException("OpenRGBの個体・接続・構成が変更されています");
     }
-    private string? Ready(OpenRgbLightingSurface port)
+    private string? Ready(OpenRgbLightingSurface port) => Readiness(port).Error;
+    private (DeviceAvailability Availability, string? Error) Readiness(OpenRgbLightingSurface port)
     {
-        if (disposed || current is null) return "OpenRGBの機器が切断されています";
-        if (closing) return "OpenRGBの終了・復旧中です";
-        if (readError is not null) return readError;
-        if (journalError is not null) return journalError;
+        if (disposed || current is null) return (DeviceAvailability.Disconnected, "OpenRGBの機器が切断されています");
+        if (closing) return (DeviceAvailability.TemporarilyUnavailable, "OpenRGBの終了・復旧中です");
+        if (readError is not null) return (DeviceAvailability.TemporarilyUnavailable, readError);
+        if (journalError is not null) return (DeviceAvailability.Failed, journalError);
         // This gate applies to new effects, batches and streams. Release/recovery deliberately
         // bypass it, while retaining route, physical identity and journal validation.
-        if (!selectedForControl) return "OpenRGBの制御対象に選択されていません";
-        if (Candidate() is not { } candidate) return "OpenRGBの物理的な個体を区別できません";
-        if (binding != candidate) return "OpenRGBの機器の関連付けを確認してください";
-        if (!settings.TryGetValue(port.Endpoint, out var value) || !value.Config.WiringConfirmed || !DeviceLightingConfiguration.ValidExit(value.Config.Exit) ||
-            value.Setup is not { LedCountConfirmed: true } setup || setup.LedCount != port.LedCount)
-            return "OpenRGBの対象・LED数・終了方法を確認してください";
-        if (port.ControllerDirect && port.Native.Length == 0 && value.Config.Exit!.Action == LightingExitAction.RestoreOriginal)
-            return "このゾーンの終了方法は固定色または消灯を選んでください";
+        if (!selectedForControl) return (DeviceAvailability.Conflict, "OpenRGBの制御対象に選択されていません");
+        if (Candidate() is not { } candidate) return (DeviceAvailability.Conflict, "OpenRGBの物理的な個体を区別できません");
         var slot = slots[Key(port)];
         if (port.ControllerDirect && shared is not null && (slots[-1].Faulted || slots[-1].Journal.Pending is not null && !slots[-1].Owned))
-            return "共有DirectのOpenRGB照明を復旧してください";
-        if (slot.Faulted || slot.Journal.Pending is not null && !slot.Owned) return "前回のOpenRGB操作を復旧してください";
+            return (DeviceAvailability.Failed, "共有DirectのOpenRGB照明を復旧してください");
+        if (slot.Faulted || slot.Journal.Pending is not null && !slot.Owned) return (DeviceAvailability.Failed, "前回のOpenRGB操作を復旧してください");
         if (slots.Values.Any(s => s.Key != slot.Key && (s.Key == -1 || slot.Key == -1) && s.Journal.Pending is not null &&
                 !(s.Key == -1 && port.ControllerDirect && shared is not null)) ||
             streams.Any(pair => pair.Key != port.Endpoint && (pair.Value.Keys[pair.Key] == -1 || slot.Key == -1)))
-            return "機器全体と個別ゾーンは同時に操作できません";
-        return null;
+            return (DeviceAvailability.Conflict, "機器全体と個別ゾーンは同時に操作できません");
+        if (binding != candidate) return (DeviceAvailability.TemporarilyUnavailable, "OpenRGBの現在接続を準備中です");
+        if (!settings.TryGetValue(port.Endpoint, out var value) || !DeviceLightingConfiguration.ValidExit(value.Config.Exit) ||
+            value.Setup?.LedCount != port.LedCount)
+            return (DeviceAvailability.NeedsSetup, "OpenRGBの通信範囲・終了方法を取得できません");
+        if (port.ControllerDirect && port.Native.Length == 0 && value.Config.Exit!.Action == LightingExitAction.RestoreOriginal)
+            return (DeviceAvailability.NeedsSetup, "このゾーンの終了方法は固定色または消灯を選んでください");
+        return (DeviceAvailability.Ready, null);
     }
     public DeviceObservation? Observe()
     {
@@ -105,10 +106,10 @@ internal sealed partial class OpenRgbDeviceDriver : IConfiguredLightingDriver, I
             if (current is not { } d) return null;
             var endpoints = ports.Values.Select(port =>
             {
-                var error = Ready(port);
+                var readiness = Readiness(port); var error = readiness.Error;
                 DeviceCapability Cap(DeviceFeature feature, bool supported, string? reason) => new(feature,
                     supported ? ImplementationSupport.Supported : ImplementationSupport.Unsupported, VerificationEvidence.Automated,
-                    reason is null ? DeviceAvailability.Ready : DeviceAvailability.NeedsSetup, reason);
+                    reason is null ? DeviceAvailability.Ready : feature == DeviceFeature.RestoreLighting ? DeviceAvailability.Failed : readiness.Availability, reason);
                 return new DeviceEndpoint(port.Endpoint, port.Name, EndpointKind.Lighting,
                     [Cap(DeviceFeature.FixedColor, port.FixedMode is not null || port.ControllerDirect, error), Cap(DeviceFeature.NativeEffect, port.Native.Length > 0, error),
                      Cap(DeviceFeature.ColorFrames, port.DirectMode is not null || port.ControllerDirect, error), Cap(DeviceFeature.RestoreLighting, true, journalError)],
@@ -126,7 +127,7 @@ internal sealed partial class OpenRgbDeviceDriver : IConfiguredLightingDriver, I
         lock (gate) return current is null ? [] : ports.Values.Select(port => new EndpointSetupOptions(port.Endpoint, [],
             port.ControllerDirect && port.Native.Length == 0 ? [LightingExitAction.FixedColor, LightingExitAction.Off] :
                 port.FixedMode is not null || port.ControllerDirect ? [LightingExitAction.FixedColor, LightingExitAction.Off, LightingExitAction.RestoreOriginal] : [LightingExitAction.RestoreOriginal],
-            port.LedCount, port.LedCount, port.LedCount)).ToArray();
+            port.LedCount, port.LedCount, IsAsrockConfiguredExtent() ? null : port.LedCount)).ToArray();
     }
     public void ConfigureLighting(PhysicalDeviceBinding? binding, IEnumerable<LightingEndpointConfiguration> configurations, IEnumerable<RegisteredEndpoint> endpoints)
     {

@@ -25,6 +25,11 @@ public interface IDeviceCoolingDriver : IDeviceControlDriver
     Task<DeviceDriverResult> ApplyCoolingAsync(CoolingActuation actuation, CancellationToken ct);
 }
 
+// Opt-in only for drivers that validate the fresh control-register state when acquiring
+// an unowned endpoint. Changing telemetry is not itself a confirmed software output;
+// the driver must still reject external settings changes and outstanding recovery.
+public interface IDeviceGuardedCoolingAcquisition : IDeviceCoolingDriver { }
+
 /// <summary>One endpoint's policy and safety snapshot. Inputs contain only fresh, validated, generation-bound temperatures.</summary>
 public sealed class DeviceCoolingPolicy
 {
@@ -57,11 +62,13 @@ public sealed class DeviceCoolingPolicy
         };
     }
     public DeviceCoolingPolicy(CoolingSavedPolicy desired, CoolingSafety safety, int currentDuty, TimeProvider? clock = null)
+        : this(desired, safety, currentDuty, clock, awaitingInitialAcquisition: false) { }
+    internal DeviceCoolingPolicy(CoolingSavedPolicy desired, CoolingSafety safety, int currentDuty, TimeProvider? clock, bool awaitingInitialAcquisition)
     {
         if (Validate(desired, safety) is { } error) throw new ArgumentException(error);
         if (currentDuty is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(currentDuty));
         this.desired = Contract.Copy(desired with { SafetySnapshot = safety }); this.safety = Contract.Copy(safety); this.clock = clock ?? TimeProvider.System;
-        confirmed = currentDuty; descent.Reset(currentDuty, this.clock.GetTimestamp());
+        confirmed = awaitingInitialAcquisition ? null : currentDuty; descent.Reset(currentDuty, this.clock.GetTimestamp());
     }
     private IEnumerable<TemperatureRule> Protection => desired.Mode == FanMode.Auto
         ? desired.Profile!.Curves.Select(c => new TemperatureRule(c.Sensor, c.Overheat, c.ResumeBelow)) : safety.ManualProtection;

@@ -19,7 +19,11 @@ public sealed partial class HubDeviceDriver : IIndividualLightingConfiguration
                 if (binding is null || binding != lightingBinding) throw new IOException("Hub照明の関連付けが一致しません");
                 if (lightingPreparing || lightingStreams.ContainsKey(endpointId) || lightingFaulted.Contains(endpointId) ||
                     lightingJournal.Pending.Any(p => p.Channel == endpointId)) throw new IOException("対象端子の照明を終了・復旧してから設定してください");
-                if (value is null) lightingSetup.Remove(endpointId);
+                if (value is null)
+                {
+                    lightingSetup.Remove(endpointId);
+                    RestoreKnownCurrentLightingDefaults(binding, endpointId, registered);
+                }
                 else lightingSetup[endpointId] = (value, registered.Setup);
             }
         }
@@ -45,7 +49,7 @@ internal sealed partial class AsrockDeviceDriver : IIndividualLightingConfigurat
                 if (active?.Targets.Contains(zone) == true || journal!.Pending?.Targets.Contains(zone) == true ||
                     nativeJournal!.Pending?.Entries.Any(e => e.Zone == zone) == true || nativeOwned.Contains(zone) || nativeFaulted.Contains(zone))
                     throw new IOException("対象端子の照明を終了・復旧してから設定してください");
-                if (value is null) settings.Remove(zone);
+                if (value is null) RestoreKnownCurrentLightingDefaults(zone);
                 else settings[zone] = (value, registered.Setup);
             }
         }
@@ -60,7 +64,9 @@ internal sealed partial class EneMemoryDeviceDriver : IIndividualLightingConfigu
     {
         DeviceLightingConfiguration.CheckIndividual(DeviceId, endpointId, configuration, endpoint);
         ArgumentNullException.ThrowIfNull(binding);
-        ConfigureLighting(binding, configuration is null ? [] : [configuration], [endpoint]);
+        // Removing preferences keeps the known controller usable with its actual eight
+        // LEDs and a fresh-original exit policy; it does not remove current model support.
+        ConfigureCurrentConnection(binding, null, [], configuration is null ? [] : [configuration], [endpoint]);
     }
 }
 
@@ -87,7 +93,7 @@ internal sealed partial class OpenRgbDeviceDriver : IIndividualLightingConfigura
                     port.ControllerDirect && shared is null && slots[-1].Journal.Pending is not null)
                     throw new IOException("対象端子の照明を終了・復旧してから設定してください");
                 // Shared Direct keeps its whole-controller mode, background and recovery record for other zones.
-                if (value is null) settings.Remove(endpointId);
+                if (value is null) RestoreKnownCurrentLightingDefaults(port);
                 else settings[endpointId] = (value, registered.Setup);
             }
         }

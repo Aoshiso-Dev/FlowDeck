@@ -41,7 +41,7 @@ public partial class LocalMonitoringWindow : Window
     {
         await previous;
         try { await store.SaveAsync(value); NoticeText.Text = ""; }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { NoticeText.Text = "配色を保存できませんでした"; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { NoticeText.Text = "テーマの保存失敗"; }
     }
     internal void ApplySystemTheme() => ThemeManager.Apply(preferences.Theme);
     internal void Render()
@@ -72,7 +72,7 @@ public partial class LocalMonitoringWindow : Window
     {
         if (closing || closed) return;
         closing = true; timer.Stop(); ServiceButton.IsEnabled = false; CloseButton.IsEnabled = false; ThemeChoice.IsEnabled = false;
-        StatusText.Text = "監視を終了しています…";
+        StatusText.Text = "監視終了中…";
         try
         {
             await session.DisposeAsync(); await save;
@@ -80,7 +80,7 @@ public partial class LocalMonitoringWindow : Window
         }
         catch (Exception)
         {
-            StatusText.Text = "監視の終了を確認できません"; NoticeText.Text = "もう一度、閉じるかサービスへの接続を選んでください。";
+            StatusText.Text = "監視終了が未確認"; NoticeText.Text = "「閉じる」または「サービス接続」で再試行";
             ServiceButton.IsEnabled = true; CloseButton.IsEnabled = true;
         }
         finally { closing = false; }

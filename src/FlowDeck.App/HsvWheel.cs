@@ -120,7 +120,7 @@ public sealed class HsvWheel : FrameworkElement
         public void SetValue(string value)
         {
             if (IsReadOnly) throw new InvalidOperationException("色選択は無効です");
-            if (!ColorMath.TryHex(value, out var color)) throw new ArgumentException("#RRGGBBを指定してください");
+            if (!ColorMath.TryHex(value, out var color)) throw new ArgumentException("色形式: #RRGGBB");
             owner.SetCurrentValue(SelectedColorProperty, color);
         }
     }

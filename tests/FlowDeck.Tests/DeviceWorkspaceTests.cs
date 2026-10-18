@@ -26,6 +26,50 @@ public class DeviceWorkspaceTests
         Assert.NotEqual(DeviceDashboard.Key(items[0].Target, items[0].Measurement), DeviceDashboard.Key(items[1].Target, items[1].Measurement));
     }
     [Theory]
+    [InlineData("service")]
+    [InlineData("device")]
+    [InlineData("missing-device")]
+    [InlineData("missing-endpoint")]
+    public void DashboardHidesDisconnectedSavedRowsAndRestoresTheirSettingsOnReconnect(string condition)
+    {
+        var savedItem = Item with { Name = "保存済みの背面", Role = "pump", Indicator = "circle", DisplayMaximum = 4200 };
+        var saved = new DeviceDashboardConfiguration(2, [savedItem]); var state = State();
+        var instance = state.Inventory.Devices[0];
+        var next = condition switch {
+            "device" => state with { Inventory = state.Inventory with { Devices = [instance with { Connected = false }] } },
+            "missing-device" => state with { Inventory = state.Inventory with { Devices = [] } },
+            "missing-endpoint" => state with { Inventory = state.Inventory with { Devices = [instance with {
+                Device = instance.Device with { Endpoints = [] } }] } },
+            _ => state };
+        Assert.Empty(DeviceDashboard.VisibleItems(Registrations, saved, next, 0, condition != "service"));
+        Assert.Equal(savedItem, Assert.Single(saved.Items));
+        Assert.Equal(savedItem, Assert.Single(DeviceDashboard.Items(Registrations, saved, next.Inventory)));
+        Assert.Equal(savedItem, Assert.Single(DeviceDashboard.VisibleItems(Registrations, saved, state, 0, true)));
+        Assert.Empty(DeviceDashboard.VisibleItems(Registrations, new(2, [savedItem with { Visible = false }]), state, 0, true));
+    }
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("unsupported")]
+    [InlineData("zero")]
+    [InlineData("stale")]
+    public void ConnectedSavedDashboardRowsRemainVisibleWhenMeasurementsAreUnavailableOrZero(string condition)
+    {
+        var state = State(); var instance = state.Inventory.Devices[0];
+        state = condition switch {
+            "missing" => state with { Telemetry = [] },
+            "unsupported" => state with { Inventory = state.Inventory with { Devices = [instance with {
+                Device = instance.Device with { Endpoints = [instance.Device.Endpoints[0] with {
+                    Capabilities = [Cap(DeviceFeature.Rpm) with { Support = ImplementationSupport.Unsupported }] }] } }] } },
+            "zero" => state with { Telemetry = [new(Target, DeviceFeature.Rpm, 0, 0, false)] },
+            _ => state };
+        var elapsed = condition == "stale" ? 3 : 0;
+        var row = Assert.Single(DeviceDashboard.VisibleItems(Registrations, new(2, [Item]), state, elapsed, true));
+        Assert.Equal(Item, row);
+        var reading = DeviceDashboard.Read(row, Registrations, state, elapsed, true);
+        if (condition == "zero") { Assert.Equal(0, reading.Value); Assert.Equal("0 RPM", reading.State); }
+        else Assert.Null(reading.Value);
+    }
+    [Theory]
     [InlineData(0, true, 900d)]
     [InlineData(2.999, true, 900d)]
     [InlineData(3, true, null)]
@@ -95,7 +139,7 @@ public class DeviceWorkspaceTests
         var draft = new DeviceCoolingDraft(Target);
         draft.Update(State(), "config", Setup(), 3, true); Assert.False(draft.CanApply);
         draft.Update(State(), "config", Setup(), 0, false); Assert.False(draft.CanApply);
-        draft.Update(State(), "config", Setup() with { WiringConfirmed = false }, 0, true); Assert.False(draft.CanApply);
+        draft.Update(State(), "config", Setup() with { WiringConfirmed = false }, 0, true); Assert.False(draft.CanApply); Assert.True(draft.Available);
         draft.Update(State(), "config", Setup(), 0, true); Assert.False(draft.CanApply);
         draft.SetAutomatic(false); Assert.True(draft.CanApply);
     }
@@ -127,12 +171,12 @@ public class DeviceWorkspaceTests
     [Fact] public void IncompleteSafetyNeedsSetupButACompleteConfigurationDoesNot()
     {
         var draft = new DeviceCoolingDraft(Target);
-        foreach (var setup in new[] { Setup() with { WiringConfirmed = false }, Setup() with { Safety = Setup().Safety with { Minimum = null } } })
+        foreach (var setup in new[] { Setup() with { Safety = Setup().Safety with { Minimum = null } }, Setup() with { Safety = Setup().Safety with { Fallback = null } } })
         {
             draft.Update(State(), "config", setup, 0, true); draft.SetAutomatic(false);
             Assert.True(draft.NeedsSetup); Assert.False(draft.CanApply);
         }
-        draft.Update(State(), "config", Setup(), 0, true);
+        draft.Update(State(), "config", Setup() with { WiringConfirmed = false }, 0, true);
         Assert.False(draft.NeedsSetup); Assert.True(draft.CanApply);
     }
     [Fact] public void DisconnectedStaleUnsupportedOrFaultedFansDoNotOfferSetupAsTheirRemedy()

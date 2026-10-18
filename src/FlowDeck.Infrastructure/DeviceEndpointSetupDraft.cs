@@ -17,19 +17,18 @@ public sealed record DeviceEndpointSetupEdit(string Epoch, string Generation, lo
 }
 public sealed record DeviceEndpointSetupPreview(DeviceEndpointSetupEdit Edit, ServiceConfigurationPreview Transfer);
 
-/// <summary>One explicitly selected physical endpoint. Polling never rebases setup confirmations.</summary>
+/// <summary>Actual settings for one endpoint, bound to the observed configuration and device generation.</summary>
 public sealed class DeviceEndpointSetupDraft
 {
     private readonly DeviceWorkspaceSnapshot original;
-    private readonly DeviceEndpointSetupValues? savedConfirmation;
     public DeviceSetupCandidate Candidate { get; }
     public PhysicalDeviceBinding Binding { get; }
     public DeviceEndpointSetupValues Values { get; private set; }
     public bool Conflict { get; private set; }
     public bool Available { get; private set; }
     public bool Cooling => Candidate.Options.CoolingExitActions.Length > 0;
-    public bool ReusesSavedConfirmation => Available && !Conflict && Values.Confirmed && savedConfirmation is not null &&
-        SameConfirmationInputs(savedConfirmation, Values);
+    // Kept for old callers; confirmation flags no longer grant or withhold control.
+    public bool ReusesSavedConfirmation => false;
     public DeviceEndpointSetupDraft(DeviceWorkspaceSnapshot snapshot, EndpointReference target)
     {
         original = Contract.Copy(snapshot);
@@ -47,30 +46,21 @@ public sealed class DeviceEndpointSetupDraft
         var lighting = config.Lighting.Endpoints?.SingleOrDefault(e => e.Target == target);
         if (Cooling)
         {
-            var safety = cooling?.Safety ?? new(100, 100, Candidate.Options.CoolingExitActions.Contains(CoolingExitAction.FixedDuty) ? 100 : null,
+            var safety = cooling?.Safety ?? new(null, null, null,
                 Candidate.Options.CoolingExitActions[0], []);
             Values = new(saved?.Name ?? endpoint.Name, bound && cooling?.WiringConfirmed == true, safety);
         }
         else Values = new(saved?.Name ?? endpoint.Name, bound && lighting?.WiringConfirmed == true && saved?.Setup?.LedCountConfirmed == true,
-            LedCount: saved?.Setup?.LedCount ?? Candidate.Options.DetectedLeds ?? Candidate.Options.MinimumLeds,
+            // Current detected size or a fixed controller extent is authoritative for this draft.
+            // A stale saved size must not trap a read-only field; opening the editor never saves it.
+            LedCount: Candidate.Options.DetectedLeds ??
+                (Candidate.Options.MinimumLeds == Candidate.Options.MaximumLeds ? Candidate.Options.MinimumLeds : saved?.Setup?.LedCount),
             LightingExit: lighting?.Exit ?? new(Candidate.Options.LightingExitActions.Contains(LightingExitAction.RestoreOriginal) ?
                 LightingExitAction.RestoreOriginal : LightingExitAction.Off));
-        savedConfirmation = Values.Confirmed ? Contract.Copy(Values) : null;
         Update(snapshot);
     }
     public void Change(DeviceEndpointSetupValues value) { Values = Contract.Copy(value); }
-    // Confirmation concerns physical setup (and cooling safety), not names or lighting exit colors.
-    // Only a saved confirmation for the already matched device may be restored after editing values back.
-    public void ChangeInputs(DeviceEndpointSetupValues value)
-    {
-        var confirmed = Values.Confirmed && SameConfirmationInputs(Values, value) ||
-            savedConfirmation is not null && SameConfirmationInputs(savedConfirmation, value);
-        Change(value with { Confirmed = confirmed });
-    }
-    private bool SameConfirmationInputs(DeviceEndpointSetupValues left, DeviceEndpointSetupValues right) => Cooling
-        ? System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(left.Safety, Contract.Json).AsSpan()
-            .SequenceEqual(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(right.Safety, Contract.Json))
-        : left.LedCount == right.LedCount;
+    public void ChangeInputs(DeviceEndpointSetupValues value) => Change(value);
     public void Update(DeviceWorkspaceSnapshot snapshot)
     {
         Conflict |= snapshot.State.Inventory.Epoch != original.State.Inventory.Epoch || snapshot.Configuration.Generation != original.Configuration.Generation ||
@@ -91,7 +81,6 @@ public sealed class DeviceEndpointSetupDraft
             if (!DeviceConfigurationRules.Text(Values.Name, 80)) return "端子名を入力してください";
             var config = original.Configuration.Configuration;
             if (DeviceControlCapacity.ReplacementProblem(config.Devices, config.Cooling, config.Lighting, Candidate.Target, Cooling, Values.LedCount) is { } limit) return limit;
-            if (!Values.Confirmed) return Cooling ? "配線と出力値の確認が必要です" : "対象とLED数の確認が必要です";
             if (Cooling)
             {
                 if (Values.LedCount is not null || Values.LightingExit is not null || Values.Safety is not { } safety) return "冷却設定が不正です";
@@ -116,24 +105,24 @@ public sealed class DeviceEndpointSetupDraft
             prior.Endpoints.Any(e => e.Id == endpoint.Id && e.Kind != endpoint.Kind))) throw new IOException("登録した機器・端子の種類が一致しません");
         var registered = prior ?? new(actual.Id, DeviceMonitoringDraft.DisplayDeviceName(actual, original.State.Inventory), actual.Provider, actual.Kind, []);
         var rebind = !config.Bindings.Devices.Contains(Binding);
-        var revoked = rebind && (config.Cooling.Endpoints.Any(e => e.Target.DeviceId == target.DeviceId && e.Target != target && e.WiringConfirmed) ||
-            (config.Lighting.Endpoints ?? []).Any(e => e.Target.DeviceId == target.DeviceId && e.Target != target && e.WiringConfirmed));
-        if (rebind) registered = registered with { Endpoints = registered.Endpoints.Select(e => e.Id != target.EndpointId && e.Setup is { } setup ?
-            e with { Setup = setup with { LedCountConfirmed = false } } : e).ToArray() };
         var savedEndpoint = registered.Endpoints.SingleOrDefault(e => e.Id == endpoint.Id) ?? new(endpoint.Id, Values.Name, endpoint.Kind, endpoint.Role ?? "");
         savedEndpoint = savedEndpoint with { Name = Values.Name, Setup = Cooling ? savedEndpoint.Setup :
-            new(Candidate.Options.Accessory ?? savedEndpoint.Setup?.Accessory ?? "", Values.LedCount, true) };
+            new(Candidate.Options.Accessory ?? savedEndpoint.Setup?.Accessory ?? "", Values.LedCount, savedEndpoint.Setup?.LedCountConfirmed ?? false) };
         registered = registered with { Endpoints = Replace(registered.Endpoints, savedEndpoint, e => e.Id == endpoint.Id) };
-        // A new whole-device fingerprint cannot silently reapprove other ports on that device.
-        var cooling = config.Cooling.Endpoints.Select(e => rebind && e.Target.DeviceId == target.DeviceId ?
-            e with { WiringConfirmed = false, SavedPolicy = null, ResumeOnStart = false } : e).ToArray();
-        var lighting = (config.Lighting.Endpoints ?? []).Select(e => rebind && e.Target.DeviceId == target.DeviceId ? e with { WiringConfirmed = false } : e).ToArray();
+        // A changed physical binding must not transfer a previous device's startup intent.
+        // Keep actual settings and saved policies available for editing without enabling any output.
+        var cooling = config.Cooling.Endpoints.Select(e => rebind && (e.Target.DeviceId == target.DeviceId ||
+                e.SavedPolicy is { } policy && DeviceCoolingPolicy.Required(policy, e.Safety).Any(s => s.DeviceId == target.DeviceId))
+            ? e with { ResumeOnStart = false } : e).ToArray();
+        var lighting = (config.Lighting.Endpoints ?? []).ToArray();
         if (Cooling)
         {
             var old = cooling.SingleOrDefault(e => e.Target == target);
-            cooling = Replace(cooling, new(target, true, Values.Safety!, old?.Profiles ?? [], null, false), e => e.Target == target);
+            var sameSafety = old is not null && DeviceConfigurationRules.SameSafety(old.Safety, Values.Safety!);
+            cooling = Replace(cooling, new(target, old?.WiringConfirmed ?? false, Values.Safety!, old?.Profiles ?? [],
+                sameSafety ? old!.SavedPolicy : null, sameSafety && old!.ResumeOnStart), e => e.Target == target);
         }
-        else lighting = Replace(lighting, new(target, true, Values.LightingExit), e => e.Target == target);
+        else lighting = Replace(lighting, new(target, lighting.SingleOrDefault(e => e.Target == target)?.WiringConfirmed ?? false, Values.LightingExit), e => e.Target == target);
         var next = config with {
             Devices = config.Devices with { Devices = Replace(config.Devices.Devices, registered, d => d.Id == actual.Id) },
             Bindings = config.Bindings with { Devices = Replace(config.Bindings.Devices, Binding, b => b.DeviceId == actual.Id) },
@@ -147,20 +136,25 @@ public sealed class DeviceEndpointSetupDraft
         var changes = new List<string> { registered.Name + " / " + Values.Name };
         var previousName = prior?.Endpoints.SingleOrDefault(e => e.Id == endpoint.Id)?.Name;
         if (previousName != Values.Name) changes.Add("名前: " + (previousName ?? "未登録") + " → " + Values.Name);
-        if (rebind) changes.Add("実機の関連付け: 未確認 → 現在の個体・構成");
+        if (rebind)
+        {
+            changes.Add("保存設定の対象: 現在の個体・構成");
+            if (config.Cooling.Endpoints.Any(e => e.Target.DeviceId == target.DeviceId && e.ResumeOnStart))
+                changes.Add("接続した機器が変わったため、この機器の起動時再開を保留");
+        }
         if (Cooling)
         {
             var previous = config.Cooling.Endpoints.SingleOrDefault(e => e.Target == target)?.Safety;
             changes.Add($"最低: {Duty(previous?.Minimum)} → {Duty(Values.Safety!.Minimum)} / 異常時: {Duty(previous?.Fallback)} → {Duty(Values.Safety.Fallback)}");
             changes.Add($"終了時: {FanExit(previous)} → {FanExit(Values.Safety)}");
-            if (config.Cooling.Endpoints.Any(e => e.Target == target && (e.SavedPolicy is not null || e.ResumeOnStart))) changes.Add("この端子の保存済み制御方針・自動再開を解除");
+            if (previous is not null && !DeviceConfigurationRules.SameSafety(previous, Values.Safety!) &&
+                config.Cooling.Endpoints.Any(e => e.Target == target && (e.SavedPolicy is not null || e.ResumeOnStart))) changes.Add("変更した出力条件に合わせて、この端子の保存済み制御方針・自動再開を解除");
         }
         else
         {
             changes.Add($"LED数: {prior?.Endpoints.SingleOrDefault(e => e.Id == endpoint.Id)?.Setup?.LedCount?.ToString() ?? "未設定"} → {Values.LedCount}");
             changes.Add($"終了時: {LightExit(config.Lighting.Endpoints?.SingleOrDefault(e => e.Target == target)?.Exit)} → {LightExit(Values.LightingExit)}");
         }
-        if (revoked) changes.Add("実機との一致が未確認のため、この機器の他端子は再確認が必要");
         changes.Add(Cooling ? "変更する端子の制御を終了して保存。ほかのファンの制御は継続（実機の関連付けを更新する機器を除く）" : "この端子の照明だけ保存済みの終了方法で終了して保存。ファンとほかの照明は継続（実機の関連付けを更新する機器を除く）");
         return new(original.State.Inventory.Epoch, original.Configuration.Generation, original.State.Inventory.TopologyRevision,
             Candidate.Generation, target, Contract.Copy(next), changes.ToArray());

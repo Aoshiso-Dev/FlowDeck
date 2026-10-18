@@ -187,7 +187,7 @@ public sealed class RemoteControlCoordinator : IControlCoordinator, IMotherboard
                     if (SettingsTransfer.Hash(current) != SettingsTransfer.Hash(before)) throw new IOException("CONFLICT: 画面の設定が別の操作で変わりました");
                     return desired;
                 }
-                local = local with { Ui = Field(local.Ui, baseline.Ui, next.Ui), M5 = Field(local.M5, baseline.M5, next.M5),
+                local = local with { Ui = Field(local.Ui, baseline.Ui, next.Ui),
                     Motherboard = Field(local.Motherboard, baseline.Motherboard, next.Motherboard), Dashboard = Field(local.Dashboard, baseline.Dashboard, next.Dashboard),
                     Startup = Field(local.Startup, baseline.Startup, next.Startup), PythonPath = Field(local.PythonPath, baseline.PythonPath, next.PythonPath) };
                 saved = Contract.Copy(local);

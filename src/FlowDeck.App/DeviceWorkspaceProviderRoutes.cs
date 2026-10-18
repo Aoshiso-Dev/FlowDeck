@@ -22,7 +22,7 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool HasProviderRoutePreview => providerRoutePreview is not null;
     public string ProviderRouteChanges => DeviceProviderRoutePresentation.Describe(providerRoutePreview?.Transfer.ProviderRoute, client.Snapshot);
     public bool CanApplyProviderRoute => CanPreviewProviderRoute && providerRoutePreview is not null && providerRoutePreview.Edit.Matches(client.Snapshot);
-    public string ProviderRouteStatus => ProviderRouteAvailable ? "現在：" + CurrentProviderRoute : "このサービスでは切替未対応";
+    public string ProviderRouteStatus => ProviderRouteAvailable ? "現在：" + CurrentProviderRoute : "サービスは切替未対応";
     public ICommand PreviewProviderRoute => new AsyncCommand(_ => PreviewProviderRouteAsync(), _ => CanPreviewProviderRoute, e => Notice = e.Message);
     public ICommand ApplyProviderRoute => new AsyncCommand(_ => ApplyProviderRouteAsync(), _ => CanApplyProviderRoute, e => Notice = e.Message);
     private void PublishProviderRoutes()
@@ -47,11 +47,12 @@ public sealed partial class DeviceWorkspaceViewModel
         Render(); if (!CanPreviewProviderRoute || !ReadOpenRgbPort(out var port)) return;
         var edit = DeviceProviderRouteEdit.Capture(client.Snapshot!, useOpenRgb, port, providerSelectedDevices);
         setupBusy = true; ClearConfigurationPreviews(); Render();
+        using var status = BeginStatus("接続先の切替内容を確認中");
         try
         {
             var preview = await client.PreviewProviderRouteAsync(edit);
             if (edit.Matches(client.Snapshot) && ReadOpenRgbPort(out var current) && DraftProviderSettings(current).EquivalentTo(edit.Settings))
-            { providerRoutePreview = preview; Notice = "切替内容を確認してください"; }
+            { providerRoutePreview = preview; ReportStatus("切替内容の確認待ち"); }
         }
         finally { setupBusy = false; Render(); }
     }
@@ -59,9 +60,10 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         Render(); if (!CanApplyProviderRoute) return;
         var preview = providerRoutePreview!; providerRoutePreview = null; setupBusy = true; Render();
+        using var status = BeginStatus("接続先を切替中");
         try
         {
-            var result = await client.ApplyProviderRouteAsync(preview); Notice = result.Message;
+            var result = await client.ApplyProviderRouteAsync(preview); ReportResult(result.Message, result.Outcome);
             if (result.Outcome == Outcome.Confirmed)
             {
                 providerSelectedDevices.Clear();

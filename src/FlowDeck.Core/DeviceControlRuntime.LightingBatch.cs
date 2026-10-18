@@ -52,6 +52,8 @@ public sealed partial class DeviceControlRuntime
             lock (gate)
             {
                 RefreshCore();
+                if (configurationHandler is IDeviceCurrentConnectionConfiguration { CurrentControlError: { } configurationError })
+                    throw new IOException(configurationError);
                 if (ct.IsCancellationRequested || request.Session != session || stopping || releasing || configurationChanging ||
                     precondition?.Invoke() is not null || request.TopologyRevision != registry.Snapshot.TopologyRevision ||
                     targets.Any(t => !states.TryGetValue(t.Target, out var state) || state.Generation != t.Generation || state.PolicyRevision != t.ExpectedPolicyRevision))

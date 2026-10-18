@@ -46,8 +46,30 @@ public class DeviceMonitoringTests
         draft.Update(new(2, []), new(2, []), state with { Telemetry = [.. state.Telemetry!, state.Telemetry![0]] }, Generation, 0, true);
         Assert.False(draft.CanRegister);
         draft.Update(new(2, []), new(2, []), state with { Inventory = state.Inventory with { Devices = [] } }, Generation, 0, true);
-        Assert.Equal(temp.Selection, Assert.Single(draft.Candidates).Selection); Assert.False(draft.CanRegister); Assert.Equal(1, draft.SelectedCount);
-        draft.Select(draft.Candidates[0], false); Assert.False(draft.Dirty);
+        Assert.Empty(draft.Candidates); Assert.False(draft.CanRegister); Assert.Equal(1, draft.SelectedCount); Assert.True(draft.IsSelected(temp));
+        draft.Select(temp, false); Assert.False(draft.Dirty);
+    }
+    [Theory]
+    [InlineData("device")]
+    [InlineData("service")]
+    [InlineData("endpoint")]
+    public void HiddenSelectionsCannotRegisterAndReconnectCannotRebaseTheirGeneration(string condition)
+    {
+        var state = State(); var draft = new DeviceMonitoringDraft(); draft.Update(new(2, []), new(2, []), state, Generation, 0, true);
+        var selected = draft.Candidates[0]; draft.Select(selected, true); var instance = state.Inventory.Devices[0];
+        var next = condition switch {
+            "device" => state with { Inventory = state.Inventory with { Devices = [instance with { Connected = false }] } },
+            "endpoint" => state with { Inventory = state.Inventory with { Devices = [instance with { Device = instance.Device with { Endpoints = [] } }] } },
+            _ => state };
+        draft.Update(new(2, []), new(2, []), next, Generation, 0, condition != "service");
+        Assert.Empty(draft.Candidates); Assert.Empty(draft.VisibleCandidates); Assert.Equal(0, draft.CandidateCount); Assert.Equal(1, draft.PageCount);
+        Assert.True(draft.IsSelected(selected)); Assert.Equal(1, draft.SelectedCount); Assert.False(draft.CanRegister);
+        Assert.Throws<InvalidOperationException>(() => draft.Capture());
+        next = state with { Inventory = state.Inventory with { Devices = [instance with { Generation = instance.Generation + 1 }] } };
+        draft.Update(new(2, []), new(2, []), next, Generation, 0, true);
+        Assert.Equal(2, draft.CandidateCount); Assert.True(draft.IsSelected(draft.Candidates[0])); Assert.False(draft.CanRegister);
+        Assert.Throws<InvalidOperationException>(() => draft.Capture());
+        draft.Reset(); Assert.False(draft.Dirty);
     }
     [Fact] public void HiddenSavedItemsAreNotProposedAgainAndDisplayNamesRespectUnicodeBoundaries()
     {

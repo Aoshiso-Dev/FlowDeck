@@ -31,7 +31,7 @@ public class DashboardTests
         var items = DashboardDisplay.Items(Contract.Copy(settings), [new("motherboard", "new", "fan", "Fan")]);
         Assert.Equal("gone", items[0].SensorId); Assert.Equal("pump", items[0].Role); Assert.False(items[1].Visible); Assert.False(items[2].Visible);
     }
-    [Fact] public async Task RenameReorderAndHideCannotChangeFanPolicyOrM5Selections()
+    [Fact] public async Task RenameReorderAndHideCannotChangeFanPolicyOrMotherboardSettings()
     {
         await using var f = new Fixture(); await f.Initialize(); await f.Manual(54);
         var before = f.Core.Settings; var snapshot = f.Core.Snapshot; var writes = f.Hub.Writes;

@@ -1,6 +1,6 @@
 namespace FlowDeck.Core;
 
-public enum DeviceConfigurationOperation { Snapshot, ReadSnapshot, BeginUpload, Append, Validate, Apply, Discard, SaveDashboard, RegisterMonitoring, SaveCoolingStartup, SaveCoolingGroup, SaveNotifications, SaveM5, InspectOpenRgb, ValidateProviderRoute, ValidateProviderSelection, SaveDeviceName, InspectOpenRgbRuntime, SnapshotWithCandidates, PreviewCacheRetirement, RetireDisconnected, ValidateCoolingSetup, ValidateLightingSetup, PrepareConnectionLighting }
+public enum DeviceConfigurationOperation { Snapshot, ReadSnapshot, BeginUpload, Append, Validate, Apply, Discard, SaveDashboard, RegisterMonitoring, SaveCoolingStartup, SaveCoolingGroup, SaveNotifications, InspectOpenRgb = 13, ValidateProviderRoute, ValidateProviderSelection, SaveDeviceName, InspectOpenRgbRuntime, SnapshotWithCandidates, PreviewCacheRetirement, RetireDisconnected, ValidateCoolingSetup, ValidateLightingSetup, PrepareConnectionLighting, SaveDialDisplay }
 public sealed record DeviceConfigurationRequest(DeviceConfigurationOperation Operation, string? TransferId = null,
     string? ExpectedGeneration = null, int? TotalBytes = null, string? Sha256 = null, int? Offset = null, byte[]? Data = null,
     long? TopologyRevision = null, DeviceDashboardConfiguration? Dashboard = null,
@@ -8,12 +8,12 @@ public sealed record DeviceConfigurationRequest(DeviceConfigurationOperation Ope
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] CoolingStartupSelection? CoolingStartup = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] CoolingGroupChange? CoolingGroup = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceNotificationSettings? Notifications = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceM5Settings? M5 = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? OpenRgbPort = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceNameChange? DeviceName = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceCacheRetirementTarget? CacheRetirement = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] EndpointReference? CoolingSetupTarget = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] EndpointReference? LightingSetupTarget = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] EndpointReference? LightingSetupTarget = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceDialDisplaySettings? DialDisplay = null);
 public sealed record DeviceBindingStatus(string DeviceId, bool Matches, string Reason);
 public sealed record DeviceConfigurationReply(Outcome Outcome, string Message, string Generation, string? TransferId = null,
     int? TotalBytes = null, string? Sha256 = null, int? Offset = null, byte[]? Data = null,
@@ -47,6 +47,7 @@ public static class DeviceConfigurationProtocol
     public static bool Valid(DeviceConfigurationRequest? r)
     {
         if (r is null || !Enum.IsDefined(r.Operation)) return false;
+        if (r.Operation != DeviceConfigurationOperation.SaveDialDisplay && r.DialDisplay is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.ValidateLightingSetup && r.LightingSetupTarget is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.ValidateCoolingSetup && r.CoolingSetupTarget is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.SaveDashboard && r.Dashboard is not null) return false;
@@ -54,7 +55,6 @@ public static class DeviceConfigurationProtocol
         if (r.Operation != DeviceConfigurationOperation.SaveCoolingStartup && r.CoolingStartup is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.SaveCoolingGroup && r.CoolingGroup is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.SaveNotifications && r.Notifications is not null) return false;
-        if (r.Operation != DeviceConfigurationOperation.SaveM5 && r.M5 is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.InspectOpenRgb && r.OpenRgbPort is not null) return false;
         if (r.Operation != DeviceConfigurationOperation.SaveDeviceName && r.DeviceName is not null) return false;
         if (r.Operation is not (DeviceConfigurationOperation.PreviewCacheRetirement or DeviceConfigurationOperation.RetireDisconnected) && r.CacheRetirement is not null) return false;
@@ -72,8 +72,8 @@ public static class DeviceConfigurationProtocol
                 emptyBody && r.TopologyRevision is null && DeviceNameChange.Valid(r.DeviceName),
             DeviceConfigurationOperation.InspectOpenRgb => r.TransferId is null && DeviceServiceProtocol.Id(r.ExpectedGeneration) &&
                 emptyBody && r.TopologyRevision is null && r.OpenRgbPort is { } port && DeviceOpenRgbInspection.PortValid(port),
-            DeviceConfigurationOperation.SaveM5 => r.TransferId is null && DeviceServiceProtocol.Id(r.ExpectedGeneration) &&
-                emptyBody && r.TopologyRevision is >= 0 && DeviceM5Settings.Problem(r.M5) is null,
+            DeviceConfigurationOperation.SaveDialDisplay => r.TransferId is null && DeviceServiceProtocol.Id(r.ExpectedGeneration) &&
+                emptyBody && r.TopologyRevision is >= 0 && DeviceDialDisplaySettings.Valid(r.DialDisplay),
             DeviceConfigurationOperation.SaveNotifications => r.TransferId is null && DeviceServiceProtocol.Id(r.ExpectedGeneration) &&
                 emptyBody && r.TopologyRevision is null && DeviceNotifications.Validate(r.Notifications) is null,
             DeviceConfigurationOperation.SaveCoolingGroup => r.TransferId is null && DeviceServiceProtocol.Id(r.ExpectedGeneration) &&

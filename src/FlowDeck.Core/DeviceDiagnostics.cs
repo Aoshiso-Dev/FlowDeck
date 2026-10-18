@@ -36,14 +36,19 @@ public sealed record DeviceDiagnosticDevice(string Id, string Provider, string[]
     DeviceDiagnosticEndpoint[] Endpoints,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DeviceDiagnosticHardware? Hardware = null);
 public sealed record DeviceDiagnosticTarget(string Device, string Endpoint, long? Generation, Outcome Outcome, int? ReportedDuty);
-public sealed record DeviceDiagnosticEvent(long Sequence, DateTimeOffset Time, DeviceOperation? Operation,
-    DeviceConfigurationOperation? ConfigurationOperation, DeviceReleaseReason? ReleaseReason, string? Device, double ServiceElapsedMilliseconds,
+public sealed record DeviceDiagnosticEvent(long Sequence, DateTimeOffset Time,
+    [property: JsonConverter(typeof(DeviceDiagnosticOperationConverter<DeviceOperation>))] DeviceOperation? Operation,
+    [property: JsonConverter(typeof(DeviceDiagnosticOperationConverter<DeviceConfigurationOperation>))] DeviceConfigurationOperation? ConfigurationOperation, DeviceReleaseReason? ReleaseReason, string? Device, double ServiceElapsedMilliseconds,
     Outcome Outcome, DeviceDiagnosticTarget[] Targets, bool FailedWithoutTarget);
 public sealed record DeviceDiagnosticCoolingSetting(EndpointReference Target, bool WiringConfirmed, int? Minimum, int? Fallback,
     int? Exit, CoolingExitAction ExitAction, int Profiles, bool ResumeOnStart);
 public sealed record DeviceDiagnosticConfiguration(int RegisteredDevices, int RegisteredEndpoints, int Bindings, int DashboardItems,
-    int LightingScenes, int LightingGroups, int CoolingGroups, bool NotificationsEnabled, bool OpenRgbEnabled, bool M5ConnectOnStart,
-    DeviceDiagnosticCoolingSetting[] Cooling);
+    int LightingScenes, int LightingGroups, int CoolingGroups, bool NotificationsEnabled, bool OpenRgbEnabled,
+    DeviceDiagnosticCoolingSetting[] Cooling)
+{
+    [JsonPropertyName("m5ConnectOnStart"), JsonIgnore]
+    public bool LegacyAutoConnect { get; init; }
+}
 public sealed record DeviceDiagnosticConfigurationCapture(string Generation, DeviceDiagnosticConfiguration Configuration);
 // Implementations return an in-memory projection of adopted settings. Never read files or probe hardware here.
 public interface IDeviceDiagnosticConfiguration

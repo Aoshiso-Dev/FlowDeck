@@ -1,18 +1,14 @@
 <UserControl x:Class="FlowDeck.App.DeviceLightingLibraryView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FlowDeck.App">
  <StackPanel>
-  <WrapPanel Margin="0,12,0,0"><Button Content="新規グループ" Command="{Binding NewLightLibrary}"/><Button Content="グループを編集" Command="{Binding EditLightGroup}"/><Button Content="新規シーン" Command="{Binding NewLightLibrary}" CommandParameter="scene"/><Button Content="シーンを編集" Command="{Binding EditLightScene}"/></WrapPanel>
-  <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding HasLightLibraryEditor,Converter={StaticResource BoolVisibility}}">
+  <WrapPanel Margin="0,12,0,0"><Button Content="新規グループ" Command="{Binding NewLightLibrary}"/><Button Content="グループ編集" Command="{Binding EditLightGroup}"/><Button Content="新規シーン" Command="{Binding NewLightLibrary}" CommandParameter="scene"/><Button Content="シーン編集" Command="{Binding EditLightScene}"/></WrapPanel>
+  <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="12,18" Margin="0,14,0,0" Visibility="{Binding HasLightLibraryEditor,Converter={StaticResource BoolVisibility}}">
    <StackPanel IsEnabled="{Binding LightingIdle}">
     <StackPanel DataContext="{Binding LightLibraryEditor}">
      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,0,0,12"/>
      <local:DraftTextBox Style="{StaticResource {x:Type TextBox}}" Draft="{Binding Name}" MaxLength="80" AutomationProperties.Name="保存する照明の名前"/>
-     <StackPanel Orientation="Horizontal" Margin="0,12,0,0" Visibility="{Binding IsScene,Converter={StaticResource BoolVisibility}}">
-      <CheckBox Content="M5GOに表示" IsChecked="{Binding ShowOnM5}" IsEnabled="{Binding CanShowOnM5}" AutomationProperties.Name="M5GOに表示するシーン"/>
-      <TextBlock Text="{Binding M5SceneCount}" VerticalAlignment="Center" Margin="12,0,0,0"/>
-     </StackPanel>
     </StackPanel>
     <DockPanel Margin="0,12,0,8" Visibility="{Binding LightLibraryEditor.IsScene,Converter={StaticResource BoolVisibility}}">
-     <WrapPanel DockPanel.Dock="Right"><Button Content="パートを追加" Command="{Binding AddLightScenePart}"/><Button Content="パートを削除" Command="{Binding RemoveLightScenePart}"/></WrapPanel>
+     <WrapPanel DockPanel.Dock="Right"><Button Content="パート追加" Command="{Binding AddLightScenePart}"/><Button Content="パート削除" Command="{Binding RemoveLightScenePart}"/></WrapPanel>
      <ComboBox ItemsSource="{Binding LightLibraryEditor.Parts}" SelectedValue="{Binding LightLibraryEditor.SelectedPart}" SelectedValuePath="Id" DisplayMemberPath="Name" AutomationProperties.Name="保存するシーンのパート"/>
     </DockPanel>
     <Grid Margin="0,8,0,0" DataContext="{Binding LightLibraryEditor}">
@@ -21,7 +17,7 @@
      <StackPanel Grid.Column="2" Visibility="{Binding HasPart,Converter={StaticResource BoolVisibility}}">
       <ComboBox ItemsSource="{Binding Effects}" SelectedValue="{Binding Effect}" SelectedValuePath="Id" DisplayMemberPath="Name" Margin="0,0,0,12" AutomationProperties.Name="保存するシーンの効果"/>
       <TextBlock Text="{Binding CapabilityIssue}" Style="{StaticResource OptionalNote}" Margin="0,0,0,8"/>
-      <CheckBox Content="LEDごとの色" IsChecked="{Binding PerLed}" Visibility="{Binding AllowsPerLed,Converter={StaticResource BoolVisibility}}" Margin="0,0,0,10" AutomationProperties.Name="保存するシーンのLED別色"/>
+      <CheckBox Content="LED別色" IsChecked="{Binding PerLed}" Visibility="{Binding AllowsPerLed,Converter={StaticResource BoolVisibility}}" Margin="0,0,0,10" AutomationProperties.Name="保存するシーンのLED別色"/>
       <DockPanel Margin="0,0,0,12" Visibility="{Binding HasPalette,Converter={StaticResource BoolVisibility}}">
        <WrapPanel DockPanel.Dock="Right"><Button Content="＋" Command="{Binding AddColor}" AutomationProperties.Name="シーンに色を追加"/><Button Content="−" Command="{Binding RemoveColor}" AutomationProperties.Name="シーンの色を削除"/></WrapPanel>
        <ComboBox ItemsSource="{Binding Palette}" SelectedValuePath="Index" SelectedValue="{Binding SelectedColor}" AutomationProperties.Name="編集するシーンの色"><ComboBox.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal"><Border Width="22" Height="18" Background="{Binding Brush}" CornerRadius="3" Margin="0,0,8,0"/><TextBlock Text="{Binding Name}"/></StackPanel></DataTemplate></ComboBox.ItemTemplate></ComboBox>

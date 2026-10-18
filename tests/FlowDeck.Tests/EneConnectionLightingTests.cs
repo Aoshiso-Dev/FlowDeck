@@ -62,7 +62,7 @@ public sealed class EneConnectionLightingTests
         public Task<DeviceServiceReply> Stop() => Runtime.ExecuteAsync(Request(DeviceOperation.StopLighting, null, 0x71));
         public Task<DeviceServiceReply> ChangeSettings() => Send(new(DeviceConfigurationOperation.SaveNotifications,
             ExpectedGeneration: Authority.Generation.Id, Notifications: Authority.Configuration.Preferences.Notifications with { Desktop = false }));
-        public bool Ready(byte address = 0x71) => Driver(address).Observe()!.Endpoints.Single().Capabilities.Single(c => c.Feature == DeviceFeature.FixedColor).Usable;
+        public bool Ready(byte address = 0x71) => Driver(address).Observe()?.Endpoints.Single().Capabilities.Single(c => c.Feature == DeviceFeature.FixedColor).Usable == true;
         public string ConfigurationHash() => SettingsTransfer.Hash(Authority.Configuration);
         public async ValueTask DisposeAsync()
         {
@@ -71,11 +71,11 @@ public sealed class EneConnectionLightingTests
         }
     }
 
-    [Fact] public async Task TwoMemoriesPrepareWithoutBusIoOutputOrPersistentSettings()
+    [Fact] public async Task TwoMemoriesBecomeReadyWithoutConfirmationOutputOrPersistentSettings()
     {
         var rack = new Rack(0x71, 0x73); await using var r = new Rig(rack); await r.Open();
         var hash = r.ConfigurationHash(); var pointer = r.Store.ReadActivePointer(); var opens = rack.Opens;
-        Assert.False(r.Ready()); Assert.Equal(2, await r.Prepare());
+        Assert.True(r.Ready()); Assert.Equal(0, await r.Prepare());
         Assert.Equal(0, await r.Prepare()); Assert.Equal(opens, rack.Opens); Assert.Empty(rack.Writes);
         Assert.True(r.Ready()); Assert.True(r.Ready(0x73)); Assert.Equal(hash, r.ConfigurationHash());
         Assert.Equal(pointer, r.Store.ReadActivePointer()); Assert.Empty(r.Authority.Configuration.Bindings.Devices);
@@ -93,29 +93,31 @@ public sealed class EneConnectionLightingTests
         Assert.Equal(DevicePolicySaveState.SessionOnly, answer.Result!.Targets.Single().Persistence!.State);
         Assert.Equal(hash, r.ConfigurationHash()); Assert.Equal(pointer, r.Store.ReadActivePointer()); Assert.NotEmpty(rack.Writes);
         var ended = await r.Runtime.ExecuteAsync(r.Request(DeviceOperation.ReleaseSession)); Assert.True(ended.Success, ended.Error);
-        Assert.All(original, pair => Assert.Equal(pair.Value, rack.Registers[pair.Key])); Assert.False(r.Ready());
+        Assert.All(original, pair => Assert.Equal(pair.Value, rack.Registers[pair.Key])); Assert.True(r.Ready());
         Assert.Null(new EneMemoryRecovery(r.Directory.Path, Id()).Pending);
     }
 
-    [Theory] [InlineData("registered")] [InlineData("revoked")] [InlineData("imported")]
-    public async Task SavedRegistrationOrExplicitRevocationIsNeverReapproved(string kind)
+    [Theory] [InlineData("registered")] [InlineData("unconfirmed")] [InlineData("imported")]
+    public async Task CompatibleSavedSettingsDoNotNeedLegacyConfirmationFlags(string kind)
     {
         var config = Empty(); var setup = kind == "registered" ? null : new EndpointSetup(LedCount: 8, LedCountConfirmed: false);
         config = config with { Devices = new(2, [new(Id(), "Memory", "ene-memory", DeviceKind.Memory,
             [new("zone:0", "RGB", EndpointKind.Lighting, Setup: setup)])]) };
         if (kind == "imported") config = config with { Lighting = config.Lighting with { Endpoints = [new(Target(), false, new(LightingExitAction.Off))] } };
         var rack = new Rack(0x71); await using var r = new Rig(rack, config); await r.Open();
-        Assert.Equal(0, await r.Prepare()); Assert.False(r.Ready()); Assert.Empty(rack.Writes);
+        var before = r.ConfigurationHash(); var pointer = r.Store.ReadActivePointer();
+        Assert.Equal(0, await r.Prepare()); Assert.True(r.Ready()); Assert.Empty(rack.Writes);
+        Assert.Equal(before, r.ConfigurationHash()); Assert.Equal(pointer, r.Store.ReadActivePointer());
     }
 
-    [Fact] public async Task NewAuthenticatedSessionRequiresFreshPreparation()
+    [Fact] public async Task NewAuthenticatedSessionRejectsTheOldSessionRequestWithoutReconfirmation()
     {
         var rack = new Rack(0x71); await using var r = new Rig(rack); await r.Open(); await r.Prepare();
         var old = r.Request(DeviceOperation.SetLighting, new("fixed", [new(1, 2, 3)]), 0x71);
         Assert.True((await r.Runtime.ExecuteAsync(r.Request(DeviceOperation.ReleaseSession))).Success);
-        r.Hello = r.Runtime.OpenSession(r.User); Assert.False(r.Ready());
+        r.Hello = r.Runtime.OpenSession(r.User); Assert.True(r.Ready());
         Assert.False((await r.Runtime.ExecuteAsync(old)).Success); Assert.Empty(rack.Writes);
-        Assert.Equal(1, await r.Prepare()); Assert.True(r.Ready());
+        Assert.Equal(0, await r.Prepare()); Assert.True(r.Ready());
     }
 
     [Theory] [InlineData("disconnect")] [InlineData("platform")] [InlineData("invalidate")]
@@ -127,14 +129,14 @@ public sealed class EneConnectionLightingTests
         if (change == "platform") rack.Platform = "replacement-platform";
         if (change == "invalidate") r.Backend.Invalidate();
         await r.Runtime.PollAsync(); await r.Runtime.PollAsync();
-        Assert.NotEqual(before, r.Driver().BindingCandidate); Assert.False(r.Ready());
+        Assert.NotEqual(before, r.Driver().BindingCandidate); Assert.True(r.Ready());
         Assert.False((await r.Runtime.ExecuteAsync(old)).Success); Assert.Empty(rack.Writes);
-        Assert.Equal(1, await r.Prepare()); Assert.True(r.Ready());
+        Assert.Equal(0, await r.Prepare()); Assert.True(r.Ready());
         Assert.Null(r.Runtime.State().Endpoints.Single().RequestedLighting);
         Assert.Empty(r.Authority.Configuration.Lighting.Preferences ?? []);
     }
 
-    [Fact] public async Task ServiceRestartCannotLoadConnectionPermissionOrColorFromDisk()
+    [Fact] public async Task ServiceRestartPreparesCurrentControllerWithoutLoadingOldColorOrOwnership()
     {
         DeviceConfigurationPackage saved;
         await using (var r = new Rig(new Rack(0x71)))
@@ -142,26 +144,28 @@ public sealed class EneConnectionLightingTests
             await r.Open(); await r.Prepare(); Assert.True((await r.Color()).Success); saved = r.Authority.Configuration;
         }
         await using var restarted = new Rig(new Rack(0x71), saved); await restarted.Open();
-        Assert.False(restarted.Ready()); Assert.Empty(restarted.Rack.Writes); Assert.Null(restarted.Runtime.State().Endpoints.Single().RequestedLighting);
-        Assert.Equal(1, await restarted.Prepare()); Assert.Empty(restarted.Rack.Writes);
+        Assert.True(restarted.Ready()); Assert.Empty(restarted.Rack.Writes); Assert.Null(restarted.Runtime.State().Endpoints.Single().RequestedLighting);
+        Assert.Equal(0, await restarted.Prepare()); Assert.Empty(restarted.Rack.Writes);
     }
 
-    [Fact] public async Task ConfigurationGenerationChangeRevokesPermissionBeforeFurtherOutput()
+    [Fact] public async Task UnrelatedPreferenceSaveDoesNotInvalidateCurrentControllerSettings()
     {
         var rack = new Rack(0x71); await using var r = new Rig(rack); await r.Open(); await r.Prepare();
-        Assert.True((await r.ChangeSettings()).Success); Assert.False(r.Ready());
-        Assert.False((await r.Color()).Success); Assert.Empty(rack.Writes);
-        Assert.Equal(1, await r.Prepare()); Assert.True(r.Ready()); Assert.Empty(rack.Writes);
+        Assert.True((await r.ChangeSettings()).Success); Assert.True(r.Ready());
+        Assert.Equal(0, await r.Prepare()); Assert.Empty(rack.Writes);
+        Assert.True((await r.Color()).Success);
     }
 
-    [Fact] public async Task ExpiredPermissionWithRecoveryPendingCannotBePreparedUntilRestored()
+    [Fact] public async Task UnrelatedPreferenceSaveDoesNotTransferOrReplaceAnActiveRecoveryRecord()
     {
         var rack = new Rack(0x71); await using var r = new Rig(rack); await r.Open(); await r.Prepare();
         Assert.True((await r.Color()).Success); Assert.NotNull(new EneMemoryRecovery(r.Directory.Path, Id()).Pending);
+        var pending = new EneMemoryRecovery(r.Directory.Path, Id()).Pending!;
         await r.ChangeSettings(); var writes = rack.Writes.Count;
-        Assert.Equal(0, await r.Prepare()); Assert.False((await r.Color()).Success); Assert.Equal(writes, rack.Writes.Count);
+        Assert.Equal(0, await r.Prepare()); Assert.True(r.Ready()); Assert.Equal(writes, rack.Writes.Count);
+        Assert.Equal(pending.Hash, new EneMemoryRecovery(r.Directory.Path, Id()).Pending!.Hash);
         Assert.True((await r.Stop()).Success); Assert.Null(new EneMemoryRecovery(r.Directory.Path, Id()).Pending);
-        Assert.Equal(1, await r.Prepare());
+        Assert.Equal(0, await r.Prepare());
     }
 
     [Theory] [InlineData(false)] [InlineData(true)]
@@ -171,24 +175,21 @@ public sealed class EneConnectionLightingTests
         rack.BeforeData = (_, write) => {
             if (!write) return;
             rack.BeforeData = null;
-            var changed = r.Authority.ExecuteAsync(new(DeviceConfigurationOperation.SaveNotifications,
-                ExpectedGeneration: r.Authority.Generation.Id, Notifications: new(Desktop: false, Rules: [])),
-                Guid.NewGuid().ToString("N"), r.Hello.Session, r.Runtime, default).GetAwaiter().GetResult();
-            Assert.Equal(Outcome.Confirmed, changed.Outcome);
+            r.Backend.Invalidate();
         };
         Assert.Equal(Outcome.Rejected, (await r.Color(animated)).Result!.Outcome); Assert.Empty(rack.Writes);
         Assert.Null(new EneMemoryRecovery(r.Directory.Path, Id()).Pending);
     }
 
-    [Fact] public async Task ConcurrentRediscoveryCannotGrantAnOldConnectionPermission()
+    [Fact] public async Task CurrentSettingsPreparationDoesNotPerformBusIoDuringRediscovery()
     {
         var rack = new Rack(0x71); await using var r = new Rig(rack); await r.Open();
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously); using var resume = new ManualResetEventSlim();
         rack.OnIdentify = () => { rack.OnIdentify = null; entered.TrySetResult(); if (!resume.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException(); };
         var discovery = r.Backend.DiscoverAsync(default);
-        try { await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); Assert.Equal(0, await r.Prepare()); Assert.False(r.Ready()); }
+        try { await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); Assert.Equal(0, await r.Prepare()); Assert.Empty(rack.Writes); }
         finally { resume.Set(); await discovery; }
-        Assert.Equal(1, await r.Prepare()); Assert.Empty(rack.Writes);
+        Assert.Equal(0, await r.Prepare()); Assert.Empty(rack.Writes);
     }
 
     [Theory] [InlineData("stale")] [InlineData("failed-read")] [InlineData("unknown-definition")]
@@ -207,7 +208,7 @@ public sealed class EneConnectionLightingTests
         var next = r.Authority.Configuration with { Preferences = r.Authority.Configuration.Preferences with { Notifications = new(Desktop: false, Rules: []) } };
         r.Store.Activate(r.Store.Stage(DeviceConfigurationCodec.Write(next)));
         Assert.False((await r.Send(new(DeviceConfigurationOperation.PrepareConnectionLighting))).Success);
-        Assert.False(r.Ready()); Assert.False((await r.Color()).Success); Assert.Empty(rack.Writes);
+        Assert.False((await r.Color()).Success); Assert.Empty(rack.Writes);
     }
 
     [Theory] [InlineData(128, 8)] [InlineData(1, 4096)]
@@ -218,7 +219,24 @@ public sealed class EneConnectionLightingTests
         config = config with { Devices = new(2, [new("reserved", "Reserved", "test", DeviceKind.Controller, endpoints)]),
             Lighting = config.Lighting with { Endpoints = endpoints.Select(e => new LightingEndpointConfiguration(new("reserved", e.Id), false)).ToArray() } };
         await using var r = new Rig(new Rack(0x71), config); await r.Open();
-        Assert.Equal(0, await r.Prepare()); Assert.Empty(r.Rack.Writes);
+        Assert.Equal(0, await r.Prepare()); Assert.False((await r.Color()).Success); Assert.Empty(r.Rack.Writes);
+    }
+
+    [Fact] public async Task RegisteredLightingIsNotChargedTwiceWhileAnotherUnregisteredControllerExceedsCapacity()
+    {
+        var reserved = Enumerable.Range(0, 127).Select(i => new RegisteredEndpoint("zone" + i, "RGB", EndpointKind.Lighting,
+            Setup: new(LedCount: 8))).ToArray();
+        var config = Empty() with { Devices = new(2, [new("reserved", "Reserved", "test", DeviceKind.Controller, reserved),
+            new(Id(), "Memory", "ene-memory", DeviceKind.Memory, [new("zone:0", "RGB", EndpointKind.Lighting, Setup: new(LedCount: 8))])]) };
+        config = config with { Lighting = config.Lighting with { Endpoints = [.. reserved.Select(e =>
+            new LightingEndpointConfiguration(new("reserved", e.Id), false)), new(Target(), false, new(LightingExitAction.Off))] } };
+        await using var r = new Rig(new Rack(0x71, 0x73), config); await r.Open();
+        Assert.True(r.Ready()); Assert.True((await r.Color()).Success);
+        var writes = r.Rack.Writes.Count;
+        Assert.False((await r.Color(false, 0x73)).Success); Assert.Equal(writes, r.Rack.Writes.Count);
+        Assert.All(r.Rack.Writes, write => Assert.Equal(0x71, write.Address));
+        Assert.False(r.Authority.Configuration.Lighting.Endpoints!.Single(e => e.Target == Target()).WiringConfirmed);
+        Assert.False(r.Authority.Configuration.Devices.Devices.Single(d => d.Id == Id()).Endpoints.Single().Setup!.LedCountConfirmed);
     }
 
     [Fact] public async Task NormalFirstUseAndRefreshPrepareMemoryThroughAuthenticatedDemoPipeOnly()
@@ -232,9 +250,13 @@ public sealed class EneConnectionLightingTests
         await using var client = new DeviceWorkspaceClient(DeviceServicePipeClient.ForDemo(pipe, Environment.ProcessId));
         try
         {
-            await client.ConnectAsync(); Assert.False(r.Ready()); Assert.Empty(r.Rack.Writes);
+            await client.ConnectAsync(); Assert.True(r.Ready()); Assert.Empty(r.Rack.Writes);
+            var hash = r.ConfigurationHash(); var pointer = r.Store.ReadActivePointer(); var opens = r.Rack.Opens;
+            // First-use reports already usable endpoints; it no longer counts approval/preparation mutations.
             var first = await client.PrepareFirstUseAsync(); Assert.Null(first.Deferred); Assert.Equal(1, first.PreparedLighting); Assert.True(r.Ready());
-            var hash = r.ConfigurationHash(); r.Rack.Present.Clear(); await r.Runtime.PollAsync(); await client.RefreshAsync();
+            Assert.Equal(hash, r.ConfigurationHash()); Assert.Equal(pointer, r.Store.ReadActivePointer());
+            Assert.Equal(opens, r.Rack.Opens); Assert.Empty(r.Rack.Writes);
+            r.Rack.Present.Clear(); await r.Runtime.PollAsync(); await client.RefreshAsync();
             r.Rack.Present.Add(0x71); await r.Runtime.PollAsync(); await r.Runtime.PollAsync(); await client.RefreshAsync();
             Assert.True(r.Ready()); Assert.Equal(hash, r.ConfigurationHash()); Assert.Empty(r.Rack.Writes);
         }
@@ -242,13 +264,13 @@ public sealed class EneConnectionLightingTests
     }
 
     [Theory] [InlineData("disconnect")] [InlineData("expire")]
-    public async Task LostOwnerRevokesEvenAnIdlePermission(string boundary)
+    public async Task LostOwnerCannotUseAnOldRequestEvenWhileTheControllerIsReady(string boundary)
     {
         await using var r = new Rig(new Rack(0x71)); await r.Open(); await r.Prepare();
         var request = r.Request(DeviceOperation.SetLighting, new("fixed", [new(1, 2, 3)]), 0x71);
         if (boundary == "disconnect") await r.Runtime.DisconnectAsync(r.Hello.Session);
         else r.Clock.Advance(DeviceServiceProtocol.LeaseSeconds + 1);
-        Assert.False((await r.Runtime.ExecuteAsync(request)).Success); Assert.False(r.Ready()); Assert.Empty(r.Rack.Writes);
+        Assert.False((await r.Runtime.ExecuteAsync(request)).Success); Assert.Empty(r.Rack.Writes);
     }
 
     [Fact] public async Task DisplayedConnectionColorIsDiscardedWhenMemoryIsReplaced()
@@ -282,12 +304,13 @@ public sealed class EneConnectionLightingTests
         Assert.False(DeviceConfigurationProtocol.Valid(reply with { Data = [1] }));
     }
 
-    [Fact] public async Task RuntimeReconfigurationRevokesPermissionEvenWithoutADurableEdit()
+    [Fact] public async Task RuntimeReconfigurationRejectsTheOldRequestWithoutReconfirmation()
     {
         await using var r = new Rig(new Rack(0x71)); await r.Open(); await r.Prepare();
+        var old = r.Request(DeviceOperation.SetLighting, new("fixed", [new(1, 2, 3)]), 0x71);
         await r.Runtime.ReconfigureAsync(r.Hello.Session, r.Runtime.State().Inventory.TopologyRevision,
             (_, _) => Task.FromResult(Array.Empty<PhysicalDeviceBinding>()));
-        Assert.False(r.Ready()); Assert.Empty(r.Rack.Writes); Assert.Equal(1, await r.Prepare());
+        Assert.False((await r.Runtime.ExecuteAsync(old)).Success); Assert.Empty(r.Rack.Writes); Assert.Equal(0, await r.Prepare());
     }
 
     private sealed class BoundFan(GenericTestDriver source) : IPhysicalDeviceDriver
@@ -308,7 +331,7 @@ public sealed class EneConnectionLightingTests
         var request = r.Request(DeviceOperation.SetDuty) with { Targets = [new(state.Target, state.Generation, state.PolicyRevision)], Duty = 62 };
         Assert.Equal(Outcome.Confirmed, (await r.Runtime.ExecuteAsync(request)).Result!.Outcome);
         var writes = fan.Writes; var releases = fan.Releases;
-        Assert.Equal(1, await r.Prepare()); Assert.Equal(writes, fan.Writes); Assert.Equal(releases, fan.Releases); Assert.Equal(62, fan.Duty);
+        Assert.Equal(0, await r.Prepare()); Assert.Equal(writes, fan.Writes); Assert.Equal(releases, fan.Releases); Assert.Equal(62, fan.Duty);
         Assert.True(r.Runtime.State().Endpoints.Single(e => e.Target.DeviceId == "fan").Owned); Assert.Empty(r.Rack.Writes);
     }
 
@@ -330,5 +353,39 @@ public sealed class EneConnectionLightingTests
         Assert.Equal(hash, r.ConfigurationHash()); Assert.Equal(pointer, r.Store.ReadActivePointer());
         var draft = new DeviceLightingDraft(); draft.Update(r.Runtime.State(), r.Authority.Generation.Id, r.Authority.Configuration.Lighting, 0, true);
         draft.Select([target]); Assert.Equal(new RgbColor(20, 40, 60), draft.Program.Colors[0]); Assert.False(draft.CanAdjust);
+    }
+
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public async Task RegisteredMixedSelectionSavesWithoutInvalidatingItsCurrentOperation(bool animated)
+    {
+        var light = new DeviceLightingRuntimeTests.Driver("serial"); var target = new EndpointReference("serial", "light1");
+        var config = Empty() with { Devices = new(2, [
+            new("serial", "Serial", "demo-rgb", DeviceKind.Memory, [new("light1", "RGB", EndpointKind.Lighting, Setup: new(LedCount: 24))]),
+            new(Id(), "Memory", "ene-memory", DeviceKind.Memory, [new("zone:0", "RGB", EndpointKind.Lighting, Setup: new(LedCount: 8))])]),
+            Bindings = new(2, Installation, [light.BindingCandidate]) };
+        config = config with { Lighting = config.Lighting with { Endpoints = [new(target, false, new(LightingExitAction.Off)),
+            new(Target(), false, new(LightingExitAction.RestoreOriginal))] } };
+        await using var r = new Rig(new Rack(0x71), config, additional: [light]); await r.Open();
+        var beforeBindings = SettingsTransfer.Hash(r.Authority.Configuration.Bindings);
+        var state = r.Runtime.State(); var versions = state.Endpoints.Select(e => new DeviceTargetVersion(e.Target, e.Generation, e.PolicyRevision)).ToArray();
+        var program = new LightingProgram(animated ? "color-cycle" : "fixed", [new(20, 40, 60)]);
+        var result = await r.Runtime.ExecuteAsync(r.Request(DeviceOperation.SetLighting, program, 0x71) with { Targets = versions });
+        Assert.True(result.Success, result.Error);
+        Assert.All(result.Result!.Targets, t => Assert.Equal(DevicePolicySaveState.Saved, t.Persistence!.State));
+        Assert.Equal(beforeBindings, SettingsTransfer.Hash(r.Authority.Configuration.Bindings));
+        Assert.Equal(2, r.Authority.Configuration.Lighting.Preferences!.Length);
+        Assert.All(r.Authority.Configuration.Lighting.Preferences, p => Assert.True(DeviceLighting.SameProgram(program, p.Program)));
+        var pending = new EneMemoryRecovery(r.Directory.Path, Id()).Pending!;
+        var writes = r.Rack.Writes.Count;
+        if (animated)
+        {
+            r.Clock.Advance(.1); await r.Runtime.TickLightingAsync();
+            Assert.True(r.Rack.Writes.Count > writes);
+            Assert.True(r.Runtime.State().Endpoints.Single(e => e.Target == Target()).Lighting!.Running);
+        }
+        else Assert.True((await r.Color()).Success);
+        var continued = new EneMemoryRecovery(r.Directory.Path, Id()).Pending!;
+        Assert.Equal(pending.Scope, continued.Scope); Assert.True(EneMemoryProtocol.Same(pending.Original, continued.Original));
+        Assert.True(r.Ready());
     }
 }

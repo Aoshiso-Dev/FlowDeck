@@ -19,7 +19,7 @@ public static partial class SmokeRunner
             var rows = vm.DeviceCatalog.ToArray(); await host.Coordinator.TickAsync(); await Settle();
             Check(rows.All(vm.DeviceCatalog.Contains), "Catalog retains row objects across periodic refresh");
             vm.SelectedPage = 3; await Settle();
-            var catalog = Descendants<Expander>(window).Single(e => e.Header as string == "検出した機器と対応機能");
+            var catalog = Descendants<Expander>(window).Single(e => e.Header as string == "機器・機能");
             catalog.IsExpanded = true; catalog.BringIntoView(); await Settle();
             foreach (var theme in new[] { "light", "dark" })
             { ThemeManager.Apply(theme); await Settle(); Capture(window, output, "device-catalog-" + theme); }

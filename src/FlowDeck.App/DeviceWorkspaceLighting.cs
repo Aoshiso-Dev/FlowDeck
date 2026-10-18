@@ -18,13 +18,15 @@ public sealed class DeviceLightRow(EndpointReference target, Action selectionCha
     public string Result { get; private set; } = "";
     public string Details { get; private set; } = "";
     public bool NeedsSetup { get; private set; }
+    public bool NeedsRecovery { get; private set; }
     public bool Ready { get; private set; }
-    public string SetupLabel { get; private set; } = "照明端子を設定";
-    public void Update(string name, string status, bool needsSetup = false, bool ready = false, string setupLabel = "照明端子を設定")
+    public string SetupLabel { get; private set; } = "端子設定";
+    public void Update(string name, string status, bool needsSetup = false, bool ready = false, string setupLabel = "端子設定", bool needsRecovery = false)
     {
         if (Name != name) { Name = name; Notify(nameof(Name)); }
         if (Status != status) { Status = status; Notify(nameof(Status)); }
         if (NeedsSetup != needsSetup) { NeedsSetup = needsSetup; Notify(nameof(NeedsSetup)); }
+        if (NeedsRecovery != needsRecovery) { NeedsRecovery = needsRecovery; Notify(nameof(NeedsRecovery)); }
         if (Ready != ready) { Ready = ready; Notify(nameof(Ready)); }
         if (SetupLabel != setupLabel) { SetupLabel = setupLabel; Notify(nameof(SetupLabel)); }
     }
@@ -55,10 +57,22 @@ public sealed partial class DeviceWorkspaceViewModel
     public DeviceLightChoice? SelectedLightScene { get => selectedScene; set => Set(ref selectedScene, value); }
     public DeviceLightChoice? SelectedLightGroup { get => selectedGroup; set => Set(ref selectedGroup, value); }
     public bool LightingIdle => !lightingBusy && !identificationBusy && !setupBusy && !closing && lightingConnected;
-    public bool CanApplyLighting => LightingIdle && LightingDraft.CanApply;
+    public bool CanApplyLighting => LightingIdle && LightingDraft.Dirty && LightingDraft.CanApply;
+    public bool LightHasPendingChanges => LightingDraft.Dirty;
+    public bool LightEffectPending => LightingDraft.EffectChanged;
+    public bool LightColorPending => LightingDraft.ColorChanged;
+    public bool LightBrightnessPending => LightingDraft.BrightnessChanged;
+    public bool LightSpeedPending => LightingDraft.SpeedChanged;
+    public bool LightDirectionPending => LightingDraft.DirectionChanged;
+    public bool LightPerLedPending => LightingDraft.PerLedChanged;
     public bool CanAdjustLighting => LightingIdle && LightingDraft.CanAdjust;
-    public string LightEditStatus => LightingDraft.Problem ?? (LightingDraft.Mixed ? "設定が混在しています" : LightingDraft.Dirty ? "未適用" : "現在の設定");
-    public string LightSelectionSummary => $"{LightingDraft.Targets.Length} 個の照明" + (DeviceLighting.Animated(LightingDraft.Program) && LightingDraft.Targets.Length > 1 ? " · 同期" : "");
+    public bool LightRecoveryRequired => Lights.Any(l => l.Selected && l.NeedsRecovery);
+    public string LightStopLabel => LightRecoveryRequired ? "終了を再試行" : "制御終了";
+    public string LightRecoveryMessage => LightRecoveryRequired ?
+        "終了処理待ち · 選択中の照明も終了し、終了待ち端子に保存済みの終了設定を適用。対象確認・再試行が必要。" : "";
+    public string LightEditStatus => LightingDraft.Problem ?? (LightingDraft.Mixed ? "設定混在" : LightingDraft.Dirty ? "未適用" : "現在の設定");
+    public string LightSelectionSummary => $"{Lights.Count(l => l.Selected)} 個の照明" +
+        (DeviceLighting.Animated(LightingDraft.Program) && Lights.Count(l => l.Selected) > 1 ? " · 同期" : "");
     public string LightEffect { get => LightingDraft.Program.EffectId; set {
         if (value is null || value == LightEffect) return; var p = LightingDraft.Program;
         if (LightingDraft.NativeEffects.SingleOrDefault(e => e.Id == value) is { } native) ChangeLight(DeviceNativeLighting.Create(native, p));
@@ -97,7 +111,8 @@ public sealed partial class DeviceWorkspaceViewModel
             displayedProgram = program;
             foreach (var name in new[] { nameof(LightEffect), nameof(LightColor), nameof(LightBrightness), nameof(LightSpeed), nameof(LightAnimated), nameof(CanPickLightColor) }) Notify(name);
         }
-        foreach (var name in new[] { nameof(LightEditStatus), nameof(LightSelectionSummary), nameof(LightingIdle), nameof(CanApplyLighting), nameof(CanAdjustLighting), nameof(CanPickLightColor) }) Notify(name);
+        foreach (var name in new[] { nameof(LightEditStatus), nameof(LightSelectionSummary), nameof(LightingIdle), nameof(CanApplyLighting), nameof(CanAdjustLighting), nameof(CanPickLightColor), nameof(LightRecoveryRequired), nameof(LightStopLabel), nameof(LightRecoveryMessage) }) Notify(name);
+        foreach (var name in new[] { nameof(LightHasPendingChanges), nameof(LightEffectPending), nameof(LightColorPending), nameof(LightBrightnessPending), nameof(LightSpeedPending), nameof(LightDirectionPending), nameof(LightPerLedPending) }) Notify(name);
         PublishLightNative(programChanged); PublishLightLevels(); PublishIdentificationControls();
         } finally { publishingLightProgram = false; }
     }
@@ -106,11 +121,12 @@ public sealed partial class DeviceWorkspaceViewModel
         if (selectingLights) return;
         LightingDraft.Select(Lights.Where(l => l.Selected).Select(l => l.Target)); PublishLightingEditor();
         if (client.Snapshot is { } snapshot) RenderLighting(snapshot);
+        RememberLightingSelection();
     }
     public void SelectLights(IEnumerable<EndpointReference> targets)
     {
         var ids = targets.ToHashSet();
-        if (ids.Any(t => Lights.All(l => l.Target != t))) throw new InvalidOperationException("保存された照明対象を再取得してください");
+        if (ids.Any(t => Lights.All(l => l.Target != t))) throw new InvalidOperationException("照明対象の再取得が必要");
         selectingLights = true;
         try { foreach (var row in Lights) row.Selected = ids.Contains(row.Target); }
         finally { selectingLights = false; }
@@ -121,10 +137,20 @@ public sealed partial class DeviceWorkspaceViewModel
         var config = snapshot.Configuration.Configuration;
         lightingConnected = snapshot.Connected && snapshot.ElapsedSeconds is >= 0 and < 3 && !snapshot.State.Releasing && !snapshot.State.ConfigurationChanging;
         LightingDraft.Update(snapshot.State, snapshot.Configuration.Generation, config.Lighting, snapshot.ElapsedSeconds, snapshot.Connected);
-        var targets = config.Devices.Devices.SelectMany(d => d.Endpoints.Where(e => e.Kind == EndpointKind.Lighting).Select(e => new EndpointReference(d.Id, e.Id)))
-            .Concat(snapshot.State.Inventory.Devices.SelectMany(d => d.Device.Endpoints.Where(e => e.Kind == EndpointKind.Lighting).Select(e => new EndpointReference(d.Device.Id, e.Id))))
-            .Distinct().ToArray();
-        foreach (var target in targets) if (Lights.All(l => l.Target != target)) Lights.Add(new(target, LightingSelectionChanged));
+        var targets = snapshot.State.Inventory.Devices.Where(d => snapshot.Connected && d.Connected)
+            .SelectMany(d => d.Device.Endpoints.Where(e => e.Kind == EndpointKind.Lighting)
+                .Select(e => new EndpointReference(d.Device.Id, e.Id))).ToHashSet();
+        foreach (var old in Lights.Where(l => !targets.Contains(l.Target)).ToArray()) Lights.Remove(old);
+        // Keep the original draft target set: narrowing it implicitly would discard unsent edits.
+        // The draft's connection/generation checks block execution until the user reloads or selects again.
+        selectingLights = true;
+        try
+        {
+            foreach (var target in targets)
+                if (Lights.All(l => l.Target != target))
+                    Lights.Add(new(target, LightingSelectionChanged) { Selected = LightingDraft.Targets.Contains(target) });
+        }
+        finally { selectingLights = false; }
         foreach (var row in Lights)
         {
             var device = snapshot.State.Inventory.Devices.SingleOrDefault(d => d.Device.Id == row.Target.DeviceId);
@@ -135,16 +161,17 @@ public sealed partial class DeviceWorkspaceViewModel
             var capability = endpoint?.Capabilities.SingleOrDefault(c => c.Feature == DeviceFeature.FixedColor);
             var fresh = snapshot.Connected && device?.Connected == true && snapshot.ElapsedSeconds is >= 0 and < 3;
             var needsSetup = fresh && capability is { Support: ImplementationSupport.Supported, Availability: DeviceAvailability.NeedsSetup };
-            var detectedSetup = needsSetup && SetupSupported ? DeviceDetectedLightingSetup.Describe(snapshot, row.Target) : null;
+            var needsRecovery = fresh && capability is { Support: ImplementationSupport.Supported, Availability: DeviceAvailability.Failed } &&
+                endpoint!.Capabilities.Any(c => c.Feature == DeviceFeature.RestoreLighting && c.Usable);
             var status = !snapshot.Connected ? "サービス未接続" : device?.Connected != true ? "未接続" : snapshot.ElapsedSeconds >= 3 ? "更新停止" :
                 DeviceLightingIdentification.Running(execution?.Identification) ? execution!.Identification!.Message :
                 execution?.Lighting?.Fault ?? (execution?.Lighting?.Running == true ? "同期中" : capability?.Usable == true ? "使用可" : capability?.Reason ??
-                    (needsSetup ? "照明端子の設定が必要です" : "この照明は操作できません"));
-            if (registration is null && device?.Device.Provider == "ene-memory" && capability?.Usable == true && execution?.Lighting?.Running != true) status = "使用可 · 今回の接続中のみ";
+                    (needsSetup ? "端子未設定" : "操作不可"));
+            if (registration is null && device?.Device.Provider == "ene-memory" && capability?.Usable == true && execution?.Lighting?.Running != true) status = "使用可 · 接続中のみ";
             row.Update((registration?.Name ?? device?.Device.Name ?? "未接続の機器") + " / " + name,
-                detectedSetup is null ? status : DeviceDetectedLightingSetup.Description(detectedSetup), needsSetup,
+                status, needsSetup,
                 fresh && capability?.Usable == true && !DeviceLightingIdentification.Running(execution?.Identification),
-                detectedSetup is null ? "照明端子を設定" : "照明を使う");
+                "照明設定", needsRecovery);
         }
         var effects = new[] { new DeviceLightChoice("fixed", "固定"), new("breathing", "呼吸"), new("color-cycle", "カラーサイクル"), new("off", "消灯") }
             .Where(e => LightingDraft.Targets.Length == 0 || LightingDraft.Supports(e.Id) || e.Id == LightEffect)
@@ -166,19 +193,26 @@ public sealed partial class DeviceWorkspaceViewModel
     public async Task ApplyLightsAsync(LightingAdjustmentKind? adjustment = null)
     {
         Render();
+        if (adjustment is null && !CanApplyLighting) return;
         await RunLightingAsync(adjustment is null ? LightingDraft.Capture() : LightingDraft.CaptureAdjustment(adjustment.Value));
     }
     private async Task RunLightingAsync(DeviceLightingEdit edit)
     {
         if (!LightingIdle) return; lightingBusy = true; PublishLightingEditor();
         DeviceOperationResult? applied = null;
+        using var status = BeginStatus("照明の結果を確認中");
         try
         {
             var result = await client.ApplyLightingAsync(edit);
             if (edit.Operation is DeviceOperation.SetLighting or DeviceOperation.ApplyLightingPreset) applied = result;
             foreach (var target in result.Targets) Lights.SingleOrDefault(l => l.Target == target.Target)?.Report(target);
-            if (result.Outcome is Outcome.Confirmed or Outcome.WrittenUnverified) LightingDraft.Reset();
-            Notice = result.Message; Render();
+            // Read the returned snapshot before adopting an accepted draft. Other operations
+            // (including a scene recall) must not silently discard an unrelated unsent edit.
+            if (client.Snapshot is { } snapshot)
+                LightingDraft.Update(snapshot.State, snapshot.Configuration.Generation, snapshot.Configuration.Configuration.Lighting,
+                    snapshot.ElapsedSeconds, snapshot.Connected);
+            LightingDraft.AcceptApplied(edit, result);
+            ReportResult(result); Render();
         }
         finally { lightingBusy = false; Render(); }
         if (applied is not null) await RememberAppliedLightColorsAsync(applied);
@@ -194,20 +228,21 @@ public sealed partial class DeviceWorkspaceViewModel
     public ICommand ApplyLightScene => new AsyncCommand(_ => RecallLightSceneAsync(), _ => LightingIdle && SelectedLightScene is not null && LightScenes.Contains(SelectedLightScene), e => Notice = e.Message);
     public Task RecallLightSceneAsync()
     {
-        if (SelectedLightScene is null || !LightScenes.Contains(SelectedLightScene)) throw new InvalidOperationException("シーンを選択し直してください");
+        if (SelectedLightScene is null || !LightScenes.Contains(SelectedLightScene)) throw new InvalidOperationException("シーンの再選択が必要");
         return RunLightingAsync(DeviceWorkspaceClient.Preset(client.Snapshot!, LightingPresetKind.Scene, SelectedLightScene.Id));
     }
     public async Task SaveLightLibraryAsync(bool scene)
     {
-        var snapshot = client.Snapshot ?? throw new IOException("サービスへ接続されていません");
+        var snapshot = client.Snapshot ?? throw new IOException("サービス未接続");
         var id = Guid.NewGuid().ToString("N"); var targets = LightingDraft.Targets;
         var request = scene ? new LightingLibraryRequest(LightingLibraryOperation.SaveScene, snapshot.Configuration.Generation, id, 0,
                 Scene: DeviceLightingSceneCapture.Create(id, LightSceneName.Trim(), snapshot.Configuration.Configuration.Lighting, targets)) :
             new(LightingLibraryOperation.SaveGroup, snapshot.Configuration.Generation, id, 0, Group: new(id, LightGroupName.Trim(), EndpointKind.Lighting, targets));
         lightingBusy = true; PublishLightingEditor();
+        using var status = BeginStatus("照明設定を保存中");
         try
         {
-            var result = await client.SaveLightingAsync(request); Notice = result.Message; Render();
+            var result = await client.SaveLightingAsync(request); ReportResult(result.Message, result.Outcome); Render();
             if (scene) SelectedLightScene = LightScenes.SingleOrDefault(s => s.Id == id);
             else SelectedLightGroup = LightGroups.SingleOrDefault(g => g.Id == id);
         }

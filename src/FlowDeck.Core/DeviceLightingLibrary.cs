@@ -17,7 +17,7 @@ public interface IDeviceLightingLibrary
 public interface IDeviceLightingPersonalization : IDeviceLightingLibrary { }
 public static class DeviceLightingLibrary
 {
-    public const int MaximumGroups = 32, MaximumScenes = 64, MaximumM5Scenes = 32;
+    public const int MaximumGroups = 32, MaximumScenes = 64;
     public const string PersonalizationFeature = "lighting-personalization-v2";
     public static bool Personalization(LightingLibraryOperation operation) => operation is LightingLibraryOperation.SaveAlias or LightingLibraryOperation.ToggleFavorite or LightingLibraryOperation.RememberColors;
     private static bool References(EndpointReference[]? targets) => targets is { Length: > 0 and <= 256 } &&

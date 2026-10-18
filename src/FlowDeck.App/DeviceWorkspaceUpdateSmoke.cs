@@ -13,7 +13,7 @@ public static partial class SmokeRunner
         var client = demo.CreateClient(); var opens = 0; var launches = 0; string? oldSession = null;
         var plan = new ServiceDeploymentPlan("update", CoolingServiceProtocol.ServiceName,
             ServiceEnvironment.InstallationDirectory, ServiceEnvironment.DataDirectory, "2.0.1", new string('a', 64), 1657, 300_000_000,
-            ["S-1-5-21-111-222-333-1001"], true, [], ["現在の制御とM5GO接続を終了", "サービスを更新し、失敗時は以前の版へ戻す"], Runtime: "devices-v2");
+            ["S-1-5-21-111-222-333-1001"], true, [], ["現在の制御とDial接続を終了", "サービスを更新し、失敗時は以前の版へ戻す"], Runtime: "devices-v2");
         var reconnect = await DeviceWorkspaceInstalled.RunAsync(app, client, Path.Combine(output, "update-shell"), false,
             setup: async (owner, prepare) =>
             {

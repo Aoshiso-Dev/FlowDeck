@@ -91,10 +91,11 @@ public sealed partial class AsrockOpenRgbDetectionScopeTests
         {
             await Provider.PollAsync(default); await Provider.PollAsync(default);
             var setup = Driver.DescribeSetup();
-            Driver.ConfigureLighting(Driver.BindingCandidate,
-                setup.Select(p => new LightingEndpointConfiguration(new(Driver.DeviceId, p.EndpointId), true, new(LightingExitAction.Off))),
-                setup.Select(p => new RegisteredEndpoint(p.EndpointId, p.EndpointId, EndpointKind.Lighting,
-                    Setup: new(LedCount: p.DetectedLeds, LedCountConfirmed: true))));
+            // ASRock SDK counts are firmware extents, not detected physical accessories.
+            // Preparation resolves that shape internally; the fixture supplies only its exit policy.
+            Assert.All(setup, p => Assert.Null(p.DetectedLeds));
+            Driver.ConfigureCurrentConnection(Driver.BindingCandidate!, null, [],
+                setup.Select(p => new LightingEndpointConfiguration(new(Driver.DeviceId, p.EndpointId), false, new(LightingExitAction.Off))), []);
             return this;
         }
         public async Task<DeviceDriverResult> Write()

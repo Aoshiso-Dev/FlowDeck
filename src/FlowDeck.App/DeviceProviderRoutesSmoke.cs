@@ -18,8 +18,8 @@ public static partial class SmokeRunner
             var panel = Descendants<DeviceOpenRgbSettingsView>(window).Single();
             var selector = Descendants<ComboBox>(panel).Single();
             var input = Descendants<DraftTextBox>(panel).Single();
-            var previewButton = Descendants<Button>(panel).Single(b => b.Content as string == "切替内容を確認");
-            var applyButton = Descendants<Button>(panel).Single(b => b.Content as string == "切替を適用");
+            var previewButton = Descendants<Button>(panel).Single(b => b.Content as string == "切替確認");
+            var applyButton = Descendants<Button>(panel).Single(b => b.Content as string == "適用");
             var routing = demo.Routing!;
             Check(model.ProviderRouteAvailable && model.CurrentProviderRoute == "FlowDeck" && !model.CanPreviewProviderRoute && !model.CanApplyProviderRoute,
                 "Opening the route editor keeps the adopted route and requires an actual change");

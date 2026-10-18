@@ -135,11 +135,11 @@ public class LegacyConfigurationMigrationTests
             { References = sample.Matching.References.Where(r => r.Source != "rgb").ToArray() }));
     }
     [Fact]
-    public void LedCountAccessoriesSensorNamesAndM5SelectionSurviveLocalConversion()
+    public void LedCountAccessoriesAndSensorNamesSurviveLocalConversion()
     {
         var sample = Sample(); var settings = JsonSerializer.Deserialize<AppSettings>(sample.Files["settings.json"], Contract.Json)!;
         sample.Files["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(settings with { Motherboard = new(
-            [new("board-rpm", "ラジエーターポンプ", true)], true, 6743,
+            [new("board-rpm", "ラジエーターポンプ")], true, 6743,
             [new("saved-board-zone", "ケースのARGB", 80, new(14, 11, 22, 33))]) }, Contract.Json);
         var matching = sample.Matching with { References = [.. sample.Matching.References,
             new("board-sensor", "motherboard", "board-rpm", new("board", "fan")),
@@ -150,7 +150,7 @@ public class LegacyConfigurationMigrationTests
         Assert.Equal(new EndpointSetup("DEMO RGB", 24, true), led.Setup);
         var board = converted.Devices.Devices.Single(d => d.Id == "board");
         Assert.Equal(new EndpointSetup("ケースのARGB", 80, true), board.Endpoints.Single(e => e.Id == "argb").Setup);
-        var fan = board.Endpoints.Single(e => e.Id == "fan"); Assert.Equal("ラジエーターポンプ", fan.Name); Assert.True(fan.Setup!.ShowOnM5);
+        var fan = board.Endpoints.Single(e => e.Id == "fan"); Assert.Equal("ラジエーターポンプ", fan.Name);
         Assert.Equal("native/asrock-usb/14", converted.Lighting.Preferences!.Single(p => p.Target == new EndpointReference("board", "argb")).Program.EffectId);
         Assert.Equal(new DeviceProviderPreferences(true, 6743), converted.Preferences.Providers);
         var portable = DeviceConfigurationCodec.Portable(converted);

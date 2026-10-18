@@ -109,11 +109,11 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool CanTestNotification => NotificationIdle && NotificationSupported && client.Snapshot?.Configuration.Configuration.Preferences.Notifications is { Enabled: true, Desktop: true };
     public bool HasActiveNotifications => (NotificationInbox.Feed?.ActiveTotal ?? 0) != 0;
     public string NotificationSummary => !NotificationSupported ? "サービスの更新が必要" :
-        client.Snapshot?.Connected != true ? "サービス未接続" : NotificationInbox.Feed is not { } f ? "通知を取得中" : !f.Enabled ? "通知は無効" :
-            f.ActiveTotal == 0 ? "現在の通知なし" : $"通知 {f.ActiveTotal}件";
+        client.Snapshot?.Connected != true ? "サービス未接続" : NotificationInbox.Feed is not { } f ? "通知取得中" : !f.Enabled ? "通知無効" :
+            f.ActiveTotal == 0 ? "通知なし" : $"通知 {f.ActiveTotal}件";
     public string NotificationEditStatus => notificationSaving ? "保存中" : NotificationDraft.Problem ?? (NotificationDraft.Dirty ? "未保存" : "保存済み");
     public string NotificationMessage => notificationReadError.Length > 0 ? notificationReadError : NotificationInbox.Feed?.Error ?? notificationMessage;
-    public string NotificationHistoryStatus => NotificationInbox.HistoryGap ? "履歴は直近256件です。保管範囲より前の記録は取得できません" : "";
+    public string NotificationHistoryStatus => NotificationInbox.HistoryGap ? "履歴は直近256件 · 以前の記録は取得不可" : "";
     public string NotificationActivePage => NotificationInbox.Feed is { ActiveTotal: > 0 } f ? $"{f.ActiveOffset + 1}–{f.ActiveOffset + f.Active.Length} / {f.ActiveTotal}件" : "";
     public bool CanPreviousNotification => !notificationReading && (NotificationInbox.Feed?.ActiveOffset ?? 0) > 0;
     public bool CanNextNotification => !notificationReading && NotificationInbox.Feed is { } f && f.ActiveOffset + f.Active.Length < f.ActiveTotal;
@@ -186,13 +186,13 @@ public sealed partial class DeviceWorkspaceViewModel
     public async Task ReloadNotificationsAsync()
     {
         if (!NotificationIdle) return; setupBusy = true; Render();
-        try { await client.RefreshAsync(true); NotificationDraft.Reset(client.Snapshot!); notificationMessage = "現在の設定を取得しました"; await PollNotificationsAsync(); }
+        try { await client.RefreshAsync(true); NotificationDraft.Reset(client.Snapshot!); notificationMessage = "設定取得済み"; await PollNotificationsAsync(); }
         finally { setupBusy = false; Render(); }
     }
     public async Task TestNotificationAsync()
     {
         if (!CanTestNotification) return;
-        await client.TestNotificationAsync(); notificationMessage = client.IsDemo ? "デモ通知を記録しました" : "通知テストを記録しました";
+        await client.TestNotificationAsync(); notificationMessage = client.IsDemo ? "デモ通知を記録済み" : "通知テストを記録済み";
         await PollNotificationsAsync(); PublishNotifications();
     }
     public async Task ChangeNotificationPageAsync(int direction)
@@ -233,12 +233,12 @@ public sealed partial class DeviceWorkspaceViewModel
             else notificationPageOffset = 0;
             notificationReadError = "";
         }
-        catch (Exception e) { notificationReadError = "通知を取得できません: " + e.Message; }
+        catch (Exception e) { notificationReadError = "通知取得失敗: " + e.Message; }
         finally
         {
             if (!closing && client.Snapshot?.State.Inventory.Epoch == epoch && delivery.Count > 0 && DesktopNotifications is { } subscribers)
                 foreach (Action<NotificationEvent[]> subscriber in subscribers.GetInvocationList())
-                    try { subscriber(delivery.ToArray()); } catch (Exception e) { notificationMessage = "Windows通知を要求できません: " + e.Message; }
+                    try { subscriber(delivery.ToArray()); } catch (Exception e) { notificationMessage = "Windows通知要求失敗: " + e.Message; }
             notificationReading = false;
             Reconcile(NotificationHistory, NotificationInbox.History.Select(e => new DeviceNotificationHistoryRow(e)).ToArray());
             Reconcile(ActiveNotifications, NotificationInbox.Feed?.Active ?? []); PublishNotifications();

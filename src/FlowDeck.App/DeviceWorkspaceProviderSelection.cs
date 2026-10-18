@@ -23,7 +23,7 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool ProviderDeviceSelectionAvailable => client.SupportsProviderDeviceSelection && useOpenRgb;
     public bool ProviderDeviceSelectionIdle => ProviderRouteIdle && ProviderDeviceSelectionAvailable && ReadOpenRgbPort(out var port) &&
         client.Snapshot?.Configuration.Configuration.Preferences.Providers is { OpenRgbEnabled: true } current && current.OpenRgbPort == port;
-    public string ProviderDeviceSelectionStatus => ProviderDeviceChoices.Count == 0 ? "OpenRGBへの切替後に機器を選択" : $"制御対象：{providerSelectedDevices.Count}台";
+    public string ProviderDeviceSelectionStatus => ProviderDeviceChoices.Count == 0 ? "機器選択はOpenRGB切替後" : $"制御対象：{providerSelectedDevices.Count}台";
     private DeviceProviderPreferences DraftProviderSettings(int port) => new DeviceProviderPreferences(useOpenRgb, port,
         useOpenRgb ? providerSelectedDevices.ToArray() : []).Normalize();
     private void RenderProviderSelections(DeviceWorkspaceSnapshot snapshot)
@@ -47,7 +47,7 @@ public sealed partial class DeviceWorkspaceViewModel
     private void SelectProviderDevice(DeviceProviderSelectionRow row, bool selected)
     {
         if (!ProviderDeviceSelectionIdle || !ProviderDeviceChoices.Contains(row) || selected && !row.Available) return;
-        if (selected && providerSelectedDevices.Count >= DeviceRegistry.MaximumDevices) { Notice = "選択機器数の上限です"; return; }
+        if (selected && providerSelectedDevices.Count >= DeviceRegistry.MaximumDevices) { Notice = "機器選択数の上限"; return; }
         if (selected) providerSelectedDevices.Add(row.Id); else providerSelectedDevices.Remove(row.Id);
         providerRoutePreview = null; PublishProviderRoutes();
     }

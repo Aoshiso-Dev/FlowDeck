@@ -17,7 +17,7 @@ public sealed partial class FlowDeckViewModel
     public bool SettingsTransferIdle => !settingsTransferBusy;
     public bool SettingsHasPreview => settingsRestorePreview is not null;
     public bool SettingsHasPending => host.SettingsRestorePending;
-    public string SettingsDifferenceSummary => settingsRestorePreview is null ? "復元するファイルを選択" : SettingsDifferences.Count == 0 ? "設定値の差分なし" : $"{SettingsDifferences.Count} 項目の変更";
+    public string SettingsDifferenceSummary => settingsRestorePreview is null ? "ファイル未選択" : SettingsDifferences.Count == 0 ? "変更なし" : $"{SettingsDifferences.Count} 項目を変更";
     public ICommand ExportSettingsFile { get; private set; } = null!;
     public ICommand ChooseSettingsFile { get; private set; } = null!;
     public ICommand ScheduleSettingsRestore { get; private set; } = null!;
@@ -38,16 +38,16 @@ public sealed partial class FlowDeckViewModel
         {
             if (settingsRestorePreview is null) throw new InvalidOperationException("差分を確認してください");
             await host.ScheduleSettingsAsync(settingsRestorePreview); settingsRestorePreview = null;
-            settingsTransferResult = "次回起動時の復元を予約しました";
+            settingsTransferResult = "復元予約済み（次回起動）";
         }), _ => SettingsTransferIdle && SettingsHasPreview && !SettingsHasPending);
         CancelSettingsRestore = Command(async _ => await TransferOperation(async () =>
         {
             await host.CancelSettingsRestoreAsync(); settingsRestorePreview = null; SettingsDifferences.Clear(); SettingsDeviceChecks.Clear();
-            settingsTransferResult = "復元予約を取り消しました";
+            settingsTransferResult = "復元予約取消済み";
         }), _ => SettingsTransferIdle && SettingsHasPending);
     }
     internal Task ExportSettingsFileAsync(string path) => TransferOperation(async () =>
-    { await host.ExportSettingsAsync(path); settingsTransferResult = "設定を書き出しました · " + path; });
+    { await host.ExportSettingsAsync(path); settingsTransferResult = "書き出し済み · " + path; });
     internal Task PreviewSettingsFileAsync(string path) => TransferOperation(async () =>
     {
         settingsRestorePreview = null; settingsTransferFile = Path.GetFileName(path); SettingsDifferences.Clear(); SettingsDeviceChecks.Clear();

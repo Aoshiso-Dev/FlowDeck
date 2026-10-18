@@ -60,15 +60,30 @@ public static partial class SmokeRunner
             await model.ApplyRegistrationRemovalAsync();await Settle();
             Check(demo.Hubs[0].Writes==writes+1&&(await demo.Hubs[0].ReadAsync()).Channels[0].Duty==70,"Registration removal uses the saved 70 percent fan exit");
             Check(model.DeviceNameChoices.All(c=>c.Id!=a)&&model.DashboardFans.Count==5&&!model.HasRegistrationRemovalPreview,"Saved name and monitoring entries are removed together");
-            Check(model.Cooling.Where(c=>c.Draft.Target.DeviceId==a).All(c=>!c.CanApply)&&model.Devices.Any(c=>c.Id==a),"Connected hardware stays detected but has no old control permission");
+            Check(model.Cooling.Where(c=>c.Draft.Target.DeviceId==a).All(c=>!c.CanApply&&c.NeedsSetup)&&model.Devices.Any(c=>c.Id==a)&&
+                model.Lights.Where(l=>l.Target.DeviceId==a).All(l=>l.Ready&&!l.NeedsSetup),"Deleting saved settings keeps hardware detected: cooling needs output values while known lighting remains ready without registration");
             selector.SetCurrentValue(Selector.SelectedItemProperty,model.DeviceNameChoices.Single(c=>c.Id==b));await Settle();
+            model.EditedDeviceName="切断中も保持する機器名";
+            var savedNameDraft=model.SelectedDeviceNameDraft!;
             demo.Hubs[1].Disconnected=true;await demo.Runtime.PollAsync();await model.PollAsync();
-            Check(model.CanPreviewRegistrationRemoval,"A disconnected saved device remains removable");
+            await Settle();
+            Check(model.DeviceNameChoices.All(c=>c.Id!=b)&&model.SelectedDeviceName?.Id!=b&&model.DashboardFans.Count==0&&
+                client.Snapshot!.Configuration.Configuration.Devices.Devices.Any(d=>d.Id==b)&&savedNameDraft.Name=="切断中も保持する機器名",
+                "Disconnect hides the selected device and monitoring while retaining its registration and unsaved name");
+            demo.Hubs[1].Disconnected=false;await demo.Runtime.PollAsync();await demo.Runtime.PollAsync();await model.PollAsync();
+            selector.SetCurrentValue(Selector.SelectedItemProperty,model.DeviceNameChoices.Single(c=>c.Id==b));await Settle();
+            Check(ReferenceEquals(savedNameDraft,model.SelectedDeviceNameDraft)&&model.EditedDeviceName=="切断中も保持する機器名"&&
+                !model.CanPreviewRegistrationRemoval&&demo.Hubs[1].Writes==0,
+                "Reconnect restores the unsaved name draft and keeps removal blocked until that draft is resolved");
+            await model.ReloadDeviceNameAsync();
+            Check(model.CanPreviewRegistrationRemoval,"The reconnected saved device supports explicit registration removal after reloading its name");
             await model.PreviewRegistrationRemovalAsync();await model.ApplyRegistrationRemovalAsync();
-            Check(model.DeviceNameChoices.All(c=>c.Id!=b)&&model.DashboardFans.Count==0&&demo.Hubs[1].Writes==0,"Unowned disconnected removal deletes saved entries without writing the absent device");
-            demo.Hubs[1].Disconnected=false;await demo.Runtime.PollAsync();await demo.Runtime.PollAsync();await model.ReloadSetupAsync();
+            Check(model.DeviceNameChoices.All(c=>c.Id!=b)&&model.DashboardFans.Count==0&&demo.Hubs[1].Writes==0,"Explicit removal of the connected unowned device deletes saved entries without hardware output");
+            await model.ReloadSetupAsync();
             model.SelectedSetup=model.SetupChoices.Single(c=>c.Target==new EndpointReference(b,"fan1"));await Settle();
-            Check(model.SetupEditor is { Confirmed:false }&&model.DeviceNameChoices.All(c=>c.Id!=b),"Reconnection requires fresh setup and does not recreate a saved registration");
+            Check(model.SetupEditor is { Cooling:true } editor&&editor.Draft.Values.Safety is { Minimum:null,Fallback:null,Exit:null }&&!model.CanApplySetup&&
+                model.DeviceNameChoices.All(c=>c.Id!=b)&&model.Lights.Where(l=>l.Target.DeviceId==b).All(l=>l.Ready&&!l.NeedsSetup),
+                "After removal, the connected device exposes missing cooling output values and ready known lighting without recreating registration");
             selector.SetCurrentValue(Selector.SelectedItemProperty,model.DeviceNameChoices.Single(c=>c.Id==cpu));await Settle();
             Check(model.CanPreviewRegistrationRemoval,"The sensor becomes removable after its dependent fan configurations are removed");
             await model.PreviewRegistrationRemovalAsync();await model.ApplyRegistrationRemovalAsync();

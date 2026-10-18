@@ -1,6 +1,6 @@
 namespace FlowDeck.Core;
 
-/// <summary>Single decision owner for PC and M5. No device IO runs under the state lock.</summary>
+/// <summary>Single decision owner for PC controls. No device IO runs under the state lock.</summary>
 public sealed partial class ControlCoordinator : IControlCoordinator
 {
     private readonly object sync = new();

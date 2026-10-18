@@ -69,15 +69,12 @@ public static class DeviceRegistrationRemoval
         }).OfType<DeviceBrightness>().ToArray();
         var templates=config.Cooling.ProfileTemplates?.Where(p=>!p.Curves.Any(c=>!Keep(c.Sensor))).ToArray();
         if((config.Cooling.ProfileTemplates?.Length??0)!=(templates?.Length??0)) changes.Add("この機器の温度を参照するカーブのテンプレートを削除");
-        var selection=config.Preferences.M5Selection;
+        var selection=config.Preferences.DialDisplay;
         if(selection is not null)
         {
-            var nextSelection=selection.Hub?.DeviceId==deviceId?selection.WithoutControl():selection;
-            nextSelection=nextSelection with { Cpu=nextSelection.Cpu is { } cpu&&!Keep(cpu)?null:nextSelection.Cpu,
-                Gpu=nextSelection.Gpu is { } gpu&&!Keep(gpu)?null:nextSelection.Gpu,
-                Motherboard=nextSelection.Motherboard.Where(i=>Keep(i.Target)).ToArray() };
-            if(selection.Hub!=nextSelection.Hub||selection.Cpu!=nextSelection.Cpu||selection.Gpu!=nextSelection.Gpu||selection.Motherboard.Length!=nextSelection.Motherboard.Length)
-                changes.Add("M5GOのこの機器の表示・操作先を解除（M5GOの接続設定は保持）");
+            var nextSelection=selection with { Cpu=selection.Cpu is { } cpu&&!Keep(cpu)?null:selection.Cpu,
+                Gpu=selection.Gpu is { } gpu&&!Keep(gpu)?null:selection.Gpu };
+            if(selection!=nextSelection) changes.Add("ダイヤルのこの機器の温度表示を解除");
             selection=nextSelection;
         }
         var light=config.Lighting with {
@@ -96,7 +93,7 @@ public static class DeviceRegistrationRemoval
             Bindings=config.Bindings with { Devices=config.Bindings.Devices.Where(b=>b.DeviceId!=deviceId).ToArray() },
             Cooling=config.Cooling with { Endpoints=config.Cooling.Endpoints.Where(e=>Keep(e.Target)).ToArray(),Groups=coolingGroups,ProfileTemplates=templates },
             Lighting=light,Dashboard=config.Dashboard with { Items=config.Dashboard.Items.Where(i=>Keep(i.Target)).ToArray() },
-            Preferences=config.Preferences with { M5Selection=selection,Notifications=config.Preferences.Notifications with {
+            Preferences=config.Preferences with { DialDisplay=selection,Notifications=config.Preferences.Notifications with {
                 Rules=config.Preferences.Notifications.Rules?.Where(n=>Keep(n.Target)).ToArray() } },
             Migration=config.Migration with { References=config.Migration.References.Where(r=>Keep(r.Target)).ToArray() }
         };

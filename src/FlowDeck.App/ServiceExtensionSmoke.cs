@@ -56,7 +56,7 @@ public static partial class SmokeRunner
         vm.IdentificationTarget = vm.IdentificationTargets.Single(t => t.Address == new LightAddress(Hub: new(hubId, "led1")));
         window.LightingIdentificationExpander.IsExpanded = true; await Settle();
         await CheckDraftInputAsync(window.LightAliasBox, vm, "サービス前面", () => vm.LightAlias, check);
-        vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存しました"));
+        vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存済み"));
         vm.IdentifyLight.Execute(null);
         await Until(() => host.IdentifyingLight && remote.Settings.LightingPorts["led1"].Effect!.Colors[0] == new RgbColor(96, 96, 96));
         check(!vm.ApplyBrightness.CanExecute(null) && vm.CancelIdentification.CanExecute(null), "Service identification blocks conflicting edits while the temporary color is active");
@@ -64,19 +64,8 @@ public static partial class SmokeRunner
         check(remote.Settings.LightingPorts["led1"].Effect!.Colors[0] == color &&
             LightingNames.Find((await new LightingNameStore(host.Store.DirectoryPath).LoadAsync()), new(Hub: new(hubId, "led1"))) == "サービス前面",
             "Cancelled identification restores the service port and preserves its saved name");
-        var peer = new LightingPeer(host); peer.Start(); var stamp = host.Read(group.Id).Stamp;
-        var result = await peer.Apply("SetLightingBrightness", group.Id, brightness: 25);
-        await Until(() => vm.MasterBrightness == 25);
-        check(result.GetProperty("outcome").GetString() == "writtenUnverified" && remote.Settings.LightingPorts["led1"].Effect!.Colors[0] == color.Scale(.25),
-            "M5 Wi-Fi lighting commands reach the service and update the PC brightness slider");
-        result = await peer.Apply("LightingOff", group.Id, stamp: stamp);
-        check(result.GetProperty("error").GetString() == "STALE_LIGHTING" && !host.AdjustmentFor(group).IsOff,
-            "Stale M5 lighting edits are rejected with the service backend");
-        peer.Hello("usb"); await peer.Apply("LightingOff", group.Id); await peer.Apply("RestoreLighting", group.Id);
-        check(peer.Router.ActiveRoute == "usb" && host.AdjustmentFor(group) is { Brightness: 25, IsOff: false } &&
-            remote.Settings.LightingPorts["led1"].Effect!.Colors[0] == color.Scale(.25), "M5 USB restores the same service lighting group after route switching");
         check(remote.Snapshot.ControlRevision == fanRevision && remote.Snapshot.ConfirmedDuty == 59,
-            "Service scenes brightness groups identification and M5 lighting do not change fan control");
+            "Service scenes brightness groups and identification do not change fan control");
         Capture(window, output, "service-lighting-extensions");
 
         var original = Contract.Copy(remote.Settings.Profiles.Single(p => p.Id == "balanced"));

@@ -109,7 +109,7 @@ public class DeviceControlCapacityTests
         Assert.Equal(config.Lighting.Names, edit.Configuration.Lighting.Names); Assert.Equal(config.Dashboard.Items, edit.Configuration.Dashboard.Items);
         Assert.Equal(config.Devices.Devices[0].Endpoints.Length, edit.Configuration.Devices.Devices[0].Endpoints.Length);
         var saved = edit.Configuration.Devices.Devices[0].Endpoints.Single(e => e.Id == target.EndpointId);
-        Assert.Equal(32, saved.Setup!.LedCount); Assert.False(saved.Setup.LedCountConfirmed);
+        Assert.Equal(32, saved.Setup!.LedCount); Assert.Equal(config.Devices.Devices[0].Endpoints.Single(e => e.Id == target.EndpointId).Setup, saved.Setup);
         Assert.True(config.Devices.Devices[0].Endpoints.Single(e => e.Id == target.EndpointId).Setup!.LedCountConfirmed);
         Assert.Contains(edit.Changes, s => s.Contains("この端子の照明だけ") && s.Contains("ファンとほかの照明は継続"));
         Assert.Contains("128", DeviceControlCapacity.ReplacementProblem(config.Devices, config.Cooling, config.Lighting, new("controls", "new"), false, 32));

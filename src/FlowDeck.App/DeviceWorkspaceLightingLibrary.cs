@@ -40,7 +40,7 @@ public sealed partial class DeviceWorkspaceViewModel
         await client.RefreshAsync(true); Render();
         var lighting = client.Snapshot!.Configuration.Configuration.Lighting;
         if (editor.Draft.Existing && !(editor.IsScene ? lighting.Scenes.Any(s => s.Id == editor.Draft.Id) : lighting.Groups.Any(g => g.Id == editor.Draft.Id)))
-        { LightLibraryEditor = null; Notice = "保存した項目は削除されています"; PublishLightLibrary(); return; }
+        { LightLibraryEditor = null; Notice = "保存項目は削除済み"; PublishLightLibrary(); return; }
         OpenLightLibrary(editor.Draft.Kind, editor.Draft.Existing ? editor.Draft.Id : null);
     }
     public async Task SaveLightLibraryEditorAsync(bool delete = false)
@@ -48,9 +48,10 @@ public sealed partial class DeviceWorkspaceViewModel
         Render(); if (delete ? !CanDeleteLightLibraryEditor : !CanSaveLightLibraryEditor) return;
         var editor = LightLibraryEditor!; var edit = editor.Draft.Capture(delete);
         lightingBusy = true; PublishLightingEditor(); PublishLightLibrary();
+        using var status = BeginStatus("照明設定を保存中");
         try
         {
-            var result = await client.SaveLightingEditAsync(edit); Notice = result.Message;
+            var result = await client.SaveLightingEditAsync(edit); ReportResult(result.Message, result.Outcome);
             LightLibraryEditor = delete ? null : new(new(client.Snapshot!, editor.Draft.Kind, editor.Draft.Id), PublishLightLibrary, LightSavedColors);
             Render();
             if (!delete && editor.Draft.Kind == LightingPresetKind.Scene) SelectedLightScene = LightScenes.Single(s => s.Id == editor.Draft.Id);

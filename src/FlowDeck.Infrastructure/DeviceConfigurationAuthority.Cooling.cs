@@ -35,7 +35,13 @@ public sealed partial class DeviceConfigurationAuthority
             throw new IOException("適用した冷却方針・安全条件を確認できません");
         var required = (change.Policy is null ? [] : DeviceCoolingPolicy.Required(change.Policy, change.Safety).Select(s => s.DeviceId))
             .Append(change.Target.DeviceId).Distinct().Order().ToArray();
-        if (!required.SequenceEqual(change.Bindings.Select(b => b.DeviceId).Order()) || change.Bindings.Any(b => !configuration.Bindings.Devices.Contains(b)))
+        var references = (change.Policy is null ? [] : DeviceCoolingPolicy.Required(change.Policy, change.Safety)
+                .Select(t => (Target: t, Feature: DeviceFeature.Temperature)))
+            .Append((Target: change.Target, Feature: change.Policy?.Mode == FanMode.Auto ? DeviceFeature.AutomaticDuty : DeviceFeature.FixedDuty));
+        if (change.Policy is null ? change.Bindings.Length != 0 :
+            !required.SequenceEqual(change.Bindings.Select(b => b.DeviceId).Order()) || references.Any(r =>
+                change.Bindings.SingleOrDefault(b => b.DeviceId == r.Target.DeviceId) is not { } binding ||
+                !configuration.Bindings.Devices.Contains(binding) && !CurrentBindingMatches(r.Target, r.Feature, binding)))
             throw new IOException("適用した冷却方針の実機関連付けが変更されました");
         var candidate = configuration with { Cooling = configuration.Cooling with { Endpoints = configuration.Cooling.Endpoints.Select(c =>
             c.Target == change.Target ? c with { SavedPolicy = change.Policy, ResumeOnStart = false } : c).ToArray() } };
@@ -78,7 +84,7 @@ public sealed partial class DeviceConfigurationAuthority
             PersistCoolingEndpoint(endpoint with { ResumeOnStart = false });
             var ticket = Guid.NewGuid().ToString("N");
             coolingOrders[change.Target] = change.Order;
-            var resume = coolingResumeIntent.GetValueOrDefault(change.Target);
+            var resume = coolingResumeIntent.GetValueOrDefault(change.Target) && change.Bindings.All(configuration.Bindings.Devices.Contains);
             coolingAttempts[change.Target] = new(ticket, change, resume);
             return ticket;
         }

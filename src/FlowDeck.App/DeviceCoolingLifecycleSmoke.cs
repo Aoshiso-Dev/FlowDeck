@@ -21,8 +21,8 @@ public static partial class SmokeRunner
             var stop=Descendants<Expander>(panel).Single(e=>Equals(e.Header,"停止・再始動")); stop.IsExpanded=true; stop.BringIntoView(); await Settle();
             Check(editor.Draft.Pump&&editor.StopSectionVisible&&!editor.StopEnabled&&editor.StopLabel.Contains("ポンプ"),"A pump exposes explicit stop permission and starts disabled");
             var permission=Descendants<CheckBox>(stop).Single(c=>System.Windows.Automation.AutomationProperties.GetName(c)=="停止を許可");
-            permission.SetCurrentValue(ToggleButton.IsCheckedProperty,true); editor.Confirmed=true;
-            Check(editor.StopEnabled&&!editor.CanPreview,"Stop permission alone cannot save without temperature conditions");
+            permission.SetCurrentValue(ToggleButton.IsCheckedProperty,true);
+            Check(editor.StopEnabled&&!editor.CanSave,"Stop permission alone cannot save without temperature conditions");
             var selector=Descendants<ComboBox>(stop).Single();
             foreach(var sensor in editor.Sensors)
             { selector.SetCurrentValue(Selector.SelectedItemProperty,sensor); editor.AddStopCondition.Execute(null); }
@@ -32,9 +32,9 @@ public static partial class SmokeRunner
             Descendants<Slider>(stop).Single(s=>System.Windows.Automation.AutomationProperties.GetName(s)=="再始動時間").SetCurrentValue(Slider.ValueProperty,1d);
             await model.PollAsync(); await Settle();
             Check(editor.StopConditions.Count==2&&editor.StopConditions.All(r=>r.Below==60&&r.Temperature.HasValue)&&editor.RestartDuty==80,"Sliders update both stop thresholds and restart output while telemetry leaves the edits intact");
-            Check(!editor.AddStopCondition.CanExecute(null)&&!editor.Confirmed,"Duplicate conditions are blocked and edits invalidate confirmation");
-            editor.Confirmed=true; await model.PreviewCoolingSettingsAsync(editor);
-            Check(editor.HasPreview&&editor.PreviewText.Contains("すべて満たす")&&editor.PreviewText.Contains("80%"),"Review states the all-temperatures condition and restart boost");
+            Check(!editor.AddStopCondition.CanExecute(null)&&editor.CanSave,"Duplicate conditions are blocked while valid edits need no approval step");
+            Check(editor.Draft.Safety.Stop is { RestartDuty:80 } conditions&&conditions.Temperatures.Length==2&&
+                conditions.Temperatures.All(t=>t.Below==60)&&demo.Hubs.All(h=>h.Writes==0),"The save draft retains all temperature conditions and the restart boost without output");
             foreach(var theme in new[]{"light","dark"}) { model.Theme=theme; stop.BringIntoView(); await Settle(); Capture(window,output,"cooling-stop-"+theme); }
             await model.PollAsync(); await model.SaveCoolingSettingsAsync(editor); await Settle();
             Check(row.Minimum==0&&demo.Hubs.All(h=>h.Writes==0),"Saving permits zero in the fan slider without changing output");

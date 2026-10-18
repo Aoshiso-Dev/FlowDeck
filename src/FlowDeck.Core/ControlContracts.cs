@@ -1,8 +1,13 @@
 namespace FlowDeck.Core;
 
 // Both the local owner and the authenticated service proxy expose the same control contract.
-public interface IControlCoordinator : IM5ControlBackend, IAsyncDisposable
+public interface IControlCoordinator : IAsyncDisposable
 {
+    string Epoch { get; }
+    AppSettings Settings { get; }
+    ControlSnapshot Snapshot { get; }
+    string? ProfileReadiness(string id);
+    Task<OperationResult> RequestAsync(ControlRequest request);
     HubStatus LastStatus { get; }
     event Action<ControlSnapshot>? Changed;
     event Action<OperationResult>? OperationCompleted;

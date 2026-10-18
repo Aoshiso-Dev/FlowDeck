@@ -14,6 +14,7 @@ public sealed partial class DeviceControlRuntime
     private string? CheckCalibrationStart(DeviceServiceRequest request)
     {
         var target=request.Targets![0]; var trial=request.Calibration!;
+        if(configurationHandler is IDeviceCurrentConnectionConfiguration { CurrentControlError: { } configurationError }) return configurationError;
         if(configurationChanging||lifecycleError is not null) return lifecycleError??"設定の反映中です";
         if(request.TopologyRevision!=registry.Snapshot.TopologyRevision) return "機器構成が変更されています";
         if(!states.TryGetValue(target.Target,out var current)||current.Generation!=target.Generation||current.PolicyRevision!=target.ExpectedPolicyRevision)
@@ -61,6 +62,7 @@ public sealed partial class DeviceControlRuntime
     {
         ExpireCore(); RefreshCore();
         var request=trial.Request; var target=trial.Target;
+        if(configurationHandler is IDeviceCurrentConnectionConfiguration { CurrentControlError: { } configurationError }) return configurationError;
         if(trial.Cancellation.IsCancellationRequested||stopping||releasing||configurationChanging||request.Session!=session||
             calibrationTrials.GetValueOrDefault(target.Target)!=trial||request.TopologyRevision!=registry.Snapshot.TopologyRevision||
             !states.TryGetValue(target.Target,out var state)||state.Generation!=target.Generation||state.PolicyRevision!=target.ExpectedPolicyRevision||

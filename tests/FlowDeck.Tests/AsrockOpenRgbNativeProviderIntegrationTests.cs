@@ -45,10 +45,9 @@ public sealed partial class AsrockOpenRgbDetectionScopeTests
         {
             await Provider.PollAsync(default);
             var setup = Driver.DescribeSetup();
-            Driver.ConfigureLighting(Driver.BindingCandidate,
-                setup.Select(p => new LightingEndpointConfiguration(new(Driver.DeviceId, p.EndpointId), true, new(LightingExitAction.Off))),
-                setup.Select(p => new RegisteredEndpoint(p.EndpointId, p.EndpointId, EndpointKind.Lighting,
-                    Setup: new(LedCount: p.DetectedLeds, LedCountConfirmed: true))));
+            Assert.All(setup, p => Assert.Null(p.DetectedLeds));
+            Driver.ConfigureCurrentConnection(Driver.BindingCandidate!, null, [],
+                setup.Select(p => new LightingEndpointConfiguration(new(Driver.DeviceId, p.EndpointId), false, new(LightingExitAction.Off))), []);
         }
         public Task<DeviceDriverResult> Write() => Driver.ApplyAsync(new("device", DeviceOperation.SetLighting, Lighting: NativeSdkBlue), default);
         public void OverrideServer()

@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace FlowDeck.Core;
 
-public enum DeviceOperation { State, Renew, SetDuty, SetAutomatic, ReleaseCooling, SetLighting, StopLighting, Result, ReleaseSession, ResumeCooling, RestoreSavedCooling, Configuration, LightingLibrary, ApplyLightingPreset, AdjustLighting, CalibrateCooling, CancelCoolingCalibration, ReadNotifications, TestNotification, ReportM5Connection, IdentifyLighting, CancelLightingIdentification, ReadDiagnostics, ReadStateSnapshot }
+public enum DeviceOperation { State, Renew, SetDuty, SetAutomatic, ReleaseCooling, SetLighting, StopLighting, Result, ReleaseSession, ResumeCooling, RestoreSavedCooling, Configuration, LightingLibrary, ApplyLightingPreset, AdjustLighting, CalibrateCooling, CancelCoolingCalibration, ReadNotifications, TestNotification, IdentifyLighting = 20, CancelLightingIdentification, ReadDiagnostics, ReadStateSnapshot }
 public enum DeviceReleaseReason { NormalExit, ClientExpired, ClientDisconnected, ServiceStopping, Suspended, DeviceChanged, StartupRecovery, ConfigurationChanged }
 public sealed record DeviceTargetVersion(EndpointReference Target, long Generation, long ExpectedPolicyRevision);
 public sealed record DeviceServiceRequest(int Version, string Epoch, string Session, string Id, long Sequence, string Source,
@@ -12,7 +12,6 @@ public sealed record DeviceServiceRequest(int Version, string Epoch, string Sess
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] CoolingGroupSelection? CoolingGroup = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] CoolingCalibrationRequest? Calibration = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceNotificationQuery? Notifications = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceM5NotificationReport? M5Connection = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceDiagnosticQuery? Diagnostics = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceStateQuery? StateQuery = null);
 public sealed record DeviceServiceHello(int Version, string Epoch, string Session, int LeaseSeconds, string[] Features, bool Demo = false);
@@ -170,7 +169,6 @@ public static class DeviceServiceProtocol
                 (r.Operation == DeviceOperation.ReadDiagnostics ? !DeviceDiagnostics.Valid(r.Diagnostics) : r.Diagnostics is not null) ||
                 (r.Operation == DeviceOperation.ReadStateSnapshot ? !DeviceStateTransfer.Valid(r.StateQuery) : r.StateQuery is not null) ||
                 (r.Operation == DeviceOperation.ReadNotifications ? !DeviceNotificationProtocol.Valid(r.Notifications) : r.Notifications is not null) ||
-                (r.Operation == DeviceOperation.ReportM5Connection ? !DeviceM5NotificationReport.Valid(r.M5Connection) : r.M5Connection is not null) ||
                 r.CoolingGroup is not null && (!DeviceCoolingGroups.Operation(r.Operation)||!DeviceCoolingGroups.Valid(r.CoolingGroup)) ||
                 (r.Operation == DeviceOperation.Configuration ? !DeviceConfigurationProtocol.Valid(r.Configuration) : r.Configuration is not null) ||
                 (r.Operation == DeviceOperation.LightingLibrary ? !DeviceLightingLibrary.Valid(r.LightingLibrary) : r.LightingLibrary is not null) ||
@@ -248,8 +246,7 @@ public static class DeviceServiceProtocol
     }
     private static bool ValidSave(DevicePolicySaveResult? value) => value is null || Enum.IsDefined(value.State) && value.Message is { Length: <= 16384 };
     private static bool ValidLighting(DeviceLightingStatus? value) => value is null || Id(value.GroupId) && value.Frames >= 0 && value.DroppedFrames >= 0 &&
-        value.LastColor is null or { Valid: true } && double.IsFinite(value.MaximumWriteMilliseconds) && value.MaximumWriteMilliseconds >= 0 && value.Fault is null or { Length: <= 16384 } &&
-        value.Mirror is null or { Valid: true };
+        value.LastColor is null or { Valid: true } && double.IsFinite(value.MaximumWriteMilliseconds) && value.MaximumWriteMilliseconds >= 0 && value.Fault is null or { Length: <= 16384 };
     private static void Unique(JsonElement element)
     {
         if (element.ValueKind == JsonValueKind.Object)

@@ -6,12 +6,12 @@ namespace FlowDeck.Tests;
 
 public sealed partial class AsrockDeviceDriverTests
 {
-    [Fact] public async Task SetupDescriptorsReportDetectedZoneCountsAndReadbackRestoreWithoutWrites()
+    [Fact] public async Task SetupDescriptorsReportConfiguredLimitsWithoutClaimingDetectedConnections()
     {
         var cell = new Cell(1, false); await using var r = await new Rig(new(cell)).Open(configure: false);
         var values = r.Driver(cell).DescribeSetup(); Assert.NotEmpty(values);
-        Assert.All(values, v => { Assert.Equal(cell.Device.Counts[v.EndpointId[^1]-'0'], v.DetectedLeds);
-            Assert.Equal(v.DetectedLeds, v.MinimumLeds); Assert.Equal(v.DetectedLeds, v.MaximumLeds);
+        Assert.All(values, v => { Assert.Null(v.DetectedLeds);
+            Assert.Equal(cell.Device.Counts[v.EndpointId[^1]-'0'], v.MinimumLeds); Assert.Equal(v.MinimumLeds, v.MaximumLeds);
             Assert.Contains(LightingExitAction.RestoreOriginal,v.LightingExitActions); });
         Assert.Empty(cell.Device.Writes);
     }

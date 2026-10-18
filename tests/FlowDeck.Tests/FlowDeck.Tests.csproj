@@ -13,7 +13,8 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit"/>
-    <EmbeddedResource Include="Fixtures/M5BodyLedVectors.jsonl" LogicalName="FlowDeck.Tests.M5BodyLedVectors.jsonl"/>
+    <Compile Include="../../src/FlowDeck.App/DeviceDialStartup.cs" Link="App/DeviceDialStartup.cs"/>
+    <Compile Include="../../src/FlowDeck.App/DeviceDialReconnect.cs" Link="App/DeviceDialReconnect.cs"/>
     <EmbeddedResource Include="Fixtures/AsrockNativePatch4.json" LogicalName="FlowDeck.Tests.AsrockNativePatch4.json"/>
     <EmbeddedResource Include="Fixtures/AsrockNativeAuthorizationPatch5.json" LogicalName="FlowDeck.Tests.AsrockNativeAuthorizationPatch5.json"/>
     <EmbeddedResource Include="Fixtures/AsrockNativeDetectionPatch5.json" LogicalName="FlowDeck.Tests.AsrockNativeDetectionPatch5.json"/>

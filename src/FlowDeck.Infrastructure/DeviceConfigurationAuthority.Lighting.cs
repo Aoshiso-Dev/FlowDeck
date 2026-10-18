@@ -71,8 +71,6 @@ public sealed partial class DeviceConfigurationAuthority : IDeviceLightingPerson
             {
                 if (previous == 0 && old.Scenes.Length >= DeviceLightingLibrary.MaximumScenes)
                     throw new IOException($"{request.Scene!.Name}: シーンは{DeviceLightingLibrary.MaximumScenes}件までです。不要なシーンを削除してください");
-                if (request.Scene!.ShowOnM5 && old.Scenes.Count(s => s.Id != request.Id && s.ShowOnM5) >= DeviceLightingLibrary.MaximumM5Scenes)
-                    throw new IOException($"{request.Scene.Name}: M5GOに表示するシーンは{DeviceLightingLibrary.MaximumM5Scenes}件までです。表示するシーンを減らしてください");
             }
             var revision = checked(previous + 1); LightingConfiguration next;
             if (groupOperation)

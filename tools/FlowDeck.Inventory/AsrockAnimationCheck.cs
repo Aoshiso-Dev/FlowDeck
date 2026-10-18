@@ -5,7 +5,7 @@ using FlowDeck.Infrastructure;
 
 internal static class AsrockAnimationCheck
 {
-    // Explicit, bounded visual diagnostic. This utility has no Hub, fan, service or M5 connection.
+    // Explicit, bounded visual diagnostic. This utility has no Hub, fan or service connection.
     // Holds the HID mutex on a single thread until native settings and the exact order mask are restored.
     public static void Run(string mode, string output)
     {

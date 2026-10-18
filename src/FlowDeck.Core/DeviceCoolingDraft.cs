@@ -14,10 +14,14 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
     public bool Automatic { get; private set; }
     public bool DeviceManaged { get; private set; } = true;
     public bool Dirty { get; private set; }
-    public bool Conflict => Dirty && (conflicted || editedAt != current);
+    public long EditRevision { get; private set; }
+    public bool ModeChanged => DeviceManaged != baselineManaged || !DeviceManaged && Automatic != baselineAutomatic;
+    public bool DutyChanged => !DeviceManaged && !Automatic && Duty != baselineDuty;
+    public bool ProfileChanged => !DeviceManaged && Automatic && ProfileId != baselineProfileId;
+    public bool Conflict => conflicted || Dirty && editedAt != current;
     public bool Available { get; private set; }
     public bool NeedsSetup { get; private set; }
-    public bool CanApply => !Conflict && current is not null && (DeviceManaged ? Dirty && CanRelease : Available && configuration is not null &&
+    public bool CanApply => Dirty && !Conflict && current is not null && (DeviceManaged ? CanRelease : Available && configuration is not null &&
         (Automatic ? automaticUsable && SelectedProfile is { } p && DeviceConfigurationRules.ProfileReadiness(p, configuration.Safety) is null : fixedUsable && Duty >= Minimum));
     public bool CanRelease { get; private set; }
     public bool SupportsRelease { get; private set; }
@@ -31,6 +35,9 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
     private double? reported;
     private bool fixedUsable, automaticUsable;
     private bool conflicted;
+    private bool baselineManaged = true, baselineAutomatic;
+    private int baselineDuty = 50;
+    private string? baselineProfileId;
     private string? configurationKey, bindingsKey;
     private CoolingTemperatureProfile? SelectedProfile => configuration?.Profiles.SingleOrDefault(p => p.Id == ProfileId);
 
@@ -38,7 +45,7 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
         DeviceBindings? bindings = null)
     {
         var previousConflict = Conflict;
-        var nextConfigurationKey = JsonSerializer.Serialize(setup, Contract.Json);
+        var nextConfigurationKey = JsonSerializer.Serialize(setup is null ? null : setup with { WiringConfirmed = false }, Contract.Json);
         var nextBindingsKey = bindings is null ? null : JsonSerializer.Serialize(bindings, Contract.Json);
         configuration = setup is null ? null : Contract.Copy(setup);
         var instance = state.Inventory.Devices.SingleOrDefault(d => d.Device.Id == Target.DeviceId);
@@ -46,7 +53,7 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
         execution = state.Endpoints.SingleOrDefault(e => e.Target == Target && e.Generation == instance?.Generation);
         current = execution is null ? null : new(state.Inventory.Epoch, state.Inventory.TopologyRevision, configurationGeneration,
             new(Target, execution.Generation, execution.PolicyRevision));
-        if (Dirty)
+        if (Dirty || conflicted)
         {
             // Saving another fan or a display preference advances the shared configuration generation.
             // Only adopt that generation with proof that this endpoint and all physical bindings are unchanged.
@@ -66,7 +73,7 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
         bool Usable(DeviceFeature feature) => endpoint?.Capabilities.Any(c => c.Feature == feature && c.Usable) == true;
         fixedUsable = Usable(DeviceFeature.FixedDuty); automaticUsable = Usable(DeviceFeature.AutomaticDuty);
         SupportsRelease = endpoint?.Capabilities.Any(c => c.Feature == DeviceFeature.ReleaseCooling && c.Support == ImplementationSupport.Supported) == true;
-        Available = live && (fixedUsable || automaticUsable) && state.LifecycleError is null && setup?.WiringConfirmed == true &&
+        Available = live && (fixedUsable || automaticUsable) && state.LifecycleError is null && setup is not null &&
             DeviceConfigurationRules.SafetyReadiness(setup.Safety) is null && execution?.Cooling?.Faulted != true;
         CanRelease = live && Usable(DeviceFeature.ReleaseCooling);
         CanResume = live && state.LifecycleError is null && execution?.Cooling?.CanResume == true && fixedUsable;
@@ -76,17 +83,38 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
             c.Support == ImplementationSupport.Supported && c.Availability == DeviceAvailability.NeedsSetup) == true;
         NeedsSetup = live && state.LifecycleError is null && execution?.Cooling?.Faulted != true &&
             (needsSetup || (fixedUsable || automaticUsable) &&
-                (setup?.WiringConfirmed != true || DeviceConfigurationRules.SafetyReadiness(setup.Safety) is not null));
+                (setup is null || DeviceConfigurationRules.SafetyReadiness(setup.Safety) is not null));
         Problem = !connected ? "サービス未接続" : !live ? "状態を更新してください" : state.LifecycleError ?? execution?.Cooling?.Fault ??
-            (!fixedUsable && !automaticUsable ? needsSetup ? "設定待ち" : "操作未対応" : setup?.WiringConfirmed != true ? "設定待ち" : DeviceConfigurationRules.SafetyReadiness(setup.Safety));
-        if (!Dirty) Follow();
+            (!fixedUsable && !automaticUsable ? needsSetup ? "設定待ち" : "操作未対応" : setup is null ? "出力範囲を設定してください" : DeviceConfigurationRules.SafetyReadiness(setup.Safety));
+        if (!Dirty && !conflicted) Follow();
     }
-    private void Begin() { if (!Dirty) { editedAt = current; Dirty = true; } }
-    public void SetDuty(int value) { if (value == Duty) return; Begin(); DeviceManaged = false; Automatic = false; Duty = Math.Clamp(value, 0, 100); }
-    public void SetAutomatic(bool value) { if (value == Automatic && !DeviceManaged) return; Begin(); DeviceManaged = false; Automatic = value; }
-    public void SelectDeviceManagement() { if (DeviceManaged) return; Begin(); DeviceManaged = true; Automatic = false; }
-    public void SelectProfile(string? id) { if (id == ProfileId) return; Begin(); ProfileId = id; }
-    public void Reset() { Dirty = false; editedAt = null; conflicted = false; Follow(); }
+    private void Begin() { if (!Dirty && !conflicted) editedAt = current; }
+    private void Changed()
+    {
+        EditRevision++;
+        // Only the active policy's inputs matter. Returning to the original policy is a local cancel,
+        // but an observed conflict still requires an explicit reset before another edit may apply.
+        conflicted |= Conflict;
+        Dirty = ModeChanged || DutyChanged || ProfileChanged;
+        if (!Dirty && !conflicted) { editedAt = null; Follow(); }
+    }
+    public void SetDuty(int value) { value = Math.Clamp(value, 0, 100); if (value == Duty) return; Begin(); DeviceManaged = false; Automatic = false; Duty = value; Changed(); }
+    public void SetAutomatic(bool value) { if (value == Automatic && !DeviceManaged) return; Begin(); DeviceManaged = false; Automatic = value; Changed(); }
+    public void SelectDeviceManagement() { if (DeviceManaged) return; Begin(); DeviceManaged = true; Automatic = false; Changed(); }
+    public void SelectProfile(string? id) { if (id == ProfileId) return; Begin(); ProfileId = id; Changed(); }
+    public void Reset() { EditRevision++; Dirty = false; editedAt = null; conflicted = false; Follow(); }
+    public bool Complete(DeviceCoolingEdit edit, long editRevision, DeviceOperationResult result)
+    {
+        // A completion belongs to exactly the edit that was sent. Partial output or a failed
+        // policy save remains pending even when the overall hardware result was confirmed.
+        if (EditRevision != editRevision || edit.Version.Target.Target != Target || result.Outcome != Outcome.Confirmed ||
+            result.Targets is not [var targetResult] || targetResult.Target != Target ||
+            targetResult.Generation != edit.Version.Target.Generation || targetResult.Outcome != Outcome.Confirmed ||
+            current is null || current.Epoch != edit.Version.Epoch || current.Topology != edit.Version.Topology ||
+            current.Target.Generation != targetResult.Generation || current.Target.ExpectedPolicyRevision != targetResult.PolicyRevision ||
+            targetResult.Persistence is { State: not DevicePolicySaveState.Saved }) return false;
+        Reset(); return true;
+    }
     private void Follow()
     {
         DeviceManaged = execution?.Owned != true;
@@ -95,6 +123,8 @@ public sealed class DeviceCoolingDraft(EndpointReference target)
         // After release, use a newly read hardware duty. Old requested or confirmed outputs are not current readings.
         var value = execution?.Owned == true ? execution.RequestedDuty ?? execution.Cooling?.TargetDuty : reported;
         if (value is { } v && double.IsFinite(v)) Duty = (int)Math.Clamp(Math.Round(v), 0, 100);
+        baselineManaged = DeviceManaged; baselineAutomatic = Automatic;
+        baselineDuty = Duty; baselineProfileId = ProfileId;
     }
     public DeviceCoolingEdit Capture(DeviceOperation? operation = null)
     {

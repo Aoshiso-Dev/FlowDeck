@@ -1,7 +1,11 @@
 namespace FlowDeck.Core;
 
 public sealed record EndpointReference(string DeviceId, string EndpointId);
-public sealed record EndpointSetup(string Accessory = "", int? LedCount = null, bool LedCountConfirmed = false, bool ShowOnM5 = false);
+public sealed record EndpointSetup(string Accessory = "", int? LedCount = null, bool LedCountConfirmed = false)
+{
+    [System.Text.Json.Serialization.JsonPropertyName("showOnM5"), System.Text.Json.Serialization.JsonIgnore]
+    public bool LegacyPanelVisibility { get; init; }
+}
 public sealed record RegisteredEndpoint(string Id, string Name, EndpointKind Kind, string Role = "", EndpointSetup? Setup = null);
 public sealed record RegisteredDevice(string Id, string Name, string Provider, DeviceKind Kind, RegisteredEndpoint[] Endpoints);
 public sealed record DeviceRegistrations(int Version, RegisteredDevice[] Devices);
@@ -31,8 +35,11 @@ public sealed record LightingProgram(string EffectId, RgbColor[] Colors, int Spe
 public sealed record EndpointLighting(EndpointReference Target, LightingProgram Program);
 public sealed record SynchronizedLighting(EndpointReference[] Targets, LightingProgram Program);
 public sealed record DeviceLightingScene(string Id, string Name, EndpointLighting[] Individual, SynchronizedLighting[] Synchronized, long Revision = 1,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceLightingRequirement[]? Requirements = null,
-    bool ShowOnM5 = true);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceLightingRequirement[]? Requirements = null)
+{
+    [System.Text.Json.Serialization.JsonPropertyName("showOnM5"), System.Text.Json.Serialization.JsonIgnore]
+    public bool LegacyPanelVisibility { get; init; }
+}
 public sealed record EndpointAlias(EndpointReference Target, string Name);
 public sealed record DeviceBrightness(string GroupId, int Brightness, bool Off, DeviceLightingScene? Baseline);
 public sealed record LightingConfiguration(int Version, DeviceLightingScene[] Scenes, EndpointGroup[] Groups,
@@ -87,7 +94,7 @@ public static class DeviceConfigurationRules
                 _ => false
             }, "保存した制御方針が不正です");
             Require(c.SavedPolicy?.SafetySnapshot is not { } savedSafety || SafetyRefs(savedSafety), "保存した安全条件または温度の参照が不正です");
-            Require(!c.ResumeOnStart || c.WiringConfirmed && bindings.Devices.Any(b => b.DeviceId == c.Target.DeviceId) &&
+            Require(!c.ResumeOnStart || bindings.Devices.Any(b => b.DeviceId == c.Target.DeviceId) &&
                 SavedPolicyReadiness(c) is null, "起動時制御の条件が揃っていません");
         }
         void Groups(EndpointGroup[] groups, EndpointKind kind)
@@ -98,8 +105,6 @@ public static class DeviceConfigurationRules
         }
         Groups(cooling.Groups, EndpointKind.Cooling);
         Require(lighting is { Version: 2, Revision: >= 0, Scenes.Length: <= DeviceLightingLibrary.MaximumScenes, Groups.Length: <= DeviceLightingLibrary.MaximumGroups, Names.Length: <= 256, SyncTargets.Length: <= 256, Adjustments.Length: <= 33 }, "照明設定の形式が不正です");
-        Require(lighting.Scenes.Count(s => s?.ShowOnM5 == true) <= DeviceLightingLibrary.MaximumM5Scenes,
-            $"M5GOに表示するシーンは{DeviceLightingLibrary.MaximumM5Scenes}件までです。表示するシーンを減らしてください");
         Groups(lighting.Groups, EndpointKind.Lighting);
         Require(lighting.Endpoints is null || lighting.Endpoints.Length <= 256 &&
             lighting.Endpoints.All(e => DeviceLightingConfiguration.ValidEndpoint(e) && Ref(e.Target, EndpointKind.Lighting)) &&
@@ -152,7 +157,7 @@ public static class DeviceConfigurationRules
     private static bool ValidSetup(RegisteredEndpoint e) => e.Setup is not { } s ||
         s.Accessory is not null && s.Accessory.Length <= 256 && !s.Accessory.Any(char.IsControl) && s.LedCount is null or >= 0 and <= 4096 &&
         (!s.LedCountConfirmed || s.LedCount is not null) &&
-        (e.Kind == EndpointKind.Lighting ? !s.ShowOnM5 : s.Accessory.Length == 0 && s.LedCount is null && !s.LedCountConfirmed);
+        (e.Kind == EndpointKind.Lighting || s.Accessory.Length == 0 && s.LedCount is null && !s.LedCountConfirmed);
     public static bool ValidSafety(CoolingSafety? s) => s is not null && s.Minimum is null or >= 1 and <= 100 && s.Fallback is null or >= 1 and <= 100 &&
         s.Exit is null or >= 1 and <= 100 && Enum.IsDefined(s.ExitAction) && s.ManualProtection is { Length: <= 32 } &&
         s.ManualProtection.All(r => r is not null && ValidReference(r.Sensor) && FanPolicyEngine.ThresholdsValid(r.Overheat, r.ResumeBelow)) &&

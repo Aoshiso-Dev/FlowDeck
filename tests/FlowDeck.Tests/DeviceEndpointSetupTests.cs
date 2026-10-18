@@ -8,7 +8,7 @@ public partial class DeviceEndpointSetupTests(Xunit.Abstractions.ITestOutputHelp
     private static DeviceEndpointSetupDraft Fan(DeviceWorkspaceClient client, string id, string endpoint = "fan1")
     {
         var draft = new DeviceEndpointSetupDraft(client.Snapshot!, new(id, endpoint));
-        draft.Change(draft.Values with { Confirmed = true, Safety = new(30,100,70,CoolingExitAction.FixedDuty,[]) }); return draft;
+        draft.Change(draft.Values with { Confirmed = false, Safety = new(30,100,70,CoolingExitAction.FixedDuty,[]) }); return draft;
     }
     private static Task<DeviceOperationResult> Duty(DeviceWorkspaceClient client, EndpointReference target, int duty)
     {
@@ -42,7 +42,7 @@ public partial class DeviceEndpointSetupTests(Xunit.Abstractions.ITestOutputHelp
         Assert.DoesNotContain(LightingExitAction.RestoreOriginal, light.Options.LightingExitActions);
         Assert.All(demo.Hubs, h => { Assert.Equal(0,h.Writes); Assert.Equal(0,h.LightingWrites); });
     }
-    [Fact] public async Task ConfirmationAndDeviceSpecificBoundsAreRequiredBeforePreview()
+    [Fact] public async Task ActualSafetyValuesAndDeviceSpecificBoundsAreRequiredBeforePreview()
     {
         using var dir = new ServiceTestDirectory(); await using var demo = await DemoDeviceWorkspace.CreateAsync(dir.Path, monitoringOnly: true);
         await using var client = demo.CreateClient(); await client.ConnectAsync();
@@ -147,13 +147,14 @@ public partial class DeviceEndpointSetupTests(Xunit.Abstractions.ITestOutputHelp
         await client.ApplySetupAsync(await client.PreviewSetupAsync(draft.Capture()));
         var config=client.Snapshot!.Configuration.Configuration;
         var port=Assert.Single(Assert.Single(config.Devices.Devices).Endpoints);
-        Assert.Equal(new EndpointSetup("DEMO RGB",24,true),port.Setup); Assert.Equal(target,Assert.Single(config.Lighting.Endpoints!).Target);
+        Assert.Equal(new EndpointSetup("DEMO RGB",24,false),port.Setup); Assert.Equal(target,Assert.Single(config.Lighting.Endpoints!).Target);
+        Assert.False(config.Lighting.Endpoints![0].WiringConfirmed);
         Assert.Empty(config.Cooling.Endpoints); Assert.All(demo.Hubs,h=> { Assert.Equal(0,h.Writes); Assert.Equal(0,h.LightingWrites); });
         var actual=client.Snapshot.State.Inventory.Devices.Single(d=>d.Device.Id==target.DeviceId).Device;
         Assert.True(actual.Endpoints.Single(e=>e.Id==target.EndpointId).Capabilities.Single(c=>c.Feature==DeviceFeature.FixedColor).Usable);
     }
     [Theory] [InlineData(false)] [InlineData(true)]
-    public async Task RebindingADeviceDoesNotSilentlyReapproveItsOtherCoolingAndLightingPorts(bool missingBinding)
+    public async Task SavingCurrentDeviceSettingsPreservesOtherPortsSettingsAndLegacyMetadata(bool missingBinding)
     {
         using var dir = new ServiceTestDirectory(); await using var demo = await DemoDeviceWorkspace.CreateAsync(dir.Path);
         await using var client = demo.CreateClient(); await client.ConnectAsync(); var snapshot=client.Snapshot!; var target=new EndpointReference(demo.DeviceIds[0],"fan1");
@@ -161,14 +162,12 @@ public partial class DeviceEndpointSetupTests(Xunit.Abstractions.ITestOutputHelp
             Configuration=missingBinding ? snapshot.Configuration.Configuration with { Bindings=snapshot.Configuration.Configuration.Bindings with {
                 Devices=snapshot.Configuration.Configuration.Bindings.Devices.Where(b=>b.DeviceId!=target.DeviceId).ToArray() } } : snapshot.Configuration.Configuration,
             Candidates=missingBinding ? snapshot.Configuration.Candidates : snapshot.Configuration.Candidates.Select(b=>b.DeviceId==target.DeviceId ? b with { Fingerprint=new('f',64) } : b).ToArray() } };
-        var draft=new DeviceEndpointSetupDraft(updated,target); Assert.False(draft.Values.Confirmed); draft.Change(draft.Values with { Confirmed=true });
+        var draft=new DeviceEndpointSetupDraft(updated,target); Assert.False(draft.Values.Confirmed);
         var result=draft.Capture();
-        Assert.True(result.Configuration.Cooling.Endpoints.Single(e=>e.Target==target).WiringConfirmed);
-        Assert.All(result.Configuration.Cooling.Endpoints.Where(e=>e.Target.DeviceId==target.DeviceId&&e.Target!=target),e=> { Assert.False(e.WiringConfirmed); Assert.False(e.ResumeOnStart); Assert.Null(e.SavedPolicy); });
-        Assert.All(result.Configuration.Lighting.Endpoints!.Where(e=>e.Target.DeviceId==target.DeviceId),e=>Assert.False(e.WiringConfirmed));
-        Assert.All(result.Configuration.Devices.Devices.Single(d=>d.Id==target.DeviceId).Endpoints.Where(e=>e.Kind==EndpointKind.Lighting),e=>Assert.False(e.Setup!.LedCountConfirmed));
-        Assert.All(result.Configuration.Cooling.Endpoints.Where(e=>e.Target.DeviceId==demo.DeviceIds[1]),e=>Assert.True(e.WiringConfirmed));
-        Assert.Contains(result.Changes,s=>s.Contains("再確認"));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Cooling),SettingsTransfer.Hash(result.Configuration.Cooling));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Lighting),SettingsTransfer.Hash(result.Configuration.Lighting));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Devices),SettingsTransfer.Hash(result.Configuration.Devices));
+        Assert.DoesNotContain(result.Changes,s=>s.Contains("再確認"));
     }
     [Fact] public async Task FailedReleaseDoesNotAdoptSetupAndClientReadsBackTheUnconfirmedState()
     {

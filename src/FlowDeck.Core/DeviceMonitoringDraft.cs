@@ -35,9 +35,11 @@ public sealed class DeviceMonitoringDraft
         connected = available && !state.Releasing && !state.ConfigurationChanging;
         RegisteredCount = dashboard.Items.Length;
         var registered = dashboard.Items.Select(i => (i.Target, i.Measurement)).ToHashSet();
+        var connectedTargets = state.Inventory.Devices.Where(d => available && d.Connected)
+            .SelectMany(d => d.Device.Endpoints.Select(e => new EndpointReference(d.Device.Id, e.Id))).ToHashSet();
         var values = new List<DeviceMonitoringCandidate>();
         foreach (var item in DeviceDashboard.Items(registrations, dashboard, state.Inventory).Where(i =>
-            !registered.Contains((i.Target, i.Measurement))))
+            connectedTargets.Contains(i.Target) && !registered.Contains((i.Target, i.Measurement))))
         {
             var instance = state.Inventory.Devices.Single(d => d.Device.Id == item.Target.DeviceId);
             var endpoint = instance.Device.Endpoints.Single(e => e.Id == item.Target.EndpointId);
@@ -48,8 +50,9 @@ public sealed class DeviceMonitoringDraft
             var deviceName = registrations.Devices.SingleOrDefault(d => d.Id == instance.Device.Id)?.Name ?? DisplayDeviceName(instance.Device, state.Inventory);
             values.Add(new(new(proposal, instance.Generation), deviceName, reading.Value, reading.State, connected && reading.Value is not null));
         }
-        // A selected but removed candidate stays visible; refreshing cannot silently select its replacement.
-        foreach (var pair in selected.Where(p => values.All(c => Key(c) != p.Key))) values.Add(pair.Value with { Available = false, Value = null, Status = "再取得が必要" });
+        // Keep disconnected selections anchored internally, without adding absent hardware back to the list.
+        foreach (var pair in selected.Where(p => connectedTargets.Contains(p.Value.Selection.Item.Target) && values.All(c => Key(c) != p.Key)))
+            values.Add(pair.Value with { Available = false, Value = null, Status = "再取得が必要" });
         candidates = values.ToArray();
         Page = Math.Min(Page, PageCount - 1);
     }

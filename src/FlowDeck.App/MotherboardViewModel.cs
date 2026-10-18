@@ -5,13 +5,11 @@ using FlowDeck.Core;
 
 namespace FlowDeck.App;
 
-public sealed class BoardSensorRow(string id, string name, bool show) : Observable
+public sealed class BoardSensorRow(string id, string name) : Observable
 {
     public string Id { get; } = id;
     private string displayName = name;
-    private bool showOnM5 = show;
     public string DisplayName { get => displayName; set => Set(ref displayName, value); }
-    public bool ShowOnM5 { get => showOnM5; set => Set(ref showOnM5, value); }
     public string Source { get; private set; } = "";
     public string Kind { get; private set; } = "";
     public string Value { get; private set; } = "—";
@@ -45,7 +43,6 @@ public sealed partial class FlowDeckViewModel
     public ICommand RefreshRgb { get; private set; } = null!;
     public bool OpenRgbEnabled { get; set; }
     public string OpenRgbPort { get; set; } = "6742";
-    private int boardPreviewPage;
     private bool rgbBusy;
     public string BoardName => host.Motherboard.Board.Name;
     public string BoardStatus
@@ -57,29 +54,20 @@ public sealed partial class FlowDeckViewModel
                 (board.UpdatedAt is { } updated ? " / 更新 " + updated.ToLocalTime().ToString("HH:mm:ss") : "");
         }
     }
-    public string RgbStatus => rgbBusy ? "RGB一覧を取得しています…" : host.Rgb.Error ??
+    public string RgbStatus => rgbBusy ? "RGB取得中…" : host.Rgb.Error ??
         $"{host.Rgb.Devices.Length} コントローラー / ASRock {host.Rgb.Devices.Count(d => d.IsAsrock)} 台 / 取得 {host.Rgb.UpdatedAt?.ToLocalTime():HH:mm:ss}";
-    public string VirtualMotherboard
-    {
-        get
-        {
-            var panel = host.BoardPanel();
-            return "マザーボード / " + panel.Status + "\n" + string.Join("\n", panel.Rows.Skip(boardPreviewPage * 4).Take(4)
-                .Select(r => r.Name + "  " + (r.Value?.ToString("0.##") ?? "—") + " " + r.Unit)) + "\nA 前へ    B 戻る    C 次へ";
-        }
-    }
     private void InitializeMotherboard()
     {
         SaveMotherboard = Command(async _ =>
         {
-            var settings = new MotherboardSettings(BoardSensors.Select(s => new BoardSensorSetting(s.Id, s.DisplayName.Trim(), s.ShowOnM5)).ToArray(),
+            var settings = new MotherboardSettings(BoardSensors.Select(s => new BoardSensorSetting(s.Id, s.DisplayName.Trim())).ToArray(),
                 OpenRgbEnabled, RequiredInt(OpenRgbPort),
                 (core.Settings.Motherboard.RgbZones ?? []).Where(s => RgbZones.All(r => r.Id != s.Id))
                     .Concat(RgbZones.Select(r => new RgbZoneSetting(r.Id, r.Accessory.Trim(), ParseInt(r.ConfirmedLeds), core.Settings.Motherboard.RgbZones?.FirstOrDefault(s => s.Id == r.Id)?.LastLighting)))
                     .Where(s => s.Accessory.Length > 0 || s.ConfirmedLedCount is not null || s.LastLighting is not null).ToArray());
             if (MotherboardDisplay.Validate(settings) is { } error) throw new InvalidOperationException(error);
             await core.UpdateSettingsAsync(core.Settings with { Motherboard = settings }, false); await host.FlushSettingsAsync();
-            Notice = "マザーボードの表示設定を保存しました。ホームでB長押しするとM5GOの監視ページを開きます";
+            Notice = "表示設定を保存済み";
             if (!settings.OpenRgbEnabled) { await host.RefreshRgbAsync(); RefreshMotherboard(); }
         });
         ReloadMotherboard = Command(_ => { LoadMotherboardSettings(); return Task.CompletedTask; });
@@ -95,7 +83,7 @@ public sealed partial class FlowDeckViewModel
         var settings = core.Settings.Motherboard;
         OpenRgbEnabled = settings.OpenRgbEnabled; OpenRgbPort = settings.OpenRgbPort.ToString();
         BoardSensors.Clear();
-        foreach (var saved in settings.Sensors ?? []) BoardSensors.Add(new(saved.Id, saved.DisplayName, saved.ShowOnM5));
+        foreach (var saved in settings.Sensors ?? []) BoardSensors.Add(new(saved.Id, saved.DisplayName));
         RgbZones.Clear();
         Notify(nameof(OpenRgbEnabled)); Notify(nameof(OpenRgbPort)); RefreshMotherboard();
     }
@@ -103,7 +91,7 @@ public sealed partial class FlowDeckViewModel
     {
         var board = host.Motherboard.Board;
         foreach (var sensor in board.Sensors.Take(256))
-            if (BoardSensors.All(r => r.Id != sensor.Id)) BoardSensors.Add(new(sensor.Id, MotherboardDisplay.DefaultName(sensor), false));
+            if (BoardSensors.All(r => r.Id != sensor.Id)) BoardSensors.Add(new(sensor.Id, MotherboardDisplay.DefaultName(sensor)));
         foreach (var row in BoardSensors) row.Update(board.Sensors.FirstOrDefault(s => s.Id == row.Id), board.IsFresh());
         var current = new HashSet<string>();
         foreach (var device in host.Rgb.Devices)
@@ -113,7 +101,7 @@ public sealed partial class FlowDeckViewModel
             {
                 var id = device.ZoneRegistrationId(zone.Name, index++); current.Add(id);
                 var details = new RgbZoneDetails(device.Name, zone.Name, $"{zone.LedCount}（設定値）", zone.ReportedMode ?? device.Mode,
-                    device.Modes.Length == 0 ? "機器からの対応一覧は未取得" : string.Join(" / ", device.Modes), device.Location);
+                    device.Modes.Length == 0 ? "対応一覧未取得" : string.Join(" / ", device.Modes), device.Location);
                 var row = RgbZones.FirstOrDefault(r => r.Id == id);
                 if (row is null) RgbZones.Add(new(id, details, core.Settings.Motherboard.RgbZones?.FirstOrDefault(r => r.Id == id)));
                 else row.Update(details);
@@ -123,6 +111,6 @@ public sealed partial class FlowDeckViewModel
         foreach (var row in RgbZones.Where(r => !current.Contains(r.Id)))
             row.Update(row.Details with { Leds = "未取得", Mode = "未取得", Modes = "未取得" });
         RefreshBoardLighting(); RefreshMemoryLighting();
-        Notify(nameof(BoardName)); Notify(nameof(BoardStatus)); Notify(nameof(RgbStatus)); Notify(nameof(VirtualDisplay));
+        Notify(nameof(BoardName)); Notify(nameof(BoardStatus)); Notify(nameof(RgbStatus));
     }
 }

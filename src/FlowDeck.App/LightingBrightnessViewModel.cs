@@ -7,22 +7,6 @@ public sealed partial class FlowDeckViewModel
     private bool brightnessBusy;
     private int masterBrightness = 100;
     private string brightnessResult = "";
-    private long lastM5LightingChanges;
-    private void RefreshRemoteBrightness()
-    {
-        var changes = host.M5LightingChanges;
-        if (changes == lastM5LightingChanges) return;
-        lastM5LightingChanges = changes;
-        if (brightnessBusy) return;
-        if (brightnessResult.EndsWith("未適用", StringComparison.Ordinal)) brightnessResult = "M5GOで変更あり・未適用";
-        else
-        {
-            var saved = host.AdjustmentFor(CurrentLightingGroup);
-            Set(ref masterBrightness, saved.Applied ? saved.Brightness : 100, nameof(MasterBrightness));
-            brightnessResult = saved.Applied ? saved.IsOff ? "消灯済み" : $"明るさ {saved.Brightness}% · 適用済み" : "M5GOから照明を変更";
-        }
-        Notify(nameof(BrightnessResult)); Notify(nameof(HasBrightnessResult));
-    }
     public int MasterBrightness
     {
         get => masterBrightness;
@@ -46,7 +30,7 @@ public sealed partial class FlowDeckViewModel
                 var adjustment = host.AdjustmentFor(group);
                 LightingSceneResults.Clear(); foreach (var row in result.Rows) LightingSceneResults.Add(row);
                 if (result.Succeeded) { Notice = ""; MasterBrightness = adjustment.Brightness; LoadHubLighting(); RefreshMotherboard(); LoadBoardLightDraft(); }
-                brightnessResult = result.Succeeded ? off ? "消灯済み" : $"明るさ {adjustment.Brightness}% · 適用済み" : result.Error ?? "適用を確認できません";
+                brightnessResult = result.Succeeded ? off ? "消灯済み" : $"明るさ {adjustment.Brightness}% · 適用済み" : result.Error ?? "適用未確認";
             }
             catch (Exception e) { brightnessResult = e.Message; throw; }
             finally { brightnessBusy = false; Refresh(); }

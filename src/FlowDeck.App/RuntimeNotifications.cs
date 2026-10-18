@@ -15,9 +15,6 @@ public sealed partial class RuntimeHost
     private Task notificationLoop = Task.CompletedTask;
     private bool notificationsSuspended;
     private string? notificationHub, notificationBoard;
-    private M5Connection? notificationM5;
-    private bool notificationM5Seen;
-    private bool notificationM5Closing;
     public NotificationSettings NotificationOptions { get; private set; } = new(Rules: []);
     public string? NotificationError { get; private set; }
     public string? NotificationRuntimeError { get; private set; }
@@ -61,7 +58,7 @@ public sealed partial class RuntimeHost
         lock(notificationSync)
         {
             notificationEngine = new(); notificationHistory.Clear(); notificationOperations.Clear(); notificationQueue.Clear(); NotificationRuntimeError = null;
-            notificationHub = notificationBoard = null; notificationM5 = null; notificationM5Seen = notificationM5Closing = false; notificationsSuspended = false;
+            notificationHub = notificationBoard = null; notificationsSuspended = false;
         }
         await LoadNotificationsAsync();
         Coordinator.OperationCompleted += TrackNotificationOperation;
@@ -94,12 +91,8 @@ public sealed partial class RuntimeHost
         lock(notificationSync)
         {
             notificationsSuspended = suspended; notificationEngine.Reset(); notificationHub = notificationBoard = null;
-            notificationM5 = null; notificationM5Seen = false; notificationOperations.Clear(); notificationQueue.Clear();
+            notificationOperations.Clear(); notificationQueue.Clear();
         }
-    }
-    private void M5NotificationClosing(bool closing)
-    {
-        lock(notificationSync) { notificationM5Closing = closing; notificationM5Seen = false; notificationM5 = null; }
     }
     internal void EvaluateNotifications()
     {
@@ -123,9 +116,6 @@ public sealed partial class RuntimeHost
                 if(notificationHub is not null) signals.Add(new("hub-offline:" + notificationHub,"NZXT Control Hub",!state.HubReady || !DashboardDisplay.Fresh(state.TelemetryTimestamp),"NZXT Control Hub · 接続または更新が停止しています"));
                 if(board.IsFresh()) notificationBoard = board.Name;
                 if(notificationBoard is not null) signals.Add(new("board-offline:" + notificationBoard,"マザーセンサー",!board.IsFresh(),"マザーセンサー · 接続または更新が停止しています"));
-                if(!ReferenceEquals(notificationM5,M5)) { notificationM5 = M5; notificationM5Seen = false; }
-                if(!notificationM5Closing && M5?.Protocol.Connected == true) notificationM5Seen = true;
-                if(!notificationM5Closing && M5 is not null && notificationM5Seen) signals.Add(new("m5-offline","M5GO",!M5.Protocol.Connected,"M5GO · 接続が切れています"));
             }
             var collected = notificationEngine.Evaluate(settings,NotificationInputs.Collect(Coordinator.Settings,state,board,BoardFans.States),signals.ToArray()).ToList();
             while(notificationQueue.TryDequeue(out var operation))

@@ -62,7 +62,7 @@ public sealed partial class HardwareTemperatures
         ct.ThrowIfCancellationRequested();
         if (!Enum.IsDefined(command.Operation) || command.Operation == MotherboardFanOperation.Write &&
             (command.Duty is not (>= 1 and <= 100) || command.ExpectedDuty is not (>= 0 and <= 100)) ||
-            command.Operation != MotherboardFanOperation.Write && (command.Duty is not null || command.ExpectedDuty is not null || command.Deadline is not null))
+            command.Operation != MotherboardFanOperation.Write && (command.Duty is not null || command.ExpectedDuty is not null || command.Deadline is not null || command.ExpectedControl is not null))
             throw new MotherboardCommandRejectedException("マザー操作の形式が不正です");
         var entry = GenericPort(command, journal);
         if (command.Operation == MotherboardFanOperation.Release)
@@ -72,14 +72,14 @@ public sealed partial class HardwareTemperatures
             catch { return null; } // Register restoration is already verified; unavailable telemetry does not undo its completion.
         }
         RefreshGenericFan(entry);
-        if (command.Operation == MotherboardFanOperation.Read) return entry.Registers.Read();
+        if (command.Operation == MotherboardFanOperation.Read) return entry.Registers.ReadForControl();
         void Check()
         {
             ct.ThrowIfCancellationRequested();
             MatchBoard(command.Identity);
             if (HardwareWriteDeadline.Expired(command.Deadline)) throw new MotherboardCommandRejectedException("通信待ちで温度の有効期限を超えました", DeviceDriverFailure.CoolingInputExpired);
         }
-        return entry.Registers.Write(command.Duty!.Value, Check, command.ExpectedDuty);
+        return entry.Registers.WriteWithControlSnapshot(command.Duty!.Value, Check, command.ExpectedDuty, command.ExpectedControl);
     }
     public Task<CpuFanReading?> ExecuteFanAsync(MotherboardFanCommand command, IFanRecoveryJournal journal, CancellationToken ct) =>
         Task.Run(() => { lock (gate) return ExecuteFanCore(command, journal, ct); }, ct);

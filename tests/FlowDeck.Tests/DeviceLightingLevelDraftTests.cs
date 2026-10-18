@@ -11,7 +11,7 @@ public class DeviceLightingLevelDraftTests
     {
         var config = new DeviceConfigurationPackage(new(2, new[] { A, B }.Select(t => new RegisteredDevice(t.DeviceId, "同名", "demo", DeviceKind.Memory, [new(t.EndpointId, "照明", EndpointKind.Lighting)])).ToArray()),
             new(2, new('a', 32), []), new(2, [], []), new(2, [], [new("group", "前面", EndpointKind.Lighting, [A], 3)], [], [], [], Preferences: [new(A, Blue), new(B, Blue)]),
-            new(2, []), new(2, new(), new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
+            new(2, []), new(2, new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
         var state = new DeviceServiceState(new(new('a', 32), 1, new[] { A, B }.Select(t => new DeviceInstance(
             new(t.DeviceId, "demo", "同名", DeviceKind.Memory, IdentityConfidence.SerialBound, t.DeviceId, null, [t.DeviceId],
                 [new(t.EndpointId, "照明", EndpointKind.Lighting, [new(DeviceFeature.FixedColor, ImplementationSupport.Supported, VerificationEvidence.Automated, DeviceAvailability.Ready)])]), 1, true)).ToArray(), 1),
@@ -20,6 +20,72 @@ public class DeviceLightingLevelDraftTests
     }
     private static DeviceLightingLevelDraft Draft(DeviceWorkspaceSnapshot s) { var d = new DeviceLightingLevelDraft(); d.Update(s, [B]); return d; }
     private static DeviceWorkspaceSnapshot WithLibrary(DeviceWorkspaceSnapshot s, LightingConfiguration l) => s with { Configuration = s.Configuration with { Configuration = s.Configuration.Configuration with { Lighting = l } } };
+    [Fact] public void ReturningToSavedLevelClearsPendingWithoutChangingItsScope()
+    {
+        var s = Snapshot(); var d = Draft(s); d.SetBrightness(100); Assert.False(d.Dirty);
+        d.SetBrightness(42); Assert.True(d.Dirty); d.SetBrightness(100);
+        Assert.False(d.Dirty); Assert.False(d.Conflict); Assert.Equal(LightingAdjustmentScope.All, d.Scope);
+        Assert.Equal(2, d.Targets.Length);
+    }
+    [Fact] public void ReturningToPreviousLevelCannotSilentlyResolveAConflictingGeneration()
+    {
+        var s = Snapshot(); var d = Draft(s); d.SetBrightness(42);
+        d.Update(s with { Configuration = s.Configuration with { Generation = new('d', 32) } }, [B]); d.SetBrightness(100);
+        Assert.True(d.Dirty); Assert.True(d.Conflict); d.Reset(); Assert.False(d.Dirty); Assert.False(d.Conflict);
+    }
+    [Theory][InlineData("success")][InlineData("partial")][InlineData("missing")][InlineData("cancel")][InlineData("new-edit")][InlineData("selection")][InlineData("selection-roundtrip")]
+    public void LevelCompletionBelongsToExactCapturedDraftAndAllTargets(string kind)
+    {
+        var s = Snapshot(); var d = Draft(s); d.Select(LightingAdjustmentScope.Targets); d.SetBrightness(42);
+        var edit = d.Capture(LightingAdjustmentKind.Brightness);
+        var result = new DeviceOperationResult("request", "test", Outcome.WrittenUnverified, DateTimeOffset.UtcNow,
+            [new(B, 1, 2, Outcome.WrittenUnverified, "test", Persistence: new(DevicePolicySaveState.Saved, "saved"))], "test");
+        s = s with { State = s.State with { Endpoints = s.State.Endpoints.Select(e => e.Target == B ? e with { PolicyRevision = 2 } : e).ToArray() } };
+        d.Update(s, [B]);
+        if (kind == "partial") result = result with { Outcome = Outcome.Partial };
+        if (kind == "missing") result = result with { Targets = [] };
+        if (kind == "cancel") { d.Reset(); d.SetBrightness(42); }
+        if (kind == "new-edit") { d.SetBrightness(41); d.SetBrightness(42); }
+        if (kind is "selection" or "selection-roundtrip")
+        {
+            d.Update(s, [A]);
+            if (kind == "selection-roundtrip") d.Update(s, [B]);
+            d.SetBrightness(42);
+        }
+        Assert.Equal(kind == "success", d.AcceptApplied(edit, result)); Assert.Equal(kind != "success", d.Dirty);
+    }
+    [Theory][InlineData("epoch")][InlineData("generation")][InlineData("newer-policy")][InlineData("missing")][InlineData("unrefreshed")]
+    public void SuccessfulLevelResultCannotClearPendingAfterTheLatestStateHasMovedOn(string kind)
+    {
+        var s = Snapshot(); var d = Draft(s); d.Select(LightingAdjustmentScope.Targets); d.SetBrightness(42);
+        var edit = d.Capture(LightingAdjustmentKind.Brightness);
+        var result = new DeviceOperationResult("request", "test", Outcome.WrittenUnverified, DateTimeOffset.UtcNow,
+            [new(B, 1, 2, Outcome.WrittenUnverified, "test", Persistence: new(DevicePolicySaveState.Saved, "saved"))], "test");
+        var state = s.State with { Endpoints = s.State.Endpoints.Select(e => e.Target == B ? e with { PolicyRevision = 2 } : e).ToArray() };
+        state = kind switch {
+            "epoch" => state with { Inventory = state.Inventory with { Epoch = new('d', 32) } },
+            "generation" => state with { Endpoints = state.Endpoints.Select(e => e with { Generation = 2 }).ToArray() },
+            "newer-policy" => state with { Endpoints = state.Endpoints.Select(e => e with { PolicyRevision = e.PolicyRevision + 1 }).ToArray() },
+            "missing" => state with { Endpoints = [] }, _ => s.State };
+        d.Update(s with { State = state }, [B]);
+        Assert.False(d.AcceptApplied(edit, result)); Assert.True(d.Dirty); Assert.Equal(42, d.Brightness);
+    }
+    [Fact] public void ChangingSelectedTargetsCancelsLevelDraftAndAdoptsTheNewTargetsSavedValue()
+    {
+        var s = Snapshot(); var library = s.Configuration.Configuration.Lighting;
+        s = WithLibrary(s, library with { TargetAdjustments = [new(A, Blue, new(), new(), new(30)), new(B, Blue, new(), new(), new(70))] });
+        var d = Draft(s); d.Select(LightingAdjustmentScope.Targets); Assert.Equal(70, d.Brightness);
+        d.SetBrightness(42); d.Update(s, [A]);
+        Assert.False(d.Dirty); Assert.False(d.Conflict); Assert.Equal(30, d.Brightness); Assert.Equal(A, Assert.Single(d.Targets));
+        d.Update(s, [B]); Assert.False(d.Dirty); Assert.Equal(70, d.Brightness);
+    }
+    [Theory][InlineData(LightingAdjustmentScope.All)][InlineData(LightingAdjustmentScope.Group)]
+    public void ChangingCheckboxSelectionDoesNotDiscardAnUnrelatedAllOrGroupDraft(LightingAdjustmentScope scope)
+    {
+        var s = Snapshot(); var d = Draft(s); d.Select(scope, scope == LightingAdjustmentScope.Group ? "group" : null); d.SetBrightness(42);
+        var targets = d.Targets; d.Update(s, [A]);
+        Assert.True(d.Dirty); Assert.False(d.Conflict); Assert.Equal(42, d.Brightness); Assert.Equal(targets, d.Targets);
+    }
     [Theory][InlineData("missing-smoke")][InlineData("other-smoke")][InlineData("external")]
     public void LevelGuiSmokeRequiresIsolatedEmbeddedHardware(string mode)
     {
@@ -45,7 +111,7 @@ public class DeviceLightingLevelDraftTests
         Assert.Equal(A, Assert.Single(group.Version.Targets).Target); Assert.Equal(3, group.Adjustment!.GroupRevision);
         d.Select(LightingAdjustmentScope.Targets); Assert.Equal(A, Assert.Single(d.Capture(LightingAdjustmentKind.Restore).Lighting.Version.Targets).Target);
     }
-    [Theory][InlineData("epoch")][InlineData("session")][InlineData("generation")][InlineData("topology")][InlineData("endpoint")][InlineData("policy")][InlineData("selection")]
+    [Theory][InlineData("epoch")][InlineData("session")][InlineData("generation")][InlineData("topology")][InlineData("endpoint")][InlineData("policy")]
     public void EditingConflictsStayVisibleUntilReload(string kind)
     {
         var s = Snapshot(); var d = Draft(s); d.Select(LightingAdjustmentScope.Targets); d.SetBrightness(41);
@@ -57,7 +123,7 @@ public class DeviceLightingLevelDraftTests
             "topology" => s with { State = state with { Inventory = state.Inventory with { TopologyRevision = 2 } } },
             "endpoint" => s with { State = state with { Endpoints = state.Endpoints.Select(e => e with { Generation = 2 }).ToArray() } },
             "policy" => s with { State = state with { Endpoints = state.Endpoints.Select(e => e with { PolicyRevision = 2 }).ToArray() } }, _ => s };
-        d.Update(changed, kind == "selection" ? [A] : [B]); d.Update(s, [B]);
+        d.Update(changed, [B]); d.Update(s, [B]);
         Assert.True(d.Conflict); Assert.Equal(41, d.Brightness); Assert.Throws<InvalidOperationException>(() => d.Capture(LightingAdjustmentKind.Brightness));
         d.Reset(); Assert.False(d.Conflict); Assert.Equal(100, d.Brightness); Assert.Null(d.Problem);
     }

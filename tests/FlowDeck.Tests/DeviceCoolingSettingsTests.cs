@@ -25,7 +25,7 @@ public class DeviceCoolingSettingsTests
         var setup=new DeviceEndpointSetupDraft(client.Snapshot!,target); setup.Change(setup.Values with { Confirmed=true,Safety=new(30,100,70,CoolingExitAction.FixedDuty,[]) });
         Assert.Equal(Outcome.Confirmed,(await client.ApplySetupAsync(await client.PreviewSetupAsync(setup.Capture()))).Outcome);
         var draft=new DeviceCoolingSettingsDraft(client.Snapshot!,target);
-        draft.Change(draft.Safety,[Profile(draft)]); Assert.Throws<InvalidOperationException>(()=>draft.Capture()); draft.Confirmed=true;
+        draft.Change(draft.Safety,[Profile(draft)]); Assert.False(draft.Confirmed); Assert.NotNull(draft.Capture());
         var preview=await client.PreviewSetupAsync(draft.Capture()); Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
         Assert.Equal(Outcome.Confirmed,(await client.ApplySetupAsync(preview)).Outcome);
         var config=client.Snapshot!.Configuration.Configuration;
@@ -97,9 +97,9 @@ public class DeviceCoolingSettingsTests
         draft.Update(original with { State=original.State with { Telemetry=original.State.Telemetry!.Select(t=>t.Feature==DeviceFeature.Temperature?t with { Stale=true }:t).ToArray() } });
         Assert.False(draft.Conflict); Assert.Contains("温度",draft.Problem); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
         draft.Update(original); Assert.Null(draft.Problem); Assert.Equal("custom",draft.Capture().Configuration.Cooling.Endpoints.Single(e=>e.Target==draft.Target).Profiles[0].Id);
-        draft.Change(draft.Safety,draft.Profiles); Assert.False(draft.Confirmed);
+        draft.Change(draft.Safety,draft.Profiles); draft.Confirmed=false; Assert.NotNull(draft.Capture());
     }
-    [Fact] public async Task RebindingATemperatureCarrierDoesNotReapproveItsCoolingOrLightingPorts()
+    [Fact] public async Task SavingACurrentTemperatureCarrierPreservesItsOtherPortsActualSettings()
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path);
         await using var client=demo.CreateClient(); await client.ConnectAsync(); var snapshot=client.Snapshot!;
@@ -111,12 +111,12 @@ public class DeviceCoolingSettingsTests
         var draft=new DeviceCoolingSettingsDraft(snapshot,target);
         draft.Change(draft.Safety,[new("carrier","ケース温度",0,[new(temperature,[new(30,40),new(60,100)],70,60)],3,2)]); draft.Confirmed=true;
         var edit=draft.Capture(); var config=edit.Configuration;
-        Assert.All(config.Cooling.Endpoints.Where(e=>e.Target.DeviceId==carrier),e=> { Assert.False(e.WiringConfirmed); Assert.False(e.ResumeOnStart); Assert.Null(e.SavedPolicy); });
-        Assert.All(config.Lighting.Endpoints!.Where(e=>e.Target.DeviceId==carrier),e=>Assert.False(e.WiringConfirmed));
-        Assert.All(config.Devices.Devices.Single(d=>d.Id==carrier).Endpoints.Where(e=>e.Kind==EndpointKind.Lighting),e=>Assert.False(e.Setup!.LedCountConfirmed));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Cooling.Endpoints.Where(e=>e.Target.DeviceId==carrier)),SettingsTransfer.Hash(config.Cooling.Endpoints.Where(e=>e.Target.DeviceId==carrier)));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Lighting),SettingsTransfer.Hash(config.Lighting));
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Devices.Devices.Single(d=>d.Id==carrier).Endpoints.Where(e=>e.Kind==EndpointKind.Lighting)),SettingsTransfer.Hash(config.Devices.Devices.Single(d=>d.Id==carrier).Endpoints.Where(e=>e.Kind==EndpointKind.Lighting)));
         Assert.True(config.Cooling.Endpoints.Single(e=>e.Target==target).WiringConfirmed);
         Assert.Equal(new string('f',64),config.Bindings.Devices.Single(b=>b.DeviceId==carrier).Fingerprint);
-        Assert.Contains(edit.Changes,c=>c.Contains("再確認")); Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
+        Assert.DoesNotContain(edit.Changes,c=>c.Contains("再確認")); Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
     }
     [Fact] public async Task DeletingTheRunningProfileClearsSavedAutomaticPolicyAndDoesNotRestartIt()
     {

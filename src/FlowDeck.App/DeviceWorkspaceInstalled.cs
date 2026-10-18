@@ -18,9 +18,9 @@ internal static class DeviceWorkspaceInstalled
         using var listener = new TextWriterTraceListener(Path.Combine(directory, "bindings.log"));
         PresentationTraceSources.DataBindingSource.Listeners.Add(listener);
         PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Error;
-        await using var m5 = client.IsDemo ? null : new DeviceM5Session(client, new DeviceM5LinkFactory(directory, new RollingEventLog(Path.Combine(directory, "logs-v2"))));
         var login = client.IsDemo ? new DeviceLoginStartup(Environment.ProcessPath!, new DemoLoginStartupRegistration(), _ => true) : DeviceLoginStartup.ForCurrentProcess();
-        var model = new DeviceWorkspaceViewModel(client, new DeviceUiPreferencesStore(Path.Combine(directory, "ui-v2.json")), m5, login);
+        var model = new DeviceWorkspaceViewModel(client, new DeviceUiPreferencesStore(Path.Combine(directory, "ui-v2.json")), login);
+        model.ConfigureDial(directory);
         UserPreferenceChangedEventHandler? preferenceChanged = null;
         System.Windows.Forms.NotifyIcon? tray = null; System.Drawing.Icon? trayIcon = null; DispatcherTimer? timer = null;
         Action<NotificationEvent[]>? showNotifications = null;
@@ -34,7 +34,7 @@ internal static class DeviceWorkspaceInstalled
             await model.InitializeAsync();
             window = new Window { Title = client.IsDemo ? "FlowDeck · DEMO" : "FlowDeck", Width = 1120, Height = 820, MinWidth = 960, MinHeight = 640,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen, DataContext = model,
-                Icon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/Assets/FlowDeck.ico")), Content = new DeviceWorkspaceView() };
+                Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri("pack://application:,,,/Assets/FlowDeck.ico")), Content = new DeviceWorkspaceView() };
             var saved = model.WindowPreferences;
             window.Width = Math.Clamp(saved.Width, window.MinWidth, Math.Max(window.MinWidth, SystemParameters.VirtualScreenWidth));
             window.Height = Math.Clamp(saved.Height, window.MinHeight, Math.Max(window.MinHeight, SystemParameters.VirtualScreenHeight));
@@ -80,7 +80,7 @@ internal static class DeviceWorkspaceInstalled
             {
                 await model.PrepareFirstUseAsync();
                 await model.RestoreStartupAsync();
-                await model.StartM5Async();
+                await model.StartDialAsync();
                 if(!closed)
                 {
                     timer = new(TimeSpan.FromSeconds(1), DispatcherPriority.Background, async (_, _) => await model.PollAsync(), app.Dispatcher);
@@ -143,7 +143,7 @@ internal static class DeviceWorkspaceInstalled
             if (preferenceChanged is not null) SystemEvents.UserPreferenceChanged -= preferenceChanged;
             PresentationTraceSources.DataBindingSource.Listeners.Remove(listener);
             if (window is not null && !closed) { closed = true; window.Close(); }
-            try { if (m5 is not null) await m5.DisposeAsync(); }
+            try { await model.DisconnectDialAsync(); }
             finally { await client.DisposeAsync(); }
         }
         if (!reconnect) app.Shutdown(exitCode);

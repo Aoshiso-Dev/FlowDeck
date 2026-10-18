@@ -103,7 +103,7 @@ public sealed class EneMemoryNativePreparationTests
         Assert.Equal(Outcome.Confirmed, (await r.Command(DeviceOperation.StopLighting, r.Memory.DeviceId)).Result!.Outcome); Assert.Null(r.Pending);
     }
     [Fact]
-    public async Task ExpiredIdentificationAfterSavingRestoresThePreviousRecordWithoutOpeningTheBus()
+    public async Task ExpiredIdentificationAfterSavingRefreshesBeforeWritingThePreparedMutation()
     {
         await using var r = await new Rig().Open(); await Fixed(r); var original = r.Pending!; var writes = r.Rack.Writes.Count; var opens = 0;
         r.Hooks.BeforeHardware = (kind, phase, _) =>
@@ -112,8 +112,10 @@ public sealed class EneMemoryNativePreparationTests
             { r.Hooks.BeforeHardware = null; opens = r.Rack.Opens; r.Clock.Advance(2.1); }
             return Task.CompletedTask;
         };
-        Assert.Equal(Outcome.Rejected, (await Fixed(r, 99)).Result!.Outcome);
-        Assert.Equal(opens, r.Rack.Opens); Assert.Equal(writes, r.Rack.Writes.Count); Assert.Equal(original.Hash, r.Pending!.Hash);
+        Assert.Equal(Outcome.Confirmed, (await Fixed(r, 99)).Result!.Outcome);
+        Assert.Equal(opens + 2, r.Rack.Opens); Assert.True(r.Rack.Writes.Count > writes);
+        Assert.Equal(original.Scope, r.Pending!.Scope); Assert.True(EneMemoryProtocol.Same(original.Original, r.Pending.Original));
+        Assert.Equal(99, r.Rack.Registers[(0x71, 0x8160)]);
     }
     [Fact]
     public async Task TheNativeJournalRemainsProtectedDuringReadbackAndFileWorkHappensWithClosedSessions()

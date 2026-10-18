@@ -5,7 +5,11 @@ public enum DeviceLightingStopReason { Normal, Failure, DeviceChanged, OwnerLost
 public sealed record DeviceLightingLimits(int MinimumIntervalMilliseconds, int MaximumFrameAgeMilliseconds, int MaximumLeds,
     bool EndpointColors = false, bool ConcurrentEndpointStreams = false);
 public sealed record DeviceLightingStatus(string GroupId, bool Running, long Frames, long DroppedFrames, RgbColor? LastColor,
-    double MaximumWriteMilliseconds, string? Fault = null, M5BodyLedFrame? Mirror = null);
+    double MaximumWriteMilliseconds, string? Fault = null)
+{
+    [System.Text.Json.Serialization.JsonPropertyName("mirror"), System.Text.Json.Serialization.JsonIgnore]
+    public System.Text.Json.JsonElement LegacyPanelMirror { get; init; }
+}
 public sealed record LightingFrameAuthorization(string? Error = null, bool Expired = false, TimeSpan? ValidFor = null);
 public sealed record EndpointLightingFrame(string EndpointId, RgbColor Color, RgbColor NormalStopColor);
 

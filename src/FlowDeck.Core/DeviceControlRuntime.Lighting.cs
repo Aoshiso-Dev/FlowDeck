@@ -20,7 +20,7 @@ public sealed partial class DeviceControlRuntime
         public Task<DeviceTargetResult[]> FrameWork = Task.FromResult(Array.Empty<DeviceTargetResult>());
         public Task Monitor = Task.CompletedTask;
         public Task<Dictionary<EndpointReference, DeviceDriverResult>>? Ending;
-        public long Origin, SampledAt, AppliedAt, Frames, Dropped, Sequence, CompositionRevision;
+        public long Origin, SampledAt, Frames, Dropped, Sequence, CompositionRevision;
         public bool Stopping, Reconfiguring;
         public RgbColor? Last;
         public double MaximumWriteMilliseconds;
@@ -48,32 +48,19 @@ public sealed partial class DeviceControlRuntime
         !group.Stopping && !stopping && !releasing && !ConfigurationInvalidatesLighting(participant) && session == group.Owner && (group.Frames > 0 || group.StartGuard?.Invoke() is null) &&
         participant.Targets.All(t => lightingOwners.GetValueOrDefault(t.Target) == group.Id && states.TryGetValue(t.Target, out var s) &&
             s.Generation == t.Generation && s.PolicyRevision == t.ExpectedPolicyRevision) &&
-        PhysicalBindingError(participant.DeviceId) is null && participant.Targets.All(t =>
+        participant.Targets.All(t => PhysicalBindingError(t.Target,
+            ending?.Contains(t.Target) == true ? DeviceFeature.RestoreLighting : DeviceFeature.ColorFrames) is null &&
             registry.Check(new(Epoch, t.Target.DeviceId, t.Target.EndpointId, t.Generation,
                 ending?.Contains(t.Target) == true ? DeviceFeature.RestoreLighting : DeviceFeature.ColorFrames)) is null);
     private DeviceLightingStatus LightingStatus(LightingGroup group) => new(group.Id, !group.Stopping, group.Frames, group.Dropped, group.Last,
         group.MaximumWriteMilliseconds, group.Fault);
-    private DeviceLightingStatus? LightingMirrorCore(DeviceExecutionState state, long sampledAt)
-    {
-        var status = state.Lighting;
-        if (status is null) return null;
-        if (!state.Owned || !status.Running || status.Fault is not null ||
-            !lightingGroups.TryGetValue(status.GroupId, out var group) || group.Stopping || group.Reconfiguring || group.Fault is not null ||
-            !group.AppliedPrograms.TryGetValue(state.Target, out var program) || !group.AppliedOrigins.TryGetValue(state.Target, out var origin) ||
-            !DeviceLighting.FrameProgram(program) || clock.GetElapsedTime(group.AppliedAt, sampledAt).TotalSeconds is < 0 or >= 3)
-            return status with { Mirror = null };
-        var period = DeviceLighting.Animated(program) ? (int)(HubLighting.Period(program.Speed) * 1000) : 0;
-        return status with { Mirror = new(program.EffectId, program.Colors.FirstOrDefault() ?? new(0, 0, 0), program.Brightness,
-            period, period == 0 ? 0 : clock.GetElapsedTime(origin, sampledAt).TotalMilliseconds % period,
-            Math.Max(1, (int)Math.Floor(3000 - clock.GetElapsedTime(group.AppliedAt, sampledAt).TotalMilliseconds))) };
-    }
     private void PublishLightingCore(LightingGroup group, DeviceTargetResult[] results, IReadOnlySet<EndpointReference>? skipped = null)
     {
         foreach (var result in results)
             if (lightingOwners.GetValueOrDefault(result.Target) == group.Id && states.TryGetValue(result.Target, out var old) &&
                 old.Generation == result.Generation && old.PolicyRevision == result.PolicyRevision)
                 // An unsent frame does not replace the last applied output. Keep
-                // its outcome for consumers such as M5, without renewing AppliedAt.
+                // its outcome until a later frame is actually applied.
                 states[result.Target] = old with { Outcome = skipped?.Contains(result.Target) == true && group.AppliedPrograms.ContainsKey(result.Target)
                         ? old.Outcome : result.Outcome, Message = result.Message,
                     ReportedLighting = result.ReportedLighting ?? old.ReportedLighting,
@@ -202,7 +189,7 @@ public sealed partial class DeviceControlRuntime
             if (failed != 0 && !group.Stopping) group.Fault ??= "同期対象の一部で送信に失敗しました";
             if (failed == 0 && expired == 0)
             {
-                group.Frames++; group.AppliedAt = sampled; group.Last = Color(participants[0].Targets[0].Target);
+                group.Frames++; group.Last = Color(participants[0].Targets[0].Target);
                 foreach (var (target, program) in programs) { group.AppliedPrograms[target] = program; group.AppliedOrigins[target] = origins[target]; }
             }
             if (composition == group.CompositionRevision) PublishLightingCore(group, all, skipped.Keys.ToHashSet());

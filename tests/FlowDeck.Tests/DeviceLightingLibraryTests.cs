@@ -33,7 +33,7 @@ public sealed class DeviceLightingLibraryTests
             var package = new DeviceConfigurationPackage(new(2, new[] { A, B, C }.Select(d => new RegisteredDevice(d.DeviceId, d.DeviceId, "demo-rgb", DeviceKind.Memory,
                     [new("light1", "RGB", EndpointKind.Lighting)])).Append(new("fan", "fan", "test", DeviceKind.Controller,
                     [new("fan1", "ファン", EndpointKind.Cooling)])).ToArray()), new(2, install, bindings), new(2, [], []), new(2, [], [], [], [], []),
-                new(2, []), new(2, new(), new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
+                new(2, []), new(2, new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
             Store = DeviceConfigurationCodec.Store(Path.Combine(Directory.Path, "config")); Store.Activate(Store.Stage(DeviceConfigurationCodec.Write(package)));
             Authority = new(Store, install, Store.ReadActive()!);
             Runtime = new([A, B, C, fan], [user], new TestLog(), Clock, Scheduler, demo: true, physicalBindings: bindings);

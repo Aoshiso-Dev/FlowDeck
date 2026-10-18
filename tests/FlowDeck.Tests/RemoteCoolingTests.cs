@@ -31,18 +31,18 @@ public class RemoteCoolingTests
     { for (var i = 0; i < 200 && !condition(); i++) await Task.Delay(20); Assert.True(condition()); }
     [Fact] public async Task ServiceConfigurationAndReadingsMergeWithoutOverwritingUserEnvironment()
     {
-        var local = new AppSettings { Ui = new("dark", Width: 1240), M5 = new("COM999", Transport: "auto", WifiAddress: "192.0.2.1"),
-            PythonPath = "C:\\local-only\\python.exe", Motherboard = new([new("test", "ラジエーター", true)]), Startup = new(true, false) };
+        var local = new AppSettings { Ui = new("dark", Width: 1240),
+            PythonPath = "C:\\local-only\\python.exe", Motherboard = new([new("test", "ラジエーター")]), Startup = new(true, false) };
         await using var c = new Connection(local); await c.Connect();
         var actual = c.Remote.Settings;
         Assert.Equal(SettingsTransfer.Hash(ServiceFanConfiguration.From(c.Fixture.Runtime.Coordinator.Settings)), SettingsTransfer.Hash(ServiceFanConfiguration.From(actual)));
-        Assert.Equal(local.Ui, actual.Ui); Assert.Equal(local.M5, actual.M5); Assert.Equal(local.PythonPath, actual.PythonPath);
+        Assert.Equal(local.Ui, actual.Ui); Assert.Equal(local.PythonPath, actual.PythonPath);
         Assert.Equal(SettingsTransfer.Hash(local.Motherboard), SettingsTransfer.Hash(actual.Motherboard)); Assert.Equal(local.Startup, actual.Startup);
         Assert.Equal(c.Fixture.Runtime.State().Control.Sensors, c.Remote.Snapshot.Sensors); Assert.True(c.Remote.Snapshot.HubReady);
         var before = c.Fixture.Runtime.SettingsRevision;
-        await c.Remote.UpdateSettingsAsync(actual with { Ui = new("light"), M5 = new("COM998") }, false);
-        Assert.Equal(before, c.Fixture.Runtime.SettingsRevision); Assert.Equal("light", c.Remote.Settings.Ui.Theme); Assert.Equal("COM998", c.Remote.Settings.M5.Port);
-        Assert.Null(c.Fixture.Runtime.Coordinator.Settings.M5.Port); Assert.Null(c.Fixture.Runtime.Coordinator.Settings.PythonPath); Assert.Equal(0, c.Fixture.Hub.Writes);
+        await c.Remote.UpdateSettingsAsync(actual with { Ui = new("light") }, false);
+        Assert.Equal(before, c.Fixture.Runtime.SettingsRevision); Assert.Equal("light", c.Remote.Settings.Ui.Theme);
+        Assert.Null(c.Fixture.Runtime.Coordinator.Settings.PythonPath); Assert.Equal(0, c.Fixture.Hub.Writes);
     }
     [Fact] public async Task ManualBoardAndProfileChangesUseServerValidationAndFreshRevisions()
     {

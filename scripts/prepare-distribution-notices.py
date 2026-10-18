@@ -18,6 +18,23 @@ def legal(name):
     name=name.lower()
     return any(k in name for k in ('license','licence','copying','copyright','notice'))
 
+def desktop_materials(manifest):
+    """Select desktop components from an older combined application/firmware bundle."""
+    components = [c for c in manifest['components'] if not c['id'].lower().startswith('firmware')]
+    removed = set()
+    for c in manifest['components']:
+        if c not in components:
+            removed.update(c['notices'])
+            if c.get('source'):
+                removed.add(c['source'])
+    retained = {p for c in components for p in c['notices'] + ([c['source']] if c.get('source') else [])}
+    removed.difference_update(retained)
+    files = [p for p in manifest['files'] if p not in removed
+             and not p.startswith(('firmware-relink/', 'metadata/firmware/', 'notices/firmware'))
+             and p not in ('recipes/platformio.ini', 'metadata/base-materials.json', 'metadata/base-README.md')
+             and 'firmware-relink' not in p and not p.endswith('/relink-firmware.py')]
+    return components, files
+
 def verify(directory):
     directory=Path(directory).resolve();m=read_json(directory/'materials.json')
     if m['format']!=1 or m['publicDistributionReady'] is not False: raise ValueError('Unexpected materials format/status')
@@ -228,24 +245,10 @@ def prepare(destination):
             c['attributions']=put('metadata/qt/'+name+'-attributions.json',encoded(attributions))
             for n in sorted(required):c['notices'].append(put('notices/'+c['id']+'/'+n.removeprefix(prefix),archive.extractfile(allfiles[n]).read()))
         components.append(c)
-    for name,version in [('M5Unified','0.2.23'),('M5GFX','0.2.30'),('ArduinoJson','7.4.2')]:
-        root=ROOT/'firmware/m5go/.pio/libdeps/m5go'/name;info=read_json(root/'library.json')
-        if info['version']!=version:raise ValueError('Firmware library version changed')
-        c={'id':'firmware/'+name,'version':version,'repository':info['repository'],'notices':[],'sourceOrigin':'Exact local PlatformIO library input'}
-        source=io.BytesIO();inputfiles={}
-        with zipfile.ZipFile(source,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
-            for path in sorted(root.rglob('*')):
-                if path.is_symlink():raise ValueError('Unexpected firmware input link')
-                if not path.is_file():continue
-                rel=path.relative_to(root).as_posix();relative(rel);data=path.read_bytes();entry=zipfile.ZipInfo(name+'-'+version+'/'+rel,STAMP);entry.compress_type=zipfile.ZIP_DEFLATED;entry.external_attr=0o100644<<16;archive.writestr(entry,data)
-                inputfiles[rel]=digest(data)
-                if legal(path.name):c['notices'].append(put('notices/'+c['id']+'/'+rel,data))
-        c['source']=put('sources/'+name+'-'+version+'-platformio.zip',source.getvalue());c['inputFileHashes']=inputfiles;components.append(c)
     put('metadata/input-lock.json',lock_path.read_bytes());put('metadata/package-inventory.json',inventory_path.read_bytes())
-    local('recipes/prepare-distribution-notices.py',Path(__file__));local('recipes/bootstrap-python.ps1',ROOT/'scripts/bootstrap-python.ps1');local('recipes/requirements.lock',ROOT/'worker/requirements.lock');local('recipes/platformio.ini',ROOT/'firmware/m5go/platformio.ini')
+    local('recipes/prepare-distribution-notices.py',Path(__file__));local('recipes/bootstrap-python.ps1',ROOT/'scripts/bootstrap-python.ps1');local('recipes/requirements.lock',ROOT/'worker/requirements.lock')
     pending=['PawnIOLib source revision matched to the distributed binary (candidate source retained separately for investigation)',
         'MSVC runtime redistribution material matched to compiler runtime',
-        'Arduino-ESP32, ESP-IDF/prebuilt libraries and firmware relinking/build materials',
         'Integration into the next package and verification against its actual runtime files']
     lines=['# Third-party distribution materials','','Fixed inputs for FlowDeck development packages. These materials do not mark public distribution or hardware acceptance complete.','',
         'Full source archives are retained in sources/. The two Python wheels are also kept as build evidence, and native libusb is stored separately from its Python wrapper. Extracted notices retain their original relative paths. Qt includes notices for the full source modules, including components not used by the helper.','',

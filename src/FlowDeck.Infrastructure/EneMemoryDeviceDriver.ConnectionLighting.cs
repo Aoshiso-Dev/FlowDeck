@@ -38,8 +38,8 @@ internal sealed partial class EneMemoryDeviceDriver : IDeviceConnectionLightingD
                     if (!permission.IsCurrent) throw new IOException("準備中に接続限定の許可が失効しました");
                     connectionPermission?.Revoke(); connectionPermission = permission;
                     binding = permission.Binding;
-                    configuration = new(permission.Target, true, new(LightingExitAction.RestoreOriginal));
-                    setup = new(LedCount: 8, LedCountConfirmed: true);
+                    configuration = new(permission.Target, false, new(LightingExitAction.RestoreOriginal));
+                    setup = new(LedCount: 8);
                 });
                 return true;
             }

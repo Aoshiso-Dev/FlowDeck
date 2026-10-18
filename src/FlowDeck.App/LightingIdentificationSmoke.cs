@@ -20,17 +20,17 @@ public static partial class SmokeRunner
         var brightnessBefore = Contract.Copy(host.LightingAdjustment);
         vm.HubLightTarget = "led1"; await Settle();
         var revision = core.Snapshot.LightingRevision;
-        vm.LightAlias = "前面ファン"; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存しました"));
+        vm.LightAlias = "前面ファン"; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存済み"));
         check(vm.HubLightTargets.Single(t => t.Id == "led1").Name == "前面ファン · LED1" && vm.GroupTargetChoices.Any(t => t.Name.Contains("前面ファン")) &&
             core.Snapshot.LightingRevision == revision && Contract.Copy(core.Settings.Hardware).WiringSignature == hardware.WiringSignature,
             "Friendly names update native and group selectors without changing outputs or detected wiring");
         check(window.HubLightTargetPicker.SelectedItem is HubLightTarget { Id: "led1", Name: "前面ファン · LED1" } && vm.HubLightTarget == "led1",
             "Renaming a selected Hub port preserves its displayed selection");
         vm.IdentificationTarget = vm.IdentificationTargets.Single(t => t.Address == board); vm.LightAlias = "天面ライト"; vm.SaveLightAlias.Execute(null);
-        await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存しました"));
+        await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存済み"));
         check(vm.BoardLightTargets.Any(t => t.Name.StartsWith("天面ライト")) && vm.SyncBoardChoices.Any(t => t.Name.Contains("天面ライト")),
             "Motherboard names are shared by the native editor and synchronization targets");
-        vm.ReloadLightAliases.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("再読み込み"));
+        vm.ReloadLightAliases.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("再読込"));
         var loadedNames = await new LightingNameStore(host.Store.DirectoryPath).LoadAsync();
         check(LightingNames.Find(loadedNames, hub) == "前面ファン" && LightingNames.Find(loadedNames, board) == "天面ライト" && LightingNames.Find(loadedNames, new(Board: new("another-board",2))) is null,
             "Lighting names reload by physical identity and never attach to another motherboard");
@@ -55,10 +55,10 @@ public static partial class SmokeRunner
         check(host.Rgb.Devices.Single().Zones.Single(z => z.HardwareZone == 2).Configuration == zoneOriginal,
             "Canceling identification restores the motherboard setting before returning");
         var identify = host.IdentifyLightAsync(hub); await Until(() => host.IdentifyingLight && core.Snapshot.Lighting.Effect?.Colors.FirstOrDefault() == new RgbColor(96,96,96));
-        var newer = await core.RequestAsync(new(Guid.NewGuid().ToString("N"), "M5GO", core.Epoch, core.Snapshot.LightingRevision, "SetLighting", LightingEffect: HubLighting.Preset("purple"), LightingChannels: ["led1"]));
+        var newer = await core.RequestAsync(new(Guid.NewGuid().ToString("N"), "PC", core.Epoch, core.Snapshot.LightingRevision, "SetLighting", LightingEffect: HubLighting.Preset("purple"), LightingChannels: ["led1"]));
         var superseded = await identify;
         check(newer.Outcome == Outcome.WrittenUnverified && superseded.Superseded && !superseded.Restored && ContractEqual(demo.LightEffects["led1"], HubLighting.Preset("purple")),
-            "A newer M5GO operation wins over the pending automatic Hub restoration");
+            "A newer PC operation wins over the pending automatic Hub restoration");
         using (var cancel = new CancellationTokenSource())
         {
             var outsideChange = host.IdentifyLightAsync(board, cancel.Token); await Until(() => host.IdentifyingLight && host.Rgb.Devices.Single().Zones.Single(z => z.HardwareZone == 2).Configuration == new BoardLightSetting(1,96,96,96));
@@ -88,11 +88,11 @@ public static partial class SmokeRunner
         }
         await Settle(); vm.IdentificationTarget = vm.IdentificationTargets.Single(t => t.Address == hub);
         vm.HubLightTarget = "all"; await Settle();
-        vm.LightAlias = ""; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("標準の名前"));
+        vm.LightAlias = ""; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("標準名"));
         check(vm.HubLightTargets.Single(t => t.Id == "led1").Name == "LED1" && LightingNames.Find(host.LightNames, board) == "天面ライト", "Clearing one alias restores its standard name and preserves other aliases");
         check(window.HubLightTargetPicker.SelectedItem is HubLightTarget { Id: "all" } && vm.HubLightTarget == "all",
             "Refreshing names also preserves the all-ports selection when its label did not change");
-        vm.LightAlias = "前面ファン"; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存しました"));
+        vm.LightAlias = "前面ファン"; vm.SaveLightAlias.Execute(null); await Until(() => vm.LightingScenesIdle && vm.IdentificationResult.Contains("保存済み"));
         window.LightingIdentificationExpander.IsExpanded = true; window.Width = 1200; window.Height = 900; window.PageScroll.ScrollToTop();
         ThemeManager.Apply("light"); await Settle(); Capture(window, output, "lighting-identification-light");
         ThemeManager.Apply("dark"); await Settle(); Capture(window, output, "lighting-identification-dark");

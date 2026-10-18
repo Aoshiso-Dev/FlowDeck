@@ -13,7 +13,7 @@ internal sealed class ServiceRuntimeBootstrap(string directory)
     {
         if (!DeviceServiceProtocol.Id(installation)) throw new ArgumentException("インストール識別が不正です");
         return new(new(2, []), new(2, installation, []), new(2, [], []), new(2, [], [], [], [], []), new(2, []),
-            new(2, new(), new(), new(), new(), new([], []), new()),
+            new(2, new(), new(), new(), new([], []), new()),
             new(2, "native-v2", SettingsTransfer.Hash(new { installation, purpose = "initial-monitoring-v2" }), [], []));
     }
     internal ServiceRuntimeSelection PrepareMonitoring()

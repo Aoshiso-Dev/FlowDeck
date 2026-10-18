@@ -22,24 +22,64 @@ public sealed class CpuFanRegisters(ICpuFanRegisterIo io, TimeProvider? time = n
     public bool NeedsRestore => original is not null;
     private CpuFanReading Reading() => new(io.Read(map.Output) * 100d / 255, io.ReadRpm(), timestamp?.Invoke() ?? clock.GetTimestamp());
     public CpuFanReading Read() { using var lease = io.Acquire(); return Reading(); }
-    public CpuFanReading Write(int duty, Action? validateBeforeWrite = null, int? expectedDuty = null)
+    private MotherboardFanControlSnapshot ControlSnapshot() => new(chip, channel, io.Read(map.Mode), io.Read(map.Command));
+    internal CpuFanReading ReadForControl()
+    {
+        using var lease = io.Acquire();
+        var control = ControlSnapshot(); var reading = Reading();
+        if (control != ControlSnapshot()) throw new MotherboardCommandRejectedException("取得中に端子の制御設定が変更されています");
+        return new MotherboardFanReading(reading, control);
+    }
+    public CpuFanReading Write(int duty, Action? validateBeforeWrite = null, int? expectedDuty = null) =>
+        WriteWithControlSnapshot(duty, validateBeforeWrite, expectedDuty, null);
+    internal CpuFanReading WriteWithControlSnapshot(int duty, Action? validateBeforeWrite, int? expectedDuty,
+        MotherboardFanControlSnapshot? expectedControl)
     {
         if (duty is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(duty));
         using var lease = io.Acquire();
         validateBeforeWrite?.Invoke();
-        if (expectedDuty is not null && Math.Round(io.Read(map.Output) * 100d / 255) != expectedDuty)
+        var pending = recovery?.Find(chip, channel);
+        if (expectedControl is not null && expectedControl != ControlSnapshot())
+            throw new MotherboardCommandRejectedException("取得後に端子の制御設定が変更されています");
+        // Firmware can change the measured output while its automatic mode is unchanged.
+        // Only the first normal acquisition may use this evidence; all owned/manual/legacy
+        // operations retain the measured-output guard, as do unrecognized control modes.
+        var acquiringAutomatic = original is null && pending is null && recovery is not null && guardOwnedState && expectedDuty is not null &&
+            expectedControl is { Chip: "NCT6799D", Mode: 0x10 or 0x20 or 0x40 } && chip == "NCT6799D";
+        if (!acquiringAutomatic && expectedDuty is not null && Math.Round(io.Read(map.Output) * 100d / 255) != expectedDuty)
             throw new MotherboardCommandRejectedException("取得後に端子の出力が変更されています");
-        if (original is null && recovery?.Find(chip, channel) is not null) throw new IOException("前のファン制御を復旧してから操作してください");
-        if (guardOwnedState && recovery?.Find(chip, channel) is { } previous) CheckOwned(previous);
+        if (original is null && pending is not null) throw new IOException("前のファン制御を復旧してから操作してください");
+        if (guardOwnedState && pending is not null) CheckOwned(pending);
         var previouslyOwned = original is not null;
-        original ??= ((byte)(io.Read(map.Mode) & (map.SharedMode ? map.Mask : 255)), io.Read(map.Command));
+        original ??= acquiringAutomatic ? (expectedControl!.Mode, expectedControl.Command) :
+            ((byte)(io.Read(map.Mode) & (map.SharedMode ? map.Mask : 255)), io.Read(map.Command));
         var value = (byte)Math.Clamp((int)Math.Round(duty * 255d / 100), 1, 255);
         // Write the requested value BEFORE switching to manual. IControl.SetSoftware switches
         // mode before assigning its initial software value (normally zero); do not use that path.
         var mode = map.SharedMode ? map.Mask : (byte)0;
-        try { Record(value, mode); }
+        try { Record(value, mode, acquiringAutomatic ? expectedControl : null); }
         catch { if (!previouslyOwned) original = null; throw; }
-        Apply(value, mode, validateBeforeWrite);
+        void ValidateWrite()
+        {
+            validateBeforeWrite?.Invoke();
+            if (acquiringAutomatic && expectedControl != ControlSnapshot())
+                throw new MotherboardCommandRejectedException("取得後に端子の制御設定が変更されています");
+        }
+        var writeStarted = false;
+        try { Apply(value, mode, ValidateWrite, () => writeStarted = true); }
+        catch (Exception failure) when (!previouslyOwned && pending is null && !writeStarted)
+        {
+            // Record completed, but this call has not attempted even its first register write.
+            // Retire only this new obligation; never infer that an older record is unwritten.
+            try { recovery?.Clear(chip, channel); }
+            catch (Exception cleanup)
+            {
+                throw new IOException("書き込み前に中止しましたが、復旧記録の取り消しを確認できません: " + cleanup.Message,
+                    new AggregateException(failure, cleanup));
+            }
+            original = null;
+            throw;
+        }
         return Reading(); // The controller polls the measured duty until the output register catches up.
     }
     public void Restore()
@@ -51,10 +91,14 @@ public sealed class CpuFanRegisters(ICpuFanRegisterIo io, TimeProvider? time = n
         recovery?.Clear(chip, channel);
         original = null;
     }
-    private void Record(byte command, byte mode)
+    private void Record(byte command, byte mode, MotherboardFanControlSnapshot? expectedBefore = null)
     {
         if (recovery is null || original is not { } saved) return;
-        recovery.Save(new(chip, channel, saved.Mode, saved.Command, (byte)(io.Read(map.Mode) & (map.SharedMode ? map.Mask : 255)), io.Read(map.Command), mode, command));
+        var before = ControlSnapshot();
+        // Never save a later foreign setting as a recoverable partial state of our acquisition.
+        if (expectedBefore is not null && before != expectedBefore)
+            throw new MotherboardCommandRejectedException("取得後に端子の制御設定が変更されています");
+        recovery.Save(new(chip, channel, saved.Mode, saved.Command, (byte)(before.Mode & (map.SharedMode ? map.Mask : 255)), before.Command, mode, command));
     }
     public void RecoverInterruptedControl()
     {
@@ -74,7 +118,7 @@ public sealed class CpuFanRegisters(ICpuFanRegisterIo io, TimeProvider? time = n
         if ((mode != pending.BeforeMode && mode != pending.IntendedMode) || (command != pending.BeforeCommand && command != pending.IntendedCommand))
             throw new IOException("ファン設定が保存した制御状態と異なります。自動操作を中止しました");
     }
-    private void Apply(byte command, byte mode, Action? validateBeforeWrite = null)
+    private void Apply(byte command, byte mode, Action? validateBeforeWrite = null, Action? beforeFirstWrite = null)
     {
         validateBeforeWrite?.Invoke();
         if (map.Request is { } request)
@@ -82,6 +126,7 @@ public sealed class CpuFanRegisters(ICpuFanRegisterIo io, TimeProvider? time = n
             // Finish the EC transaction even after a partial failure; keep original until verified.
             try
             {
+                beforeFirstWrite?.Invoke();
                 io.Write(request, 0x80); io.WaitForController();
                 validateBeforeWrite?.Invoke();
                 io.Write(map.Command, command);
@@ -90,7 +135,7 @@ public sealed class CpuFanRegisters(ICpuFanRegisterIo io, TimeProvider? time = n
             }
             finally { io.Write(request, 0x40); io.WaitForController(); }
         }
-        else { io.Write(map.Command, command); io.Write(map.Mode, mode); }
+        else { beforeFirstWrite?.Invoke(); io.Write(map.Command, command); io.Write(map.Mode, mode); }
         var actual = io.Read(map.Mode);
         if ((map.SharedMode ? actual & map.Mask : actual) != mode || io.Read(map.Command) != command)
             throw new IOException("選択したファンの制御モード・出力設定の読み戻しが一致しません");

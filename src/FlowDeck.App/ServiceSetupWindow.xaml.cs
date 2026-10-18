@@ -19,7 +19,7 @@ public partial class ServiceSetupWindow : Window
             {
                 e.Cancel = true;
                 if (session.State == ServiceSetupState.Reviewing) { closing = true; stop.Cancel(); }
-                else StatusText.Text = "導入結果の確認が終わるまでお待ちください";
+                else StatusText.Text = "導入結果を確認中";
             }
             else if (!closed) { closed = true; stop.Dispose(); completion.TrySetResult(session.State == ServiceSetupState.Succeeded); }
         };

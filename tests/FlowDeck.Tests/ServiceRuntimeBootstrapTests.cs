@@ -17,7 +17,7 @@ public class ServiceRuntimeBootstrapTests
         Assert.Equal(selection.InstallationId, config.Bindings.InstallationId); Assert.Empty(config.Cooling.Endpoints);
         Assert.Empty(config.Lighting.Scenes); Assert.Empty(config.Lighting.SyncTargets); Assert.Empty(config.Dashboard.Items);
         Assert.False(config.Preferences.Startup.ResumeControl); Assert.False(config.Preferences.Startup.Login);
-        Assert.Null(config.Preferences.M5.Port); Assert.Null(config.Preferences.M5.WifiAddress); Assert.False(config.Preferences.Providers!.OpenRgbEnabled);
+        Assert.False(config.Preferences.Providers!.OpenRgbEnabled);
     }
     [Theory] [InlineData("intent")] [InlineData("generation")] [InlineData("before-selection")] [InlineData("selection")]
     public void InterruptedSetupRetainsItsIdentityAndResumesOnlyItsExactInitialGeneration(string boundary)

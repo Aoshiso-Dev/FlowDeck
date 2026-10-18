@@ -14,7 +14,6 @@ public static class DeviceCoolingStartup
     {
         if(!double.IsFinite(elapsed)||elapsed is < 0 or >= 3||state.Releasing||state.ConfigurationChanging) return "状態を更新してください";
         if(state.LifecycleError is { } lifecycle) return lifecycle;
-        if(!endpoint.WiringConfirmed) return "配線と出力の確認が必要です";
         if(DeviceConfigurationRules.SavedPolicyReadiness(endpoint) is { } error) return error;
         var policy=endpoint.SavedPolicy!;
         var instance=state.Inventory.Devices.SingleOrDefault(d=>d.Device.Id==endpoint.Target.DeviceId&&d.Connected);

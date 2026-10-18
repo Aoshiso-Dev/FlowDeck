@@ -74,9 +74,12 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
         if (readError is not null) return readError;
         if (!ConnectionPermissionCurrent()) return "接続限定の照明設定が失効しました";
         if (journalError is not null) return journalError;
-        if (binding is null || binding != Candidate()) return "メモリ照明の関連付けを確認してください";
-        if (configuration is not { WiringConfirmed: true } || !DeviceLightingConfiguration.ValidExit(configuration.Exit) ||
-            setup is not { LedCount: 8, LedCountConfirmed: true }) return "メモリ照明の対象・LED数・終了方法を確認してください";
+        if (!KnownCurrentModel()) return "メモリ照明の対応モデルを取得できません";
+        if (binding is null || !currentConnectionControl && binding != Candidate()) return "メモリ照明の現在の接続情報を取得してください";
+        if (currentConnectionControl)
+            try { backend.Check(connection); }
+            catch (Exception e) when (e is IOException or ObjectDisposedException) { return e.Message; }
+        if (!DeviceLightingConfiguration.ValidExit(CurrentExit)) return "メモリ照明の終了方法が不正です";
         var saved = journal!.Pending;
         if (faulted || saved is not null && (!owned || saved.Phase != EneMemoryRecoveryPhase.Active)) return "前回のメモリ照明を復旧してください";
         if (active is null && !nativeApplying && (observed.Control[0] != 0 || saved is not null && !EneMemoryProtocol.Same(observed, saved.Mutation.After)))
@@ -89,8 +92,12 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
         {
             if (connection is not { } c || observed is null) return null;
             var error = Ready();
+            var recoveryRequired = journalError is not null || faulted || journal?.Pending is { } pending &&
+                (!owned || pending.Phase != EneMemoryRecoveryPhase.Active);
             DeviceCapability Cap(DeviceFeature f, string? reason) => new(f, ImplementationSupport.Supported, VerificationEvidence.Automated,
-                reason is null ? DeviceAvailability.Ready : DeviceAvailability.NeedsSetup, reason is { Length: > 512 } ? reason[..512] : reason);
+                reason is null ? DeviceAvailability.Ready : recoveryRequired ? DeviceAvailability.Failed :
+                readError is not null || currentConnectionControl ? DeviceAvailability.TemporarilyUnavailable : DeviceAvailability.NeedsSetup,
+                reason is { Length: > 512 } ? reason[..512] : reason);
             return new(DeviceId, "ene-memory", "ENE RGB Memory", DeviceKind.Memory, IdentityConfidence.ConnectionBound,
                 c.BusId + ":" + c.Address.ToString("x2") + ":" + c.ConnectionId, c.DefinitionId, EneMemoryDeviceBackend.ResourceDomains,
                 [new(Endpoint, "RGB", EndpointKind.Lighting, [Cap(DeviceFeature.FixedColor, error), Cap(DeviceFeature.NativeEffect, error),
@@ -111,7 +118,15 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
         EneMemoryConnection c; lock (gate) c = connection ?? throw new IOException("メモリ照明は切断されています");
         try
         {
-            var state = await ExecuteHardwareAsync(c, full, s => EneMemoryProtocol.Read(s, () => ct.ThrowIfCancellationRequested()), ct).ConfigureAwait(false);
+            var authorization = hardware.Value;
+            void Check()
+            {
+                ct.ThrowIfCancellationRequested(); authorization?.CheckAuthorization();
+                lock (gate) if (disposed || connection != c) throw new IOException("メモリ照明の読取前に接続が変わりました");
+                backend.Check(c);
+            }
+            var state = await ExecuteWithFreshnessRecoveryAsync(c, full, s => EneMemoryProtocol.Read(s, Check),
+                new(), () => true, Check, ct).ConfigureAwait(false);
             Cache(c, state);
         }
         catch (Exception e) { lock (gate) readError = e.Message; throw; }
@@ -129,6 +144,9 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
         finally { io.Release(); }
     }
     public void ConfigureLighting(PhysicalDeviceBinding? binding, IEnumerable<LightingEndpointConfiguration> configurations, IEnumerable<RegisteredEndpoint> endpoints)
+        => ConfigureLightingCore(binding, configurations, endpoints, false);
+    private void ConfigureLightingCore(PhysicalDeviceBinding? binding, IEnumerable<LightingEndpointConfiguration> configurations,
+        IEnumerable<RegisteredEndpoint> endpoints, bool useCurrentConnection)
     {
         var values = configurations.Take(2).Select(Contract.Copy).ToArray(); var registered = endpoints.Take(2).Select(Contract.Copy).ToArray();
         if (values.Length > 1 || registered.Length > 1 || values.Any(v => !DeviceLightingConfiguration.ValidEndpoint(v) || v.Target != new EndpointReference(DeviceId, Endpoint)) ||
@@ -145,6 +163,7 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
                 if (binding is not null && binding != Candidate()) throw new IOException("メモリ照明の関連付けが一致しません");
                 connectionPermission?.Revoke(); connectionPermission = null;
                 this.binding = binding; configuration = values.SingleOrDefault(); setup = registered.SingleOrDefault()?.Setup;
+                currentConnectionControl = useCurrentConnection;
                 faulted = false;
             }
         }
@@ -192,7 +211,7 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
         if (Validate(action) is { } invalid) return new(Outcome.Rejected, invalid);
         if (action.Operation == DeviceOperation.StopLighting) return (await EndOrRecoverAsync(DeviceLightingStopReason.Normal, ct).ConfigureAwait(false)).Single().Result;
         await io.WaitAsync(ct).ConfigureAwait(false);
-        EneMemoryRecoveryRecord? previous = null, prepared = null; var attempted = false;
+        EneMemoryRecoveryRecord? previous = null, prepared = null; var attempted = false; var retry = new FreshnessRetry();
         EneMemoryRecovery.ReadLease? lease = null;
         try
         {
@@ -201,26 +220,27 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
             {
                 if (active is not null) return new(Outcome.Rejected, "同期の終了後にメモリ照明を設定してください");
                 if (Validate(action) is { } error) return new(Outcome.Rejected, error);
-                c = connection!; b = Candidate()!; exit = configuration!.Exit!; nativeApplying = true;
+                c = connection!; b = Candidate()!; exit = CurrentExit; nativeApplying = true;
             }
             var setting = NativeSetting(action.Lighting); previous = journal!.Pending;
             if (previous is not null) lease = journal.AcquireReadLease(previous);
             var authorization = hardware.Value;
             void Check() { CheckConnectionPermission(); authorization?.CheckAuthorization(); Guard(c, b, ct, extra: () => lease?.Check()); }
-            var before = await ExecuteHardwareAsync(c, true, session => EneMemoryProtocol.Read(session, Check), ct).ConfigureAwait(false);
+            var before = await ExecuteWithFreshnessRecoveryAsync(c, true, session => EneMemoryProtocol.Read(session, Check),
+                retry, () => !attempted, Check, ct).ConfigureAwait(false);
             lease?.Dispose(); lease = null; Check();
             prepared = journal.Prepare(boot, previous?.Scope ?? new(b, c, Guid.NewGuid().ToString("N")),
                 EneMemoryProtocol.Native(before, EneMemoryProtocol.NativeTarget(before, setting)), previous?.Exit ?? Exit(before, exit), previous);
             lock (gate) owned = true;
             lease = journal.AcquireReadLease(prepared);
-            return await ExecuteHardwareAsync(c, false, session =>
+            return await ExecuteWithFreshnessRecoveryAsync(c, false, session =>
             {
                 Check();
                 EneMemoryProtocol.ExecutePrepared(session, prepared.Mutation, Check, () => attempted = true);
                 var actual = EneMemoryProtocol.Read(session, Check);
                 if (!EneMemoryProtocol.Same(actual, prepared.Mutation.After)) throw new IOException("メモリ照明の読み戻しが一致しません");
                 Check(); Cache(c, actual); return new DeviceDriverResult(Outcome.Confirmed, "メモリ照明の設定を読み戻しました", ReportedLighting: Reported(actual));
-            }, ct).ConfigureAwait(false);
+            }, retry, () => !attempted, Check, ct).ConfigureAwait(false);
         }
         catch (Exception e) { lease?.Dispose(); lease = null; return FailedMutation(e, attempted, prepared, previous); }
         finally { lease?.Dispose(); lock (gate) nativeApplying = false; io.Release(); }
@@ -257,7 +277,9 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
             lease = journal.AcquireReadLease(saved);
             var authorization = hardware.Value;
             void Check() { authorization?.CheckAuthorization(); Guard(c, b, ct, extra: () => lease?.Check()); }
-            var actual = await ExecuteHardwareAsync(c, true, session => EneMemoryProtocol.Read(session, Check), ct).ConfigureAwait(false);
+            var attempted = false; var retry = new FreshnessRetry();
+            var actual = await ExecuteWithFreshnessRecoveryAsync(c, true, session => EneMemoryProtocol.Read(session, Check),
+                retry, () => !attempted, Check, ct).ConfigureAwait(false);
             lease.Dispose(); lease = null; Check();
             if (saved.Phase != EneMemoryRecoveryPhase.Recovered)
             {
@@ -265,14 +287,14 @@ internal sealed partial class EneMemoryDeviceDriver : IConfiguredLightingDriver,
                     EneMemoryProtocol.NativeTarget(saved.Original, NativeSetting(new("fixed", normalStop.Colors, Brightness: normalStop.Brightness)));
                 saved = journal.PrepareRecovery(saved, boot, b, c, actual, target);
                 lease = journal.AcquireReadLease(saved);
-                actual = await ExecuteHardwareAsync(c, false, session =>
+                actual = await ExecuteWithFreshnessRecoveryAsync(c, false, session =>
                 {
                     Check();
-                    EneMemoryProtocol.ExecutePrepared(session, saved.Mutation, Check);
+                    EneMemoryProtocol.ExecutePrepared(session, saved.Mutation, Check, () => attempted = true);
                     var value = EneMemoryProtocol.Read(session, Check);
                     if (!EneMemoryProtocol.Same(value, saved.Mutation.After)) throw new IOException("メモリ照明の復旧値が一致しません");
                     Check(); return value;
-                }, ct).ConfigureAwait(false);
+                }, retry, () => !attempted, Check, ct).ConfigureAwait(false);
                 lease.Dispose(); lease = null; Check(); saved = journal.ConfirmRecovery(saved, actual);
             }
             else if (!EneMemoryProtocol.Same(actual, saved.Mutation.After)) throw new IOException("復旧済みのメモリ照明が変更されています");

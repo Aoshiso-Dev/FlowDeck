@@ -32,10 +32,6 @@ public sealed partial class DeviceLightingLibraryEditor : Observable
     public bool IsGroup => !IsScene;
     public string Title => (Draft.Existing ? "編集 · " : "新規 · ") + (IsScene ? "シーン" : "グループ");
     public string Name { get => Draft.Name; set { if (Draft.Name == value) return; Draft.Name = value; Notify(nameof(Name)); Changed(); } }
-    public bool ShowOnM5 { get => Draft.ShowOnM5; set { if (Draft.ShowOnM5 == value) return; Draft.ShowOnM5 = value; PublishM5(); Changed(); } }
-    public bool CanShowOnM5 => Draft.CanShowOnM5;
-    public string M5SceneCount => $"{Draft.M5SceneCount} / {DeviceLightingLibrary.MaximumM5Scenes}";
-    private void PublishM5() { Notify(nameof(ShowOnM5)); Notify(nameof(CanShowOnM5)); Notify(nameof(M5SceneCount)); }
     public string Status => Draft.Problem ?? (Draft.Dirty ? "未保存" : "保存済み");
     public string? SelectedPart { get => selectedPart; set { if (value is null || value == selectedPart || !Draft.PartIds.Contains(value)) return; selectedPart = value; PublishPart(); } }
     public DeviceScenePart? Part => displayedPart;
@@ -80,7 +76,7 @@ public sealed partial class DeviceLightingLibraryEditor : Observable
     }
     public void AddPart() { selectedPart = Draft.AddPart(); PublishParts(); Changed(); }
     public void RemovePart() { if (Part is not { } part) return; Draft.RemovePart(part.Id); selectedPart = Draft.PartIds.FirstOrDefault(); PublishParts(); Changed(); }
-    public void Update(DeviceWorkspaceSnapshot snapshot) { Draft.Update(snapshot); if (!nativeEffects.SequenceEqual(Draft.NativeEffects(selectedPart))) PublishPart(); PublishM5(); Notify(nameof(Status)); }
+    public void Update(DeviceWorkspaceSnapshot snapshot) { Draft.Update(snapshot); if (!nativeEffects.SequenceEqual(Draft.NativeEffects(selectedPart))) PublishPart(); Notify(nameof(Status)); }
     private void Changed() { Notify(nameof(Status)); changed(); }
     private void PublishParts()
     {

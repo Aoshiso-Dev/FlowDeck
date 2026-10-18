@@ -83,7 +83,7 @@ public sealed partial class FlowDeckViewModel
                 if (result.Verified && BoardLighting.Effects.Any(e => e.Id == draft.Mode && e.Color))
                     LightPalette.Remember(Color.FromRgb((byte)draft.Red, (byte)draft.Green, (byte)draft.Blue));
                 BoardLightResult = result.Verified ? $"{target.Name} · 設定一致" :
-                    $"設定一致 {result.Zones.Count(z => z.Status == "verified")}/{result.Zones.Length} · 再取得してください";
+                    $"設定一致 {result.Zones.Count(z => z.Status == "verified")}/{result.Zones.Length} · 要再取得";
                 if (!result.Verified) Notice = string.Join(" / ", result.Zones.Where(z => z.Status != "verified")
                     .Select(z => $"ゾーン{z.Zone}: {z.Error ?? z.Status}"));
             }
@@ -145,7 +145,7 @@ public sealed partial class FlowDeckViewModel
         finally { rebuildingLightTargets = false; }
         boardLightTarget = choices.FirstOrDefault(t => t.Id == previous?.Id);
         if (previous is null) { boardLightTarget = choices.FirstOrDefault(); LoadBoardLightDraft(); }
-        else if (boardLightTarget is null) BoardLightResult = "対象が見つかりません。再取得してください";
+        else if (boardLightTarget is null) BoardLightResult = "対象未検出・要再取得";
         Notify(nameof(BoardLightTarget)); Notify(nameof(BoardLightCurrent)); Notify(nameof(CanApplyBoardLight));
     }
 }

@@ -18,10 +18,7 @@ public sealed partial class DeviceControlRuntime
         if (configurationHandler is not IDeviceNotificationConfiguration) return Reject(request, "通知機能に対応するサービスの更新が必要です");
         try
         {
-            // Apply an explicit disconnect before evaluation, so it cannot complete an offline timer.
-            if (request.Operation == DeviceOperation.ReportM5Connection) notifications.ReportM5(request.M5Connection!);
             TickNotifications();
-            if (request.Operation == DeviceOperation.ReportM5Connection) return Reply(request);
             if (request.Operation == DeviceOperation.TestNotification)
             {
                 notifications.Test();

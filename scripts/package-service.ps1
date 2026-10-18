@@ -31,7 +31,9 @@ New-Item -ItemType Directory -Path (Join-Path $taskPayload 'worker') -Force | Ou
 Copy-Item -LiteralPath (Join-Path $taskRoot 'worker/hub_worker.py'),(Join-Path $taskRoot 'worker/requirements.lock') -Destination (Join-Path $taskPayload 'worker')
 & (Join-Path $PSScriptRoot 'copy-distribution-materials.ps1') -OutputDirectory $taskPayload | Out-Null
 $taskExe = Join-Path $taskPayload 'FlowDeck.Service.exe'
-$taskVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($taskExe).ProductVersion
+$taskProductVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($taskExe).ProductVersion
+# Informational versions append the Git identity; the deployment contract uses System.Version.
+$taskVersion = ([Version]($taskProductVersion.Split('+', 2)[0])).ToString()
 & $taskExe --package-manifest $taskBaseOutput $taskVersion
 if ($LASTEXITCODE) { throw 'Service package verification failed.' }
 if ($OpenRgbArchive) {

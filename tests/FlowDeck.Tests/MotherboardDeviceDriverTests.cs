@@ -73,6 +73,9 @@ public partial class MotherboardDeviceDriverTests
         public string Fingerprint = new('a', 64);
         public double CpuTemperature = 50;
         public bool FailRead, SwapAtWrite;
+        public Action<MotherboardFanCommand>? BeforeExecute;
+        public bool SupplyControlSnapshot = true;
+        public List<MotherboardFanCommand> Commands = [];
         public int Disposals;
         public Backend()
         {
@@ -96,6 +99,7 @@ public partial class MotherboardDeviceDriverTests
         });
         public Task<CpuFanReading?> ExecuteFanAsync(MotherboardFanCommand command, IFanRecoveryJournal journal, CancellationToken ct)
         {
+            Commands.Add(command); BeforeExecute?.Invoke(command);
             if (SwapAtWrite && command.Operation == MotherboardFanOperation.Write) Fingerprint = new('e', 64);
             if (command.Identity != MotherboardCoolingIdentity.From(Board)) throw new MotherboardCommandRejectedException("board changed");
             var port = MotherboardFans.Find(command.EndpointId); var map = NctFanMap.For(port.Chip, port.Channel);
@@ -103,10 +107,11 @@ public partial class MotherboardDeviceDriverTests
                 registers[port.Id] = entry = (new(new Registers(Banks[port.Chip], map), Clock, port.Channel, port.Chip,
                     () => Clock.GetTimestamp(), journal, guardOwnedState: true), journal);
             if (command.Operation == MotherboardFanOperation.Release) entry.Registers.RecoverInterruptedControl();
-            CpuFanReading? value = command.Operation == MotherboardFanOperation.Write ? entry.Registers.Write(command.Duty!.Value, () =>
+            CpuFanReading? value = command.Operation == MotherboardFanOperation.Write ? entry.Registers.WriteWithControlSnapshot(command.Duty!.Value, () =>
             {
                 if (HardwareWriteDeadline.Expired(command.Deadline)) throw new MotherboardCommandRejectedException("expired", DeviceDriverFailure.CoolingInputExpired);
-            }, command.ExpectedDuty) : entry.Registers.Read();
+            }, command.ExpectedDuty, command.ExpectedControl) : command.Operation == MotherboardFanOperation.Read && SupplyControlSnapshot
+                ? entry.Registers.ReadForControl() : entry.Registers.Read();
             return Task.FromResult<CpuFanReading?>(value);
         }
         public ValueTask DisposeAsync() { Disposals++; return ValueTask.CompletedTask; }

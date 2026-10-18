@@ -20,6 +20,9 @@ public sealed partial class OpenRgbDeviceDriverTests
         Assert.Throws<IOException>(() => driver.ConfigureLightingEndpoint(driver.BindingCandidate! with { Fingerprint = new('f', 64) }, selected, configuration, endpoint));
         driver.ConfigureLightingEndpoint(driver.BindingCandidate!, selected, configuration, endpoint);
         Assert.Equal(writes, r.Server.WriteCount);
+        Assert.True(driver.AllowsCurrentConnectionControl(selected, DeviceFeature.FixedColor));
+        Assert.True(driver.AllowsCurrentConnectionControl(selected, DeviceFeature.ColorFrames));
+        Assert.Equal(driver.BindingCandidate, driver.CurrentControlBinding);
         Assert.Equal(SettingsTransfer.Hash(pending), SettingsTransfer.Hash(new OpenRgbLightingRecovery(r.Directory, driver.DeviceId, sharedDirect ? null : 1).Pending!));
         Assert.Throws<IOException>(() => driver.ConfigureLightingEndpoint(driver.BindingCandidate!, other, null,
             new(other, other, EndpointKind.Lighting)));
@@ -29,6 +32,11 @@ public sealed partial class OpenRgbDeviceDriverTests
         Assert.Equal(before.Lighting!.GroupId, after.Lighting.GroupId); Assert.True(after.Lighting.Frames > before.Lighting.Frames);
         Assert.All(await driver.ReleaseAsync(DeviceReleaseReason.ServiceStopping, default), result => Assert.Equal(Outcome.WrittenUnverified, result.Result.Outcome));
         Assert.Null(new OpenRgbLightingRecovery(r.Directory, driver.DeviceId, sharedDirect ? null : 1).Pending);
+        if (remove)
+        {
+            Assert.Equal(Outcome.WrittenUnverified, (await driver.ApplyAsync(new(selected, DeviceOperation.SetLighting, Lighting: Blue), default)).Outcome);
+            Assert.Equal(Outcome.WrittenUnverified, (await driver.ApplyAsync(new(selected, DeviceOperation.StopLighting), default)).Outcome);
+        }
     }
 }
 
@@ -49,6 +57,9 @@ public sealed partial class AsrockDeviceDriverTests
         Assert.Throws<IOException>(() => driver.ConfigureLightingEndpoint(driver.BindingCandidate! with { Fingerprint = new('f', 64) }, selected, configuration, endpoint));
         driver.ConfigureLightingEndpoint(driver.BindingCandidate!, selected, configuration, endpoint);
         Assert.Equal(writes, cell.Device.Writes.Count); foreach (var file in files) Assert.Equal(file.Value, File.ReadAllBytes(file.Key));
+        Assert.True(driver.AllowsCurrentConnectionControl(selected, DeviceFeature.FixedColor));
+        Assert.True(driver.AllowsCurrentConnectionControl(selected, DeviceFeature.ColorFrames));
+        Assert.Equal(driver.BindingCandidate, driver.CurrentControlBinding);
         Assert.Throws<IOException>(() => driver.ConfigureLightingEndpoint(driver.BindingCandidate!, "zone:6", null, new("zone:6", "zone:6", EndpointKind.Lighting)));
         r.Runtime.Refresh(); await r.Tick(.4);
         var after = r.Runtime.State().Endpoints.Single(e => e.Target.EndpointId == "zone:6");
@@ -57,5 +68,12 @@ public sealed partial class AsrockDeviceDriverTests
         else Assert.Equal(new BoardLightSetting(1, 10, 20, 30), Setting(cell, 6));
         Assert.All(await driver.ReleaseAsync(DeviceReleaseReason.ServiceStopping, default), result => Assert.Equal(Outcome.Confirmed, result.Result.Outcome));
         Assert.Empty(System.IO.Directory.GetFiles(r.Directory));
+        if (remove)
+        {
+            var original = Setting(cell, 5);
+            Assert.Equal(Outcome.Confirmed, (await driver.ApplyAsync(new(selected, DeviceOperation.SetLighting, Lighting: new("fixed", [new(1, 2, 3)])), default)).Outcome);
+            Assert.Equal(Outcome.Confirmed, (await driver.ApplyAsync(new(selected, DeviceOperation.StopLighting), default)).Outcome);
+            Assert.Equal(original, Setting(cell, 5));
+        }
     }
 }

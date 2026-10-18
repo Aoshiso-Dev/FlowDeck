@@ -25,11 +25,19 @@ public sealed partial class DeviceConfigurationAuthority
             var targets = change.Parts.SelectMany(p => p.Targets).ToArray();
             var deviceIds = targets.Select(t => t.DeviceId).Distinct().Order().ToArray();
             if (configuration.Bindings.InstallationId != installation || !deviceIds.SequenceEqual(change.Bindings.Select(b => b.DeviceId).Order()) ||
-                change.Bindings.Any(b => !configuration.Bindings.Devices.Contains(b))) throw new IOException("照明の実機関連付けが変更されました");
+                change.Parts.Any(p => p.Targets.Any(t => change.Bindings.SingleOrDefault(b => b.DeviceId == t.DeviceId) is not { } binding ||
+                    !configuration.Bindings.Devices.Contains(binding) && !CurrentBindingMatches(t, SelectedLightingFeature(p.Program), binding))))
+                throw new IOException("照明の実機関連付けが変更されました");
             var stale = targets.Where(t => lightingOrders.GetValueOrDefault(t) >= change.Order).ToHashSet();
+            var registered = configuration.Devices.Devices.SelectMany(d => d.Endpoints.Where(e => e.Kind == EndpointKind.Lighting)
+                .Select(e => new EndpointReference(d.Id, e.Id))).ToHashSet();
+            var sessionOnly = change.Parts.Where(p => p.Targets.Any(t => !registered.Contains(t))).SelectMany(p => p.Targets).ToHashSet();
             var applied = new List<SynchronizedLighting>();
             foreach (var part in change.Parts)
             {
+                // Selecting a color never registers hardware or imports an old physical association.
+                // Keep a mixed unregistered synchronization wholly within the present session.
+                if (part.Targets.Any(sessionOnly.Contains)) continue;
                 // A saved synchronization selection is one program across its entire accepted target set.
                 if (DeviceLighting.Animated(part.Program) && part.Targets.Any(stale.Contains)) { foreach (var t in part.Targets) stale.Add(t); continue; }
                 var selected = part.Targets.Where(t => !stale.Contains(t)).ToArray();
@@ -72,8 +80,10 @@ public sealed partial class DeviceConfigurationAuthority
                 // This is selected output state, not an edit to group/scene membership; don't invalidate other in-flight presets.
                 if (!Same(current, next)) PersistLightingLibrary(next);
             }
-            return targets.Select(t => new LightingPolicySaveResult(t, new(stale.Contains(t) ? DevicePolicySaveState.Superseded : DevicePolicySaveState.Saved,
-                stale.Contains(t) ? "新しい照明設定の保存を優先しました" : "選択した照明の基準色・効果・対象を保存しました"))).ToArray();
+            return targets.Select(t => new LightingPolicySaveResult(t, new(stale.Contains(t) ? DevicePolicySaveState.Superseded :
+                sessionOnly.Contains(t) ? DevicePolicySaveState.SessionOnly : DevicePolicySaveState.Saved,
+                stale.Contains(t) ? "新しい照明設定の保存を優先しました" : sessionOnly.Contains(t) ? "今回の接続中のみ有効です" :
+                "選択した照明の基準色・効果・対象を保存しました"))).ToArray();
         }
         finally { access.Release(); }
     }

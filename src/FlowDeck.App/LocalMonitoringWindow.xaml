@@ -3,7 +3,7 @@
  Icon="Assets/FlowDeck.ico" Style="{StaticResource {x:Type Window}}">
  <Border Background="{DynamicResource BackgroundBrush}" Padding="28"><Grid>
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <DockPanel Margin="0,0,0,22"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><ComboBox x:Name="ThemeChoice" Width="124" SelectedValuePath="Tag" Margin="0,0,12,0" AutomationProperties.Name="配色"><ComboBoxItem Content="システム" Tag="system"/><ComboBoxItem Content="ライト" Tag="light"/><ComboBoxItem Content="ダーク" Tag="dark"/></ComboBox><Button x:Name="ServiceButton" Content="サービスへ接続" Click="ConnectService"/></StackPanel>
+  <DockPanel Margin="0,0,0,22"><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><ComboBox x:Name="ThemeChoice" Width="124" SelectedValuePath="Tag" Margin="0,0,12,0" AutomationProperties.Name="配色"><ComboBoxItem Content="システム" Tag="system"/><ComboBoxItem Content="ライト" Tag="light"/><ComboBoxItem Content="ダーク" Tag="dark"/></ComboBox><Button x:Name="ServiceButton" Content="サービス接続" MinWidth="108" Click="ConnectService"/></StackPanel>
    <StackPanel><TextBlock Text="FlowDeck" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="サービス未接続 · NVIDIA GPU監視" Style="{StaticResource Muted}" Margin="0,6,0,0"/></StackPanel>
   </DockPanel>
   <TextBlock Grid.Row="1" x:Name="StatusText" Style="{StaticResource Muted}" Margin="0,0,0,16"/>

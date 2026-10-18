@@ -157,7 +157,7 @@ public class DeviceCoolingDraftConflictTests
     [InlineData("startup", true)]
     [InlineData("removed", false)]
     [InlineData("removed", true)]
-    public void AnyTargetConfigurationChangeBlocksEvenIfItsGenerationDidNotChange(string change, bool changedGeneration)
+    public void MeaningfulTargetSettingsChangesBlockWhileLegacyAcknowledgementChangesDoNot(string change, bool changedGeneration)
     {
         var setup = Setup();
         setup = setup with { SavedPolicy = new(FanMode.Manual, 45, SafetySnapshot: setup.Safety) };
@@ -174,6 +174,11 @@ public class DeviceCoolingDraftConflictTests
             _ => throw new ArgumentOutOfRangeException(nameof(change))
         };
         draft.Update(State(), changedGeneration ? "next" : "initial", next, 0, true, Bindings());
+        if (change == "wiring")
+        {
+            Assert.False(draft.Conflict); Assert.True(draft.CanApply); Assert.Equal(58, draft.Capture().Duty);
+            return;
+        }
         AssertBlocked(draft);
         // Even restoration of the original data cannot approve an already conflicted edit.
         draft.Update(State(), "initial", setup, 0, true, Bindings());

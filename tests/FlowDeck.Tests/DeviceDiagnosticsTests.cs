@@ -215,7 +215,7 @@ public class DeviceDiagnosticsTests
         public async Task<DeviceDiagnosticConfigurationCapture> ReadDiagnosticsAsync(CancellationToken ct)
         {
             Calls++; Entered?.TrySetResult(); if (Finish is not null) await Finish.Task.WaitAsync(ct);
-            return new(ChangeGeneration ? Calls.ToString() : "same", new(0, 0, 0, 0, 0, 0, 0, false, false, false, []));
+            return new(ChangeGeneration ? Calls.ToString() : "same", new(0, 0, 0, 0, 0, 0, 0, false, false, []));
         }
     }
     [Fact] public async Task ConfigurationWaitDoesNotHoldRuntimeGateAndDisconnectCancelsCapture()

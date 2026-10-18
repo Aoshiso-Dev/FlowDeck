@@ -44,11 +44,11 @@ public sealed partial class DeviceControlRuntime
                         else selected[existing] = selected[existing] with { Targets = [.. selected[existing].Targets, .. accepted] };
                     }
                 }
-                bindings = selected.SelectMany(p => p.Targets).Select(t => t.DeviceId).Distinct().Select(id =>
+                bindings = selected.SelectMany(p => p.Targets.Select(t => (Target: t, Feature: LightingFeature(p.Program)))).Select(item =>
                 {
-                    if (PhysicalBindingError(id) is { } error) throw new IOException(error);
-                    return physicalBindings?.GetValueOrDefault(id) ?? throw new IOException("保存する照明の実機関連付けがありません");
-                }).ToArray();
+                    if (PhysicalBindingError(item.Target, item.Feature) is { } error) throw new IOException(error);
+                    return OperationBinding(item.Target, item.Feature);
+                }).DistinctBy(b => b.DeviceId).ToArray();
                 var acceptedTargets = selected.SelectMany(p => p.Targets).ToHashSet();
                 frameGroups = lightingGroups.Values.Where(g => !g.Stopping && g.Fault is null && g.Frames > 0 && g.Participants.All(p => CurrentLighting(g, p)) &&
                         g.Programs.Keys.Any(acceptedTargets.Contains))

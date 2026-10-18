@@ -16,36 +16,35 @@ public static class DeviceCatalogPresentation
 {
     public static CatalogDevice[] Build(DeviceWorkspaceSnapshot snapshot)
     {
+        if (!snapshot.Connected) return [];
         var saved = snapshot.Configuration.Configuration.Devices.Devices;
         var observed = snapshot.State.Inventory.Devices;
-        var sourceProblem = snapshot.ExitAttempted || snapshot.State.Releasing ? "終了処理中" : !snapshot.Connected ? "サービス未接続" :
+        var sourceProblem = snapshot.ExitAttempted || snapshot.State.Releasing ? "終了処理中" :
             snapshot.State.ConfigurationChanging ? "設定の反映中" : snapshot.State.LifecycleError is not null ? "サービスの復旧待ち" :
             !double.IsFinite(snapshot.ElapsedSeconds) || snapshot.ElapsedSeconds is < 0 or >= 3 ? "状態の更新待ち" : null;
-        return saved.Select(d => d.Id).Concat(observed.Select(d => d.Device.Id)).Distinct(StringComparer.Ordinal)
-            .Select(id => Describe(observed.SingleOrDefault(d => d.Device.Id == id), saved.SingleOrDefault(d => d.Id == id),
+        return observed.Where(d => d.Connected)
+            .Select(instance => Describe(instance, saved.SingleOrDefault(d => d.Id == instance.Device.Id),
                 sourceProblem, snapshot.State, snapshot.ElapsedSeconds)).ToArray();
     }
     public static CatalogDevice Describe(DeviceInstance instance) => Describe(instance, null, null, null, 0);
-    private static CatalogDevice Describe(DeviceInstance? instance, RegisteredDevice? saved, string? sourceProblem,
+    private static CatalogDevice Describe(DeviceInstance instance, RegisteredDevice? saved, string? sourceProblem,
         DeviceServiceState? state, double elapsed)
     {
-        var observed = instance?.Device;
-        var id = saved?.Id ?? observed!.Id;
-        var unavailable = sourceProblem ?? (instance?.Connected == true ? null : "未接続");
-        var endpoints = (saved?.Endpoints.Select(e => e.Id) ?? []).Concat(observed?.Endpoints.Select(e => e.Id) ?? [])
-            .Distinct(StringComparer.Ordinal).Select(endpointId =>
+        var observed = instance.Device;
+        var id = observed.Id;
+        var unavailable = sourceProblem ?? (instance.Connected ? null : "未接続");
+        var endpoints = observed.Endpoints.Select(original =>
             {
-                var original = observed?.Endpoints.SingleOrDefault(e => e.Id == endpointId);
-                var registered = saved?.Endpoints.SingleOrDefault(e => e.Id == endpointId);
-                var capabilities = (original?.Capabilities ?? []).Select(c => DescribeCapability(c, unavailable, state,
-                    new(id, endpointId), elapsed)).ToArray();
-                return new CatalogEndpoint(endpointId, registered?.Name ?? original!.Name,
-                    (registered?.Kind ?? original!.Kind) switch { EndpointKind.Sensor => "センサー", EndpointKind.Cooling => "ファン・ポンプ", _ => "照明" }, capabilities);
+                var registered = saved?.Endpoints.SingleOrDefault(e => e.Id == original.Id);
+                var capabilities = original.Capabilities.Select(c => DescribeCapability(c, unavailable, state,
+                    new(id, original.Id), elapsed)).ToArray();
+                return new CatalogEndpoint(original.Id, registered?.Name ?? original.Name,
+                    original.Kind switch { EndpointKind.Sensor => "センサー", EndpointKind.Cooling => "ファン・ポンプ", _ => "照明" }, capabilities);
             }).ToArray();
-        var identity = "機器ID：" + id + "\n取得元：" + (observed?.Provider ?? saved!.Provider) +
-            "\n対応定義：" + (observed?.DefinitionId ?? "未取得") + "\n接続位置：" + (observed?.Locator ?? "未取得") +
-            "\n接続世代：" + (instance?.Generation.ToString() ?? "未取得");
-        return new(id, saved?.Name ?? observed!.Name, unavailable ?? Summary(endpoints), identity, endpoints);
+        var identity = "機器ID：" + id + "\n取得元：" + observed.Provider +
+            "\n対応定義：" + (observed.DefinitionId ?? "未取得") + "\n接続位置：" + observed.Locator +
+            "\n接続世代：" + instance.Generation;
+        return new(id, saved?.Name ?? observed.Name, unavailable ?? Summary(endpoints), identity, endpoints);
     }
     private static CatalogCapability DescribeCapability(DeviceCapability capability, string? unavailable, DeviceServiceState? state,
         EndpointReference target, double elapsed)

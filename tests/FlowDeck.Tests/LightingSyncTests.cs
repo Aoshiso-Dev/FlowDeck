@@ -41,11 +41,11 @@ public class LightingSyncTests
         Assert.Equal(1, samples); Assert.Equal(board, f.Hub.LightEffects["led1"].Colors[0]); Assert.Equal(0, persisted);
         f.Core.EndLightingStream(lease); Assert.Equal(1, persisted);
     }
-    [Fact] public async Task NewM5LightingRequestInvalidatesEveryFutureSyncFrame()
+    [Fact] public async Task NewPcLightingRequestInvalidatesEveryFutureSyncFrame()
     {
         await using var f = new Fixture(); await f.Initialize(); var lease = f.Core.BeginLightingStream(["led1"]);
         await f.Core.SendLightingFrameAsync(lease, () => new(20, 30, 40));
-        await f.Core.RequestAsync(new("m5", "M5GO", f.Core.Epoch, f.Core.Snapshot.LightingRevision, "SetLighting", Lighting: "white"));
+        await f.Core.RequestAsync(new("pc", "PC", f.Core.Epoch, f.Core.Snapshot.LightingRevision, "SetLighting", Lighting: "white"));
         Assert.False(f.Core.LightingLeaseValid(lease));
         await Assert.ThrowsAsync<InvalidOperationException>(() => f.Core.SendLightingFrameAsync(lease, () => new(0, 0, 0)));
         f.Core.EndLightingStream(lease); Assert.Equal("white", f.Core.Snapshot.Lighting.LastSent);

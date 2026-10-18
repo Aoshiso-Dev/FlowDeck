@@ -30,8 +30,12 @@ public sealed partial class DeviceControlRuntime
         if (configurationChanging || request.Session != session || !states.TryGetValue(target.Target, out var state) ||
             state.Generation != target.Generation || state.PolicyRevision != target.ExpectedPolicyRevision || CheckTarget(request, target) is not null)
             throw new IOException("保存前に操作対象・設定が変更されました");
-        var config = CoolingConfiguration(driver, target.Target.EndpointId);
-        if(request.Operation==DeviceOperation.ReleaseCooling&&(config is null||recoveryRequired.Contains(target.Target))) return null;
+        // Clearing saved execution intent never authorizes a new output. Recovery
+        // uses the driver's existing owner/journal, even when normal duty is unavailable.
+        var releasingCooling = request.Operation == DeviceOperation.ReleaseCooling;
+        var config = releasingCooling ? coolingPersistence.SavedCoolingConfiguration(target.Target) :
+            CoolingConfiguration(driver, target.Target.EndpointId);
+        if(releasingCooling && config is null) return null;
         if(config is null) throw new IOException("保存する冷却設定がありません");
         var policy = request.Operation switch {
             DeviceOperation.SetDuty => new CoolingSavedPolicy(FanMode.Manual, request.Duty, SafetySnapshot: config.Safety),
@@ -40,12 +44,13 @@ public sealed partial class DeviceControlRuntime
             DeviceOperation.RestoreSavedCooling => config.SavedPolicy!,
             _ => null
         };
-        var ids = (policy is null ? [] : DeviceCoolingPolicy.Required(policy, config.Safety).Select(s => s.DeviceId))
-            .Append(target.Target.DeviceId).Distinct().ToArray();
-        var bindings = ids.Select(id => physicalBindings?.GetValueOrDefault(id) ?? throw new IOException("保存する実機関連付けがありません")).ToArray();
+        var bindings = releasingCooling ? [] : (policy is null ? [] : DeviceCoolingPolicy.Required(policy, config.Safety)
+                .Select(s => OperationBinding(s, DeviceFeature.Temperature)))
+            .Append(OperationBinding(target.Target, policy?.Mode == FanMode.Auto ? DeviceFeature.AutomaticDuty : DeviceFeature.FixedDuty))
+            .DistinctBy(b => b.DeviceId).ToArray();
         return new(target.Target, checked(++coolingSaveOrder), config.Safety, policy, bindings);
     }
-    private string? PhysicalBindingError(string deviceId) => ConnectionLightingBinding(deviceId) is not null || physicalBindings is null ? null :
+    private string? PhysicalBindingError(string deviceId) => physicalBindings is null ? null :
         drivers.GetValueOrDefault(deviceId) is IPhysicalDeviceDriver physical && physical.BindingCandidate is { } actual &&
         physicalBindings.GetValueOrDefault(deviceId) == actual ? null : "機器または温度源の物理関連付けが一致しません";
     private Dictionary<EndpointReference, long> BindCoolingSensors(CoolingSavedPolicy policy, CoolingSafety safety)
@@ -53,7 +58,7 @@ public sealed partial class DeviceControlRuntime
         var inventory = registry.Snapshot;
         return DeviceCoolingPolicy.Required(policy, safety).ToDictionary(s => s, s =>
         {
-            if (PhysicalBindingError(s.DeviceId) is { } physicalError) throw new IOException(physicalError);
+            if (PhysicalBindingError(s, DeviceFeature.Temperature) is { } physicalError) throw new IOException(physicalError);
             var device = inventory.Devices.SingleOrDefault(d => d.Device.Id == s.DeviceId);
             if (device is null || registry.Check(new(Epoch, s.DeviceId, s.EndpointId, device.Generation, DeviceFeature.Temperature)) is not null)
                 throw new IOException("指定した温度センサーを利用できません");
@@ -66,7 +71,7 @@ public sealed partial class DeviceControlRuntime
         double remainingSeconds = 3;
         foreach (var (sensor, generation) in bindings)
         {
-            if (PhysicalBindingError(sensor.DeviceId) is not null) continue;
+            if (PhysicalBindingError(sensor, DeviceFeature.Temperature) is not null) continue;
             if (registry.Check(new(Epoch, sensor.DeviceId, sensor.EndpointId, generation, DeviceFeature.Temperature)) is not null) continue;
             var value = telemetry.SingleOrDefault(t => t.Target == sensor && t.Feature == DeviceFeature.Temperature);
             if (value is { Stale: false, Value: { } celsius, AgeSeconds: { } age })
@@ -99,31 +104,48 @@ public sealed partial class DeviceControlRuntime
         if (desired.Mode == FanMode.Auto && registry.Check(new(Epoch, target.Target.DeviceId, target.Target.EndpointId, target.Generation, DeviceFeature.AutomaticDuty)) is not null)
             return "この端子は保存した自動制御に対応していません";
         if (DeviceCoolingPolicy.Validate(desired, config.Safety) is { } error) return error;
+        if (request.Operation == DeviceOperation.RestoreSavedCooling && DeviceCoolingPolicy.Required(desired, config.Safety)
+            .Any(s => PhysicalBindingError(s, DeviceFeature.Temperature, savedOnly: true) is not null))
+            return "保存した温度源の個体・構成が一致しません";
         var sensors = BindCoolingSensors(desired, config.Safety); var current = ReadCoolingInputs(target.Target, sensors);
         if (current.Duty is null) return "端子の最新の報告出力が必要です";
         var policy = new DeviceCoolingPolicy(desired, config.Safety, current.Duty.Value, clock);
         return policy.InputError(current.Temperatures);
     }
-    private async Task<DeviceDriverResult> ApplyCoolingRequestAsync(DeviceServiceRequest request, DeviceTargetVersion target, IDeviceCoolingDriver driver, CancellationToken ct, Func<string?>? precondition = null)
+    private async Task<DeviceDriverResult> ApplyCoolingRequestAsync(DeviceServiceRequest request, DeviceTargetVersion target, IDeviceCoolingDriver driver, bool initiallyUnowned, CancellationToken ct, Func<string?>? precondition = null)
     {
-        CoolingControl control;
+        CoolingControl control; bool newUnownedPolicy;
         lock (gate)
         {
             if (CheckCoolingRequest(request, target, driver) is { } error) return new(Outcome.Rejected, error);
             var config = CoolingConfiguration(driver, target.Target.EndpointId)!;
             var previous = coolingPolicies.GetValueOrDefault(target.Target);
+            newUnownedPolicy = initiallyUnowned && previous is null;
             var desired = request.Operation == DeviceOperation.ResumeCooling ? previous!.Policy.Desired :
                 request.Operation == DeviceOperation.RestoreSavedCooling ? config.SavedPolicy! :
                 request.Operation == DeviceOperation.SetDuty ? new CoolingSavedPolicy(FanMode.Manual, request.Duty) : new(FanMode.Auto, Profile: request.Profile);
             var sensors = request.Operation == DeviceOperation.ResumeCooling ? previous!.Sensors : BindCoolingSensors(desired, config.Safety);
             var inputs = ReadCoolingInputs(target.Target, sensors);
             control = new(target.Target, target.Generation, target.ExpectedPolicyRevision, request.Session,
-                new(desired, config.Safety, inputs.Duty!.Value, clock), new(sensors));
+                new(desired, config.Safety, inputs.Duty!.Value, clock, awaitingInitialAcquisition:
+                    initiallyUnowned && previous is null && driver is IDeviceGuardedCoolingAcquisition && !recoveryRequired.Contains(target.Target)), new(sensors));
             coolingPolicies[target.Target] = control;
             states[target.Target] = states[target.Target] with { RequestedDuty = desired.Duty };
         }
         // A first equal-value write still acquires a durable exit obligation in the driver.
-        return await StepCoolingCoreAsync(control, driver, forceWrite: true, ct, precondition).ConfigureAwait(false);
+        try { return await StepCoolingCoreAsync(control, driver, forceWrite: true, ct, precondition).ConfigureAwait(false); }
+        finally
+        {
+            lock (gate)
+                if (newUnownedPolicy && ReferenceEquals(coolingPolicies.GetValueOrDefault(target.Target), control) &&
+                    states.TryGetValue(target.Target, out var state) && state.Generation == control.Generation &&
+                    state.PolicyRevision == control.Revision && !state.Owned && !recoveryRequired.Contains(target.Target))
+                {
+                    // No driver was entered. Do not retain a rejected initial policy for a later background tick.
+                    coolingPolicies.Remove(target.Target);
+                    states[target.Target] = states[target.Target] with { Cooling = null };
+                }
+        }
     }
     private bool CurrentCooling(CoolingControl control) => !stopping && !releasing && !ConfigurationBlocksDevice(control.Target.DeviceId) && session == control.Owner &&
         coolingPolicies.GetValueOrDefault(control.Target) == control && states.TryGetValue(control.Target, out var state) &&
@@ -143,7 +165,7 @@ public sealed partial class DeviceControlRuntime
         {
             RefreshCore();
             if (!CurrentCooling(control)) return new(Outcome.Rejected, "冷却方針・対象・操作権が変更されています");
-            if (PhysicalBindingError(control.Target.DeviceId) is { } physicalError)
+            if (PhysicalBindingError(control.Target, control.Policy.Desired.Mode == FanMode.Auto ? DeviceFeature.AutomaticDuty : DeviceFeature.FixedDuty) is { } physicalError)
             {
                 control.Policy.Fail(physicalError, prohibitWrites: true);
                 PublishCoolingCore(control, new(Outcome.Unknown, physicalError));
@@ -166,7 +188,7 @@ public sealed partial class DeviceControlRuntime
                     RefreshCore();
                     if (ct.IsCancellationRequested || !CurrentCooling(control)) return new("冷却方針・対象・操作権が変更されています");
                     if (precondition?.Invoke() is { } changedGroup) return new(changedGroup);
-                    if (PhysicalBindingError(control.Target.DeviceId) is { } changedBinding) return new(changedBinding);
+                    if (PhysicalBindingError(control.Target, control.Policy.Desired.Mode == FanMode.Auto ? DeviceFeature.AutomaticDuty : DeviceFeature.FixedDuty) is { } changedBinding) return new(changedBinding);
                     var latest = ReadCoolingInputs(control.Target, control.Sensors);
                     if (decision.Fallback) return new();
                     if (control.Policy.InputError(latest.Temperatures, stopping: decision.Duty == 0) is { } inputError)
@@ -178,6 +200,9 @@ public sealed partial class DeviceControlRuntime
                     return remaining <= TimeSpan.Zero ? new("計算に使った温度が古くなっています", Failure: DeviceDriverFailure.CoolingInputExpired) : new(ValidFor: remaining);
                 }
             });
+            // All local rejection checks have passed. From driver entry onward even a
+            // rejected/unknown reply can carry a release obligation and must be retained.
+            states[control.Target] = states[control.Target] with { Owned = true };
         }
         DeviceDriverResult result;
         try { result = await driver.ApplyCoolingAsync(actuation, ct).ConfigureAwait(false); }

@@ -19,13 +19,13 @@ public sealed partial class DeviceWorkspaceViewModel
             OpenRgbRuntimeInspectionStatus.NotInstalled => "未導入",
             OpenRgbRuntimeInspectionStatus.AccessDenied => "読み取り権限なし",
             OpenRgbRuntimeInspectionStatus.Invalid => "導入状態の確認失敗",
-            OpenRgbRuntimeInspectionStatus.Verified => openRgbRuntime.StartupAccepted ? "導入済み" : "導入済み・連携は検証待ち",
+            OpenRgbRuntimeInspectionStatus.Verified => openRgbRuntime.StartupAccepted ? "導入済み" : "導入済み・連携検証待ち",
             _ => "未確認"
         });
-    public string OpenRgbRuntimeVersion => openRgbRuntime is null ? "" : "必要な専用版 " + openRgbRuntime.ExpectedVersion;
+    public string OpenRgbRuntimeVersion => openRgbRuntime is null ? "" : "対応専用版 " + openRgbRuntime.ExpectedVersion;
     public string OpenRgbRuntimeCheckedAt => openRgbRuntimeCheckedAt is null ? "" : "前回確認 " + openRgbRuntimeCheckedAt;
     public ICommand InspectOpenRgbRuntime => new AsyncCommand(_ => InspectOpenRgbRuntimeAsync(), _ => CanInspectOpenRgbRuntime,
-        _ => { openRgbRuntimeError = "導入状態を確認できません"; PublishOpenRgb(); });
+        _ => { openRgbRuntimeError = "導入状態の確認失敗"; PublishOpenRgb(); });
     private void ClearOpenRgbRuntime()
     {
         openRgbRuntime = null; openRgbRuntimeGeneration = null; openRgbRuntimeSession = null;
@@ -60,7 +60,7 @@ public sealed partial class DeviceWorkspaceViewModel
             if (!closing && client.Snapshot is { Connected: true } after && after.Session == before.Session &&
                 after.Configuration.Generation == before.Configuration.Generation)
             {
-                openRgbRuntimeError = "導入状態を確認できません。再確認してください";
+                openRgbRuntimeError = "導入状態の確認失敗 · 要再確認";
                 openRgbRuntimeGeneration = after.Configuration.Generation; openRgbRuntimeSession = after.Session;
             }
         }

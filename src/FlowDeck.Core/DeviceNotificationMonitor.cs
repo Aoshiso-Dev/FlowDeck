@@ -42,9 +42,6 @@ public sealed class DeviceNotificationMonitor(TimeProvider? time = null)
     private DeviceNotificationSettings settings = new(Enabled: false);
     private NotificationEvent[] active = [];
     private long sequence, activeRevision;
-    private DeviceM5NotificationReport? m5;
-    private long? m5ReportedAt;
-    private bool m5Seen;
     public string? Error { get; private set; }
     private static string Short(string text, int max) => new(text.Where(c => !char.IsControl(c)).Take(max).ToArray());
     private static string Name(string? name) => string.IsNullOrWhiteSpace(name) ? "機器" : Short(name, 160);
@@ -55,26 +52,10 @@ public sealed class DeviceNotificationMonitor(TimeProvider? time = null)
         while (history.Count > DeviceNotificationProtocol.HistoryCapacity) history.Dequeue();
     }
     public void EvaluationFailed(Exception error) => Error = Short("通知の評価を確認できません: " + error.Message, 512);
-    private bool M5Fresh => m5ReportedAt is { } at && clock.GetElapsedTime(at).TotalSeconds is >= 0 and < DeviceM5NotificationReport.FreshSeconds;
-    public void ClearM5()
-    {
-        m5 = null; m5ReportedAt = null; m5Seen = false;
-        engine.ResetSignal(DeviceM5NotificationReport.SignalKey); RefreshActive();
-    }
-    public void ReportM5(DeviceM5NotificationReport report)
-    {
-        if (!DeviceM5NotificationReport.Valid(report)) throw new ArgumentException("M5GOの接続状態が不正です");
-        if (!M5Fresh || m5?.ConnectionId != report.ConnectionId || report.ConnectionId is null) ClearM5();
-        if (report.ConnectionId is null) return;
-        m5 = report; m5ReportedAt = clock.GetTimestamp();
-        if (report.Connected) m5Seen = true;
-    }
     public void Evaluate(DeviceNotificationConfiguration configuration, DeviceServiceState state)
     {
         if (DeviceNotifications.Validate(configuration.Settings) is { } error) throw new ArgumentException(error);
         settings = configuration.Settings; Error = null;
-        // A stalled/disposed GUI is not evidence that its remote panel is offline.
-        if (!M5Fresh || !settings.Enabled || !settings.Disconnects || state.Releasing || state.ConfigurationChanging) ClearM5();
         var samples = new List<DeviceNotificationSample>(); var signals = new List<NotificationSignal>();
         var inventory = state.Inventory.Devices.ToDictionary(d => d.Device.Id);
         var execution = state.Endpoints.ToDictionary(e => e.Target);
@@ -136,7 +117,6 @@ public sealed class DeviceNotificationMonitor(TimeProvider? time = null)
             }
             signals.Add(new("lifecycle", "機器の復旧", state.LifecycleError is not null, state.LifecycleError ?? "機器の復旧が完了しました", true));
         }
-        if (m5Seen && m5 is not null) signals.Add(new(DeviceM5NotificationReport.SignalKey, "M5GO", !m5.Connected, "M5GO · 接続が切れています"));
         var events = engine.Evaluate(settings, samples.ToArray(), signals.ToArray());
         foreach (var e in events) Append(e);
         RefreshActive();
@@ -151,7 +131,7 @@ public sealed class DeviceNotificationMonitor(TimeProvider? time = null)
         if (!settings.Enabled || !settings.OperationFailures || !Failed(reply) ||
             !(DeviceServiceProtocol.IsWrite(request.Operation) || request.Operation is DeviceOperation.ReleaseSession or DeviceOperation.LightingLibrary ||
                 request.Configuration?.Operation is DeviceConfigurationOperation.SaveNotifications or DeviceConfigurationOperation.SaveDashboard or DeviceConfigurationOperation.SaveDeviceName or
-                    DeviceConfigurationOperation.SaveCoolingGroup or DeviceConfigurationOperation.SaveCoolingStartup or DeviceConfigurationOperation.SaveM5 or DeviceConfigurationOperation.RegisterMonitoring or DeviceConfigurationOperation.Apply)) return;
+                    DeviceConfigurationOperation.SaveCoolingGroup or DeviceConfigurationOperation.SaveCoolingStartup or DeviceConfigurationOperation.SaveDialDisplay or DeviceConfigurationOperation.RegisterMonitoring or DeviceConfigurationOperation.Apply)) return;
         var failures = reply.Result?.Targets.Where(t => t.Outcome is not (Outcome.Confirmed or Outcome.WrittenUnverified) || t.Persistence?.State == DevicePolicySaveState.Failed)
             .Select(t => t.Target.EndpointId + " · " + t.Message).ToArray() ?? [];
         Append(new("operation:" + request.Id, "操作結果", "operation-failed",

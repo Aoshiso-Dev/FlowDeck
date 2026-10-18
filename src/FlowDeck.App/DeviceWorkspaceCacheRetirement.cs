@@ -21,8 +21,8 @@ public sealed partial class DeviceWorkspaceViewModel
     }
     public bool HasCacheRetirementPreview=>cacheRetirementPreview is not null;
     public string CacheRetirementText=>cacheRetirementPreview?.Description??"";
-    public string CacheRetirementStatus=>CacheHistoryChoices.Count==0?"切断済みの検出履歴はありません":
-        cacheRetirementPreview is not null&&!cacheRetirementPreview.Matches(client.Snapshot)?"接続・機器・設定が変わりました。内容を確認し直してください":"";
+    public string CacheRetirementStatus=>CacheHistoryChoices.Count==0?"切断済みの履歴なし":
+        cacheRetirementPreview is not null&&!cacheRetirementPreview.Matches(client.Snapshot)?"接続・機器・設定に変更あり · 要再確認":"";
     public bool CanPreviewCacheRetirement=>SetupIdle&&CacheRetirementSupported&&selectedCacheHistory is not null&&
         client.Snapshot is { Connected:true,ExitAttempted:false } s&&!s.State.Releasing&&!s.State.ConfigurationChanging&&
         s.State.Inventory.Devices.Any(d=>d.Device.Id==selectedCacheHistory.Id&&!d.Connected);
@@ -63,14 +63,16 @@ public sealed partial class DeviceWorkspaceViewModel
         Render();if(!CanPreviewCacheRetirement) return;
         var edit=DeviceCacheRetirementEdit.Capture(client.Snapshot!,selectedCacheHistory!.Id);
         setupBusy=true;ClearConfigurationPreviews();Render();
-        try { cacheRetirementPreview=await client.PreviewCacheRetirementAsync(edit);Notice="整理する検出履歴を確認してください"; }
+        using var status = BeginStatus("検出履歴を確認中");
+        try { cacheRetirementPreview=await client.PreviewCacheRetirementAsync(edit);ReportStatus("整理内容の確認待ち"); }
         finally { setupBusy=false;Render(); }
     }
     public async Task ApplyCacheRetirementAsync()
     {
         Render();if(!CanApplyCacheRetirement) return;
         var edit=cacheRetirementPreview!;setupBusy=true;ClearConfigurationPreviews();Render();
-        try { await client.RetireDisconnectedAsync(edit);Notice="検出履歴を整理しました。保存した名前・設定は保持されています"; }
+        using var status = BeginStatus("検出履歴を整理中");
+        try { await client.RetireDisconnectedAsync(edit);ReportStatus("検出履歴を整理済み · 名前・設定は保持"); }
         finally { setupBusy=false;Render(); }
     }
 }

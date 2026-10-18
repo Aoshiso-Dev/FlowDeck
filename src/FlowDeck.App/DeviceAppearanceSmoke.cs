@@ -7,7 +7,7 @@ namespace FlowDeck.App;
 
 public static partial class SmokeRunner
 {
-    private static async Task RunDeviceAppearanceAsync(DeviceWorkspaceViewModel model, DemoDeviceWorkspace demo, Window window, string output, Action<bool, string> check)
+    private static async Task RunDeviceAppearanceAsync(DeviceWorkspaceViewModel model, DemoDeviceWorkspace demo, DeviceWorkspaceClient client, Window window, string output, Action<bool, string> check)
     {
         model.SelectedPage = 3; await Settle();
         var originals = model.DashboardSettings.Select(r => r.Item).ToArray();
@@ -18,7 +18,7 @@ public static partial class SmokeRunner
         panel.SetCurrentValue(Expander.IsExpandedProperty, true); await Settle();
         var selector = Descendants<ComboBox>(window).Single(c => ReferenceEquals(c.DataContext, fan) && System.Windows.Automation.AutomationProperties.GetName(c) == "インジケーターの形式");
         selector.SetCurrentValue(ComboBox.SelectedItemProperty, "円形");
-        var automatic = Descendants<CheckBox>(window).Single(c => ReferenceEquals(c.DataContext, fan) && c.Content?.ToString() == "表示目盛を自動調整");
+        var automatic = Descendants<CheckBox>(window).Single(c => ReferenceEquals(c.DataContext, fan) && c.Content?.ToString() == "目盛の自動調整");
         automatic.SetCurrentValue(CheckBox.IsCheckedProperty, false); await Settle();
         var slider = Descendants<Slider>(window).Single(s => ReferenceEquals(s.DataContext, fan));
         slider.SetCurrentValue(Slider.ValueProperty, 4200d);
@@ -40,6 +40,7 @@ public static partial class SmokeRunner
             "Latest theme choice persists locally and all three localized options remain available");
         await model.SaveWindowAsync(new Rect(120, 100, 1120, 820));
         check(local.Load() is { Theme: "dark", Left: 120, Top: 100, Width: 1120, Height: 820 }, "Window geometry is saved with user appearance independently of service configuration");
+        await RunDeviceAccentAsync(model, demo, client, window, output, check);
         model.SelectedPage = 3; panel.SetCurrentValue(Expander.IsExpandedProperty, false);
         foreach (var original in originals) model.DashboardDraft.Set(original);
         await model.SaveDashboardAsync(); model.SelectedPage = 0;

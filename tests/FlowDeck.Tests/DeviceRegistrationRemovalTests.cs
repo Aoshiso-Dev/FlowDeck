@@ -31,7 +31,7 @@ public class DeviceRegistrationRemovalTests
                 Adjustments=[new("all",100,false,shared),new("shared",100,false,shared),new("only-a",100,false,onlyA),new("only-b",100,false,onlyB)],
                 TargetAdjustments=[new(AL,program,new(),new(),new()),new(BL,program,new(),new(),new())],Revision=8 },
             Dashboard=new(2,[new(AT,DeviceFeature.Temperature,"A温度","temperature"),new(BF,DeviceFeature.Rpm,"Bファン","fan")]),
-            Preferences=config.Preferences with { M5Selection=new() { Motherboard=[new(AT,DeviceFeature.Temperature,"A","temperature"),new(BT,DeviceFeature.Temperature,"B","temperature")] },
+            Preferences=config.Preferences with {
                 Notifications=new(Rules:[new(new string('a',32),AT,DeviceFeature.Temperature,"A通知",90),new(new string('b',32),BT,DeviceFeature.Temperature,"B通知",90)]) },
             Migration=new(2,"native-v2",new string('a',64),[new("fixture","old-a","temp",AT),new("fixture","old-b","temp",BT)],[])
         };
@@ -59,8 +59,19 @@ public class DeviceRegistrationRemovalTests
         Assert.Equal(BL,Assert.Single(c.Lighting.Endpoints!).Target); Assert.Equal(BL,Assert.Single(c.Lighting.Names).Target); Assert.Equal(new[]{BL},c.Lighting.SyncTargets);
         Assert.Equal(3,c.Lighting.Adjustments.Length); Assert.Equal(9,c.Lighting.Revision);
         Assert.Equal(BF,Assert.Single(c.Dashboard.Items).Target); Assert.Equal(BT,Assert.Single(c.Preferences.Notifications.Rules!).Target);
-        Assert.Equal(BT,Assert.Single(c.Preferences.M5Selection!.Motherboard).Target); Assert.Equal(BT,Assert.Single(c.Migration.References).Target);
+        Assert.Equal(BT,Assert.Single(c.Migration.References).Target);
         Assert.Contains(edit.Changes,x=>x.Contains("すべての制御")); Assert.Contains(edit.Changes,x=>x.Contains("同じ機種 a"));
+    }
+    [Fact] public void RemovingASelectedTemperatureClearsOnlyItsDialReference()
+    {
+        var snapshot = Snapshot(); var c = snapshot.Configuration.Configuration;
+        c = c with { Devices = c.Devices with { Devices = c.Devices.Devices.Select(d => d with {
+            Kind = d.Id == "a" ? DeviceKind.Processor : DeviceKind.Graphics }).ToArray() },
+            Preferences = c.Preferences with { DialDisplay = new(AT, BT) } };
+        DeviceConfigurationCodec.Validate(c);
+        var removed = DeviceRegistrationRemoval.Capture(Config(snapshot, c), "a").Configuration;
+        Assert.Null(removed.Preferences.DialDisplay!.Cpu); Assert.Equal(BT, removed.Preferences.DialDisplay.Gpu);
+        Assert.Equal(AT, c.Preferences.DialDisplay!.Cpu);
     }
     [Theory] [InlineData("protection")] [InlineData("stop")] [InlineData("profile")] [InlineData("saved-profile")] [InlineData("saved-safety")]
     public void ATemperatureUsedByAnotherFanCannotBeRemovedOrWeakenItsSafety(string source)
@@ -144,15 +155,14 @@ public class DeviceRegistrationRemovalTests
         Assert.Equal(before,client.Snapshot!.Configuration.Generation);Assert.Contains(client.Snapshot.Configuration.Configuration.Devices.Devices,d=>d.Id==id);
         Assert.True(client.Snapshot.State.Endpoints.Single(e=>e.Target==target).Owned);Assert.NotNull(client.Snapshot.State.LifecycleError);
     }
-    [Fact] public async Task RemovingAHubClearsItsM5ControlWithoutClearingPanelConnectionOrUnrelatedSensors()
+    [Fact] public async Task RemovingAHubPreservesUnrelatedDialTemperatureSelections()
     {
         using var dir=new ServiceTestDirectory();await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path);
         await using var client=demo.CreateClient();await client.ConnectAsync();var s=client.Snapshot!;var c=s.Configuration.Configuration;var id=demo.DeviceIds[0];
         var cpu=c.Dashboard.Items.Single(i=>i.Name=="CPU").Target;var gpu=c.Dashboard.Items.Single(i=>i.Name=="GPU").Target;
-        c=c with { Preferences=c.Preferences with { M5Selection=new() { Hub=c.Bindings.Devices.Single(b=>b.DeviceId==id),Fans=["fan1"],Leds=["led1"],Cpu=cpu,Gpu=gpu,Profiles=[new("balanced","balanced")] } } };
+        c=c with { Preferences=c.Preferences with { DialDisplay=new(cpu,gpu) } };
         var result=DeviceRegistrationRemoval.Capture(Config(s,c),id).Configuration;
-        Assert.Null(result.Preferences.M5Selection!.Hub);Assert.Empty(result.Preferences.M5Selection.Fans);Assert.Empty(result.Preferences.M5Selection.Profiles);
-        Assert.Equal(cpu,result.Preferences.M5Selection.Cpu);Assert.Equal(gpu,result.Preferences.M5Selection.Gpu);Assert.Equal(c.Preferences.M5,result.Preferences.M5);
+        Assert.Equal(cpu,result.Preferences.DialDisplay!.Cpu);Assert.Equal(gpu,result.Preferences.DialDisplay.Gpu);
     }
     [Fact] public void RemovalSmokeRequiresTheExclusiveEmbeddedDemoAndCannotConnectToAnExternalService()
     {

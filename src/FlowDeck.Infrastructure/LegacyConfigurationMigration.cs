@@ -36,7 +36,7 @@ public static class LegacyConfigurationMigration
         foreach (var s in settings.Motherboard.Sensors ?? [])
         {
             var target = Resolve("board-sensor", "motherboard", s.Id); var endpoint = Endpoint(target);
-            endpointSettings[target] = endpoint with { Name = s.DisplayName, Setup = (endpoint.Setup ?? new()) with { ShowOnM5 = s.ShowOnM5 } };
+            endpointSettings[target] = endpoint with { Name = s.DisplayName };
         }
         if (settings.Hardware.Hub is { } ledHub)
             foreach (var s in settings.Hardware.LedDetails ?? [])
@@ -77,14 +77,14 @@ public static class LegacyConfigurationMigration
             cooling.Add(endpoint with { ResumeOnStart = confirmed && settings.Startup.ResumeControl && resumeError is null });
             if (settings.Startup.ResumeControl && policy is not null && resumeError is not null)
                 notices.Add(id.ToUpperInvariant() + " の起動時再開は保留: " + resumeError);
-            if (settings.Hardware.WiringConfirmed && !confirmed) notices.Add(id.ToUpperInvariant() + " は実機の再関連付け待ちです");
+            if (settings.Hardware.WiringConfirmed && !confirmed) notices.Add(id.ToUpperInvariant() + " は現在の機器情報と保存した安全設定を照合します");
         }
         void BoardFan(string id, CpuFanSettings fan)
         {
             if (!fan.WiringConfirmed && fan.Minimum is null && fan.Profile is null) return;
             var target = Resolve("board-control", "motherboard", id); var confirmed = Retain(target, fan.WiringConfirmed);
             cooling.Add(new(target, confirmed, new(fan.Minimum, 100, null, CoolingExitAction.ReleaseToDevice, []), fan.Profile is { } p ? [Profile(p)] : []));
-            if (fan.WiringConfirmed && !confirmed) notices.Add(id + " は実機の再関連付け待ちです");
+            if (fan.WiringConfirmed && !confirmed) notices.Add(id + " は現在の機器情報と保存した安全設定を照合します");
         }
         BoardFan(MotherboardFans.Cpu.Id, settings.CpuFan); BoardFan(MotherboardFans.Chassis.Id, settings.ChassisFan);
         foreach (var (id, fan) in settings.BoardFans) BoardFan(id, fan);
@@ -156,7 +156,7 @@ public static class LegacyConfigurationMigration
             new(2, portable.Scenes.Scenes!.Select(Scene).ToArray(), groups, names, (portable.Groups.SyncTargets ?? []).Select(b => BoardRgb(b.Identity, b.Zone)).ToArray(),
                 portable.Adjustments.Select(p => new DeviceBrightness(p.Key, p.Value.Brightness, p.Value.IsOff, p.Value.BaseScene is { } s ? Scene(s) : null)).ToArray(),
                 lightingPreferences.Select(p => new EndpointLighting(p.Key, p.Value)).ToArray(), defaultLight),
-            new(2, dashboard), new(2, settings.Ui, settings.M5, settings.Startup, notifications, portable.Palette,
+            new(2, dashboard), new(2, settings.Ui, settings.Startup, notifications, portable.Palette,
                 new(settings.Motherboard.OpenRgbEnabled, settings.Motherboard.OpenRgbPort)),
             new(2, "legacy-v1", SettingsTransfer.Hash(files), matching.References, notices.ToArray()));
         DeviceConfigurationCodec.Validate(result);

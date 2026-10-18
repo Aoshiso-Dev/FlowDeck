@@ -5,7 +5,7 @@ namespace FlowDeck.Infrastructure;
 public sealed record DeviceWorkspaceSnapshot(DeviceServiceState State, ServiceConfigurationSnapshot Configuration,
     double ElapsedSeconds, bool Connected, string? Error, bool ExitAttempted = false, string? Session = null);
 
-/// <summary>GUI/M5 boundary. Serializes state reads with commands; the pipe's renewal runs independently.</summary>
+/// <summary>GUI/device boundary. Serializes state reads with commands; the pipe's renewal runs independently.</summary>
 public sealed partial class DeviceWorkspaceClient(DeviceServicePipeClient client, TimeProvider? time = null) : IAsyncDisposable
 {
     private readonly TimeProvider clock = time ?? TimeProvider.System;

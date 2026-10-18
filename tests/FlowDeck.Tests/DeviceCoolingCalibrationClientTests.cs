@@ -7,25 +7,26 @@ public class DeviceCoolingCalibrationClientTests
 {
     private static DeviceCoolingCalibrationDraft Draft(DeviceWorkspaceClient client,DemoDeviceWorkspace demo)=>new(client.Snapshot!,new(demo.DeviceIds[0],"fan1"));
     private static async Task Begun(DemoDeviceWorkspace demo)=>await Task.Run(async()=>{ while(demo.Hubs[0].Writes==0) await Task.Delay(5); }).WaitAsync(TimeSpan.FromSeconds(3));
-    [Fact] public async Task SuccessfulTrialsEnableLowerOutputAndOnlyExplicitAdoptionChangesAnUnconfirmedSetupDraft()
+    [Fact] public async Task SuccessfulTrialsEnableLowerOutputAndExplicitAdoptionUsesMeasuredMinimumWithoutAcknowledgement()
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path,monitoringOnly:true);
         await using var client=demo.CreateClient(); await client.ConnectAsync(); var draft=Draft(client,demo);
-        Assert.True(client.SupportsCoolingCalibration); Assert.False(draft.CanReduce); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
-        Assert.Throws<ArgumentOutOfRangeException>(()=>draft.ChangeDuty(40)); draft.Confirmed=true;
+        Assert.True(client.SupportsCoolingCalibration); Assert.False(draft.CanReduce); Assert.NotNull(draft.Capture());
+        Assert.Throws<ArgumentOutOfRangeException>(()=>draft.ChangeDuty(40));
         var edit=draft.Capture(); draft.Begin(); var result=await client.StartCoolingCalibrationAsync(edit); draft.Complete(result,client.Snapshot!);
-        Assert.Equal(Outcome.Confirmed,result.Outcome); Assert.True(draft.CanReduce); Assert.False(draft.Confirmed); Assert.False(draft.CanAdopt);
+        Assert.Equal(Outcome.Confirmed,result.Outcome); Assert.True(draft.CanReduce); Assert.False(draft.Confirmed); Assert.True(draft.CanAdopt);
         Assert.Equal(45,(await demo.Hubs[0].ReadAsync()).Channels[0].Duty); Assert.Empty(client.Snapshot!.Configuration.Configuration.Cooling.Endpoints);
-        draft.ChangeDuty(35); Assert.False(draft.Confirmed); draft.Confirmed=true; edit=draft.Capture(); draft.Begin();
+        draft.ChangeDuty(35); Assert.False(draft.Confirmed); edit=draft.Capture(); draft.Begin();
         result=await client.StartCoolingCalibrationAsync(edit); draft.Complete(result,client.Snapshot!); Assert.Equal(Outcome.Confirmed,result.Outcome);
-        Assert.Throws<InvalidOperationException>(()=>draft.AdoptMinimum()); draft.MinimumConfirmed=true;
-        var setup=draft.AdoptMinimum(); Assert.Equal(35,setup.Values.Safety!.Minimum); Assert.Equal(100,setup.Values.Safety.Fallback); Assert.Equal(100,setup.Values.Safety.Exit);
+        Assert.True(draft.CanAdopt); Assert.False(draft.MinimumConfirmed);
+        var setup=draft.AdoptMinimum(); Assert.Equal(35,setup.Values.Safety!.Minimum); Assert.Null(setup.Values.Safety.Fallback); Assert.Null(setup.Values.Safety.Exit);
         Assert.False(setup.Values.Confirmed); Assert.Empty(client.Snapshot!.Configuration.Configuration.Cooling.Endpoints); Assert.Equal(0,demo.Hubs[1].Writes);
-        setup.Change(setup.Values with { Confirmed=true }); await client.ApplySetupAsync(await client.PreviewSetupAsync(setup.Capture()));
+        Assert.Throws<InvalidOperationException>(()=>setup.Capture());
+        setup.Change(setup.Values with { Safety=setup.Values.Safety! with { Fallback=100,Exit=70 } }); await client.ApplySetupAsync(await client.PreviewSetupAsync(setup.Capture()));
         Assert.Equal(35,Assert.Single(client.Snapshot!.Configuration.Configuration.Cooling.Endpoints).Safety.Minimum); Assert.Equal(4,demo.Hubs[0].Writes);
     }
     [Theory] [InlineData("session")] [InlineData("epoch")] [InlineData("configuration")] [InlineData("topology")] [InlineData("generation")] [InlineData("policy")] [InlineData("binding")]
-    public async Task AChangedConfirmationCannotBeReusedWhileTheOutputChoiceIsPreserved(string change)
+    public async Task AChangedDeviceOrSettingsVersionPreventsCaptureWhileTheOutputChoiceIsPreserved(string change)
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path,monitoringOnly:true);
         await using var client=demo.CreateClient(); await client.ConnectAsync(); var snapshot=client.Snapshot!; var draft=Draft(client,demo); draft.Confirmed=true;
@@ -38,7 +39,7 @@ public class DeviceCoolingCalibrationClientTests
             "policy"=>snapshot with { State=snapshot.State with { Endpoints=snapshot.State.Endpoints.Select(e=>e.Target==draft.Target?e with { PolicyRevision=e.PolicyRevision+1 }:e).ToArray() } },
             _=>snapshot with { Configuration=snapshot.Configuration with { Candidates=[] } }
         };
-        draft.Update(snapshot); Assert.True(draft.Conflict); Assert.False(draft.Confirmed); Assert.Equal(100,draft.Duty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        draft.Update(snapshot); Assert.True(draft.Conflict); Assert.Equal(100,draft.Duty); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
         Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
     }
     [Theory] [InlineData("zero")] [InlineData("stale")] [InlineData("disconnected")] [InlineData("exit")] [InlineData("pending")] [InlineData("owned")]
@@ -78,12 +79,13 @@ public class DeviceCoolingCalibrationClientTests
         Assert.True((await client.ReleaseAsync().WaitAsync(TimeSpan.FromSeconds(3))).Success);
         Assert.True((await pending).Targets[0].Calibration!.Restored); Assert.False(client.CalibrationRunning); Assert.Equal(45,(await demo.Hubs[0].ReadAsync()).Channels[0].Duty);
     }
-    [Fact] public async Task AChangedHubReturnDutyRequiresConfirmingTheUpdatedTrialContent()
+    [Fact] public async Task AChangedHubReturnDutyUsesTheFreshRestorationValueWithoutAcknowledgement()
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path,monitoringOnly:true);
         await using var client=demo.CreateClient(); await client.ConnectAsync(); var snapshot=client.Snapshot!; var draft=Draft(client,demo); draft.Confirmed=true;
         draft.Update(snapshot with { State=snapshot.State with { Telemetry=snapshot.State.Telemetry!.Select(t=>t.Target==draft.Target&&t.Feature==DeviceFeature.DutyRead?t with { Value=46 }:t).ToArray() } });
-        Assert.False(draft.Confirmed); Assert.Contains("46%",draft.Restoration); Assert.False(draft.Conflict); Assert.Throws<InvalidOperationException>(()=>draft.Capture());
+        draft.Confirmed=false; Assert.Contains("46%",draft.Restoration); Assert.False(draft.Conflict);
+        Assert.Equal(46,draft.Capture().Trial.BeforeDuty);
     }
     [Fact] public async Task OldTrialProofAndReportsAreNotReusedAfterAClientReconnect()
     {

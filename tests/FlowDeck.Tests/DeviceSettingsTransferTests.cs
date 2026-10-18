@@ -25,7 +25,7 @@ public class DeviceSettingsTransferTests
                 Preferences=[new(a,blue),new(b,breathing)],SavedSynchronization=[new([b],breathing)],SavedFrameGroups=[[a],[b]],
                 TargetAdjustments=[new(a,blue,new(),new(),new()),new(b,breathing,new(),new(),new())],Adjustments=[new("lights",100,false,scene)] },
             Preferences=source.Preferences with { Notifications=new(Rules:[new(Guid.NewGuid().ToString("N"),cpu,DeviceFeature.Temperature,"CPU過熱",90)]),
-                M5=new(Port:"COM14",DeviceId:"panel",Transport:"auto",WifiAddress:"192.168.1.19"),Ui=new("dark",50,60) } };
+                Ui=new("dark",50,60) } };
         DeviceConfigurationCodec.Validate(next); return next;
     }
     [Theory] [InlineData(false)] [InlineData(true)]
@@ -37,8 +37,8 @@ public class DeviceSettingsTransferTests
         Assert.Equal(SettingsTransfer.Hash(archive),SettingsTransfer.Hash(restored)); Assert.Empty(restored.Configuration.Migration.References);
         Assert.Equal("机の照明",Assert.Single(restored.Configuration.Lighting.Scenes).Name);
         Assert.All(restored.Configuration.Cooling.Endpoints,e=>Assert.Equal(!portable,e.WiringConfirmed));
-        if(portable) { Assert.Empty(restored.Configuration.Bindings.Devices); Assert.Null(restored.Configuration.Bindings.InstallationId); Assert.Null(restored.Configuration.Preferences.M5.Port); Assert.Null(restored.Configuration.Preferences.Ui.Left); }
-        else { Assert.NotEmpty(restored.Configuration.Bindings.Devices); Assert.Equal("COM14",restored.Configuration.Preferences.M5.Port); }
+        if(portable) { Assert.Empty(restored.Configuration.Bindings.Devices); Assert.Null(restored.Configuration.Bindings.InstallationId); Assert.Null(restored.Configuration.Preferences.Ui.Left); }
+        else { Assert.NotEmpty(restored.Configuration.Bindings.Devices); Assert.Equal(50,restored.Configuration.Preferences.Ui.Left); }
         Assert.All(demo.Hubs,h=>Assert.Equal(0,h.Writes));
     }
     [Theory] [InlineData("digest")] [InlineData("duplicate")] [InlineData("unknown")] [InlineData("legacy")] [InlineData("version")] [InlineData("large")]
@@ -188,7 +188,7 @@ public class DeviceSettingsTransferTests
         Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration),SettingsTransfer.Hash(client.Snapshot.Configuration.Configuration));
         Assert.NotNull(client.Snapshot.State.LifecycleError); Assert.Equal(63,(await demo.Hubs[0].ReadAsync()).Channels[2].Duty);
     }
-    [Fact] public async Task ReviewIncludesRemovedGroupsLedConfirmationAndLightingExitColor()
+    [Fact] public async Task ReviewIncludesRemovedGroupsActualLedCountAndLightingExitColor()
     {
         using var dir=new ServiceTestDirectory(); await using var demo=await DemoDeviceWorkspace.CreateAsync(dir.Path);
         await using var client=demo.CreateClient(); await client.ConnectAsync(); var original=Rich(client.Snapshot!.Configuration.Configuration);
@@ -198,7 +198,8 @@ public class DeviceSettingsTransferTests
                 Devices=original.Devices.Devices.Select(d=>d.Id!=target.DeviceId?d:d with { Endpoints=d.Endpoints.Select(e=>e.Id!=target.EndpointId?e:e with {
                     Setup=e.Setup! with { LedCount=16,LedCountConfirmed=false } }).ToArray() }).ToArray() } };
         DeviceConfigurationCodec.Validate(changed); var lines=DeviceSettingsDifferences.Describe(original,changed);
-        Assert.Contains(lines,l=>l=="グループ削除: 机"); Assert.Contains(lines,l=>l.Contains("LED数 16・再確認"));
-        Assert.Contains(lines,l=>l.Contains("消灯 → 固定 #FF141E")&&l.Contains("再確認"));
+        Assert.Contains(lines,l=>l=="グループ削除: 机"); Assert.Contains(lines,l=>l.Contains("LED数設定 16"));
+        Assert.Contains(lines,l=>l.Contains("消灯 → 固定 #FF141E"));
+        Assert.DoesNotContain(lines,l=>l.Contains("再確認")||l.Contains("配線確認"));
     }
 }

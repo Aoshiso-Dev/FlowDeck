@@ -22,7 +22,7 @@ public static class SettingsTransfer
     private static readonly JsonSerializerOptions PaletteJson = new(Contract.Json) { PropertyNamingPolicy = null };
     public static AppSettings Portable(AppSettings value) => value with
     {
-        PythonPath = null, Startup = new(), M5 = new(Layout: value.M5.Layout), ServiceConfigurationPending = false,
+        PythonPath = null, Startup = new(), ServiceConfigurationPending = false,
         Ui = value.Ui with { Left = null, Top = null }, LastConfirmedPolicy = null,
         Hardware = value.Hardware with { WiringConfirmed = false },
         CpuFan = value.CpuFan with { WiringConfirmed = false }, ChassisFan = value.ChassisFan with { WiringConfirmed = false },
@@ -33,7 +33,7 @@ public static class SettingsTransfer
     public static AppSettings RestoreLocal(AppSettings imported, AppSettings local) => Portable(imported) with
     {
         PythonPath = local.PythonPath, Startup = local.Startup with { ResumeControl = false },
-        M5 = local.M5 with { Layout = imported.M5.Layout }, Ui = imported.Ui with { Left = local.Ui.Left, Top = local.Ui.Top }
+        Ui = imported.Ui with { Left = local.Ui.Left, Top = local.Ui.Top }
     };
     public static string Canonical<T>(T value)
     {
@@ -63,8 +63,9 @@ public static class SettingsTransfer
             if (archive is null || archive.Format != "FlowDeck.Settings" || archive.Version != 1 || archive.Content is null)
                 throw new IOException("未対応の設定ファイルです");
             Validate(archive.Content);
-            if (archive.Sha256 != Hash(archive.Content)) throw new IOException("設定ファイルのチェックサムが一致しません");
-            return archive;
+            if (archive.Sha256 != Hash(archive.Content) &&
+                archive.Sha256 != Hash(document.RootElement.GetProperty("content"))) throw new IOException("設定ファイルのチェックサムが一致しません");
+            return archive with { Sha256 = Hash(archive.Content) };
         }
         catch (Exception e) when (e is JsonException or NotSupportedException or NullReferenceException or ArgumentException)
         { throw new IOException("設定ファイルの形式が不正です", e); }
@@ -110,7 +111,7 @@ public static class SettingsTransfer
         values.All(s => s is { Length: 7 } && s[0] == '#' && s.AsSpan(1).ContainsAnyExcept("0123456789ABCDEFabcdef") == false);
     private static void ValidateSettings(AppSettings s)
     {
-        if (s.SchemaVersion != 1 || s.Hardware is null || s.M5.Layout is not ("A" or "B") || s.Ui.Theme is not ("system" or "light" or "dark") ||
+        if (s.SchemaVersion != 1 || s.Hardware is null || s.Ui.Theme is not ("system" or "light" or "dark") ||
             !double.IsFinite(s.Ui.Width) || !double.IsFinite(s.Ui.Height) || s.Ui.Width is < 640 or > 16384 || s.Ui.Height is < 480 or > 16384)
             throw new IOException("表示または設定バージョンが不正です");
         var hw = s.Hardware;
@@ -224,7 +225,7 @@ public static class SettingsTransfer
             ["favorites"]="お気に入り", ["recent"]="最近使った色", ["delaySeconds"]="異常の継続秒数", ["recoverySeconds"]="復帰の継続秒数", ["repeatSeconds"]="再通知の秒数", ["desktop"]="Windows通知", ["recovery"]="復帰通知", ["controlFaults"]="制御異常", ["disconnects"]="切断通知", ["operationFailures"]="操作の失敗", ["rules"]="通知条件", ["address"]="対象", ["source"]="種類", ["deviceId"]="機器ID", ["sensorId"]="センサーID", ["kind"]="項目種別", ["hysteresis"]="復帰幅", ["missing"]="未取得を通知", ["ignoreStopped"]="意図した停止を除外",
             ["hub"]="Hub", ["board"]="マザー", ["hubId"]="Hub ID", ["identity"]="機器ID", ["zone"]="ゾーン", ["channel"]="ポート", ["id"]="識別ID", ["description"]="機器名", ["serial"]="シリアル", ["path"]="機器パス", ["fans"]="ファン", ["leds"]="照明ポート", ["ledDetails"]="LED構成", ["ledCount"]="LED数", ["accessory"]="接続機器名", ["wiringSignature"]="配線構成", ["wiringConfirmed"]="配線確認", ["cpuSensorId"]="CPUセンサー", ["gpuSensorId"]="GPUセンサー",
             ["allowStop"]="停止許可", ["stop"]="停止条件", ["cpuBelow"]="CPU停止温度", ["gpuBelow"]="GPU停止温度", ["restartDuty"]="再始動出力", ["restartSeconds"]="再始動秒数", ["protectManualCpu"]="CPU手動保護", ["protectManualGpu"]="GPU手動保護", ["cpuOverheat"]="CPU過熱温度", ["cpuResumeBelow"]="CPU復帰温度", ["gpuOverheat"]="GPU過熱温度", ["gpuResumeBelow"]="GPU復帰温度", ["profile"]="温度カーブ", ["revision"]="更新番号", ["cpu"]="センサー1", ["gpu"]="センサー2", ["points"]="カーブ点", ["temperature"]="温度", ["duty"]="出力", ["overheat"]="過熱温度", ["resumeBelow"]="復帰温度", ["descentDelaySeconds"]="下降待機秒数", ["descentPerSecond"]="毎秒下降率",
-            ["lighting"]="保存した照明", ["lightingPorts"]="ポートの照明", ["effect"]="効果", ["mode"]="モード", ["colors"]="色", ["color"]="色", ["speed"]="速度", ["reverse"]="逆方向", ["channels"]="ポート", ["zones"]="ゾーン", ["sync"]="同期", ["syncTargets"]="同期対象", ["boardIdentity"]="マザー機器ID", ["baseScene"]="復帰元", ["all"]="全体", ["r"]="赤", ["g"]="緑", ["b"]="青", ["red"]="赤", ["green"]="緑", ["blue"]="青", ["sensors"]="センサー", ["displayName"]="表示名", ["showOnM5"]="M5GOに表示", ["openRgbEnabled"]="OpenRGB連携", ["openRgbPort"]="OpenRGBポート", ["rgbZones"]="RGB構成", ["confirmedLedCount"]="確認済みLED数", ["lastLighting"]="保存した照明", ["items"]="表示項目", ["visible"]="表示", ["role"]="役割", ["m5"]="M5GO", ["layout"]="レイアウト" };
+            ["lighting"]="保存した照明", ["lightingPorts"]="ポートの照明", ["effect"]="効果", ["mode"]="モード", ["colors"]="色", ["color"]="色", ["speed"]="速度", ["reverse"]="逆方向", ["channels"]="ポート", ["zones"]="ゾーン", ["sync"]="同期", ["syncTargets"]="同期対象", ["boardIdentity"]="マザー機器ID", ["baseScene"]="復帰元", ["all"]="全体", ["r"]="赤", ["g"]="緑", ["b"]="青", ["red"]="赤", ["green"]="緑", ["blue"]="青", ["sensors"]="センサー", ["displayName"]="表示名", ["openRgbEnabled"]="OpenRGB連携", ["openRgbPort"]="OpenRGBポート", ["rgbZones"]="RGB構成", ["confirmedLedCount"]="確認済みLED数", ["lastLighting"]="保存した照明", ["items"]="表示項目", ["visible"]="表示", ["role"]="役割" };
         return string.Join(" / ", path.Split('.').Select(s => { var i = s.IndexOf('['); var key = i < 0 ? s : s[..i]; return labels.GetValueOrDefault(key, key) + (i < 0 ? "" : s[i..]); }));
     }
     public static string[] CheckDevices(TransferContent source, TransferContent local)

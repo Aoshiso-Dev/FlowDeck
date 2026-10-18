@@ -20,10 +20,6 @@ public sealed class DeviceLightingLibraryDraft
     public string Id { get; }
     private string name = "";
     public string Name { get => name; set => name = value ?? ""; }
-    public bool ShowOnM5 { get; set; }
-    private int OtherM5Scenes => latest.Configuration.Configuration.Lighting.Scenes.Count(s => s.Id != Id && s.ShowOnM5);
-    public int M5SceneCount => OtherM5Scenes + (ShowOnM5 ? 1 : 0);
-    public bool CanShowOnM5 => ShowOnM5 || OtherM5Scenes < DeviceLightingLibrary.MaximumM5Scenes;
     public DeviceLightMember[] Candidates { get; }
     public EndpointReference[] Targets => targets.ToArray();
     public DeviceScenePart[] Parts => Contract.Copy(parts.ToArray());
@@ -56,7 +52,6 @@ public sealed class DeviceLightingLibraryDraft
                 ?? throw new IOException("保存したシーンは削除されています");
         }
         Id = id ?? Guid.NewGuid().ToString("N"); Name = savedGroup?.Name ?? savedScene?.Name ?? "";
-        ShowOnM5 = savedScene?.ShowOnM5 ?? OtherM5Scenes < DeviceLightingLibrary.MaximumM5Scenes;
         targets = savedGroup?.Targets.ToArray() ?? [];
         Candidates = original.Configuration.Configuration.Devices.Devices.SelectMany(d => d.Endpoints.Where(e => e.Kind == EndpointKind.Lighting)
             .Select(e => new DeviceLightMember(new(d.Id, e.Id), d.Name + " / " +
@@ -119,10 +114,10 @@ public sealed class DeviceLightingLibraryDraft
     }
     private DeviceLightingScene Scene() => DeviceLightingSceneRequirements.Stamp(new(Id, Name.Trim(),
         parts.Where(p => !p.Synchronized && p.Targets.Length == 1).Select(p => new EndpointLighting(p.Targets[0], p.Program)).ToArray(),
-        parts.Where(p => p.Synchronized || p.Targets.Length != 1).Select(p => new SynchronizedLighting(p.Targets, p.Program)).ToArray(), Math.Max(1, Revision), ShowOnM5: ShowOnM5));
+        parts.Where(p => p.Synchronized || p.Targets.Length != 1).Select(p => new SynchronizedLighting(p.Targets, p.Program)).ToArray(), Math.Max(1, Revision)));
     private EndpointGroup Group() => new(Id, Name.Trim(), EndpointKind.Lighting, targets, Math.Max(1, Revision));
     public bool Dirty => !Existing || Name.Trim() != (savedGroup?.Name ?? savedScene?.Name) ||
-        (Kind == LightingPresetKind.Group ? !targets.SequenceEqual(savedGroup!.Targets) : ShowOnM5 != savedScene!.ShowOnM5 || parts.Count != originalParts.Length ||
+        (Kind == LightingPresetKind.Group ? !targets.SequenceEqual(savedGroup!.Targets) : parts.Count != originalParts.Length ||
         parts.Where((p, i) => p.Synchronized != originalParts[i].Synchronized || !p.Targets.SequenceEqual(originalParts[i].Targets) ||
             !DeviceLighting.SameProgram(p.Program, originalParts[i].Program)).Any());
     private string? ConnectionProblem => Conflict ? "設定が変わりました。再取得してください" :
@@ -130,7 +125,6 @@ public sealed class DeviceLightingLibraryDraft
         latest.State.Releasing || latest.State.ConfigurationChanging ? "処理が終わるまでお待ちください" : null;
     public string? Problem => ConnectionProblem ?? (!DeviceConfigurationRules.Text(Name, 80) ? "名前を入力してください" :
         !Existing && (Kind == LightingPresetKind.Group ? latest.Configuration.Configuration.Lighting.Groups.Length >= DeviceLightingLibrary.MaximumGroups : latest.Configuration.Configuration.Lighting.Scenes.Length >= DeviceLightingLibrary.MaximumScenes) ? "保存数の上限に達しています" :
-        Kind == LightingPresetKind.Scene && M5SceneCount > DeviceLightingLibrary.MaximumM5Scenes ? $"M5GOに表示するシーンは{DeviceLightingLibrary.MaximumM5Scenes}件までです。表示するシーンを減らしてください" :
         Kind == LightingPresetKind.Group ? DeviceLightingLibrary.ValidGroup(Group()) ? null : "照明を1〜256個選択してください" :
         DeviceLightingLibrary.ValidScene(Scene()) ? null : "各パートの照明を選択してください（共通パートは32個まで）");
     public bool CanDelete => Existing && ConnectionProblem is null;

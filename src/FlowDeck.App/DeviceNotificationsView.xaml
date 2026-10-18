@@ -1,19 +1,19 @@
 <UserControl x:Class="FlowDeck.App.DeviceNotificationsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FlowDeck.App">
- <Expander Header="通知" IsExpanded="{Binding NotificationExpanded}" Margin="0,0,0,22">
+ <Expander Header="通知" Style="{StaticResource SettingsSectionExpander}" IsExpanded="{Binding NotificationExpanded}" Margin="0,0,0,22">
   <StackPanel Margin="0,12,0,0">
    <DockPanel Margin="0,0,0,12"><TextBlock Text="{Binding NotificationSummary}" FontWeight="SemiBold"/><Button DockPanel.Dock="Right" Content="通知テスト" Command="{Binding TestNotification}" HorizontalAlignment="Right"/></DockPanel>
    <StackPanel IsEnabled="{Binding NotificationIdle}">
     <StackPanel DataContext="{Binding NotificationOptions}">
-     <WrapPanel><CheckBox Content="通知を有効にする" IsChecked="{Binding Enabled}" Margin="0,0,18,8"/><CheckBox Content="Windows通知" IsChecked="{Binding Desktop}" Margin="0,0,18,8"/><CheckBox Content="復帰も通知" IsChecked="{Binding Recovery}" Margin="0,0,18,8"/></WrapPanel>
-     <WrapPanel Margin="0,4,0,12"><CheckBox Content="制御異常" IsChecked="{Binding Faults}" Margin="0,0,18,8"/><CheckBox Content="接続・更新の停止" IsChecked="{Binding Disconnects}" Margin="0,0,18,8"/><CheckBox Content="操作の失敗" IsChecked="{Binding Operations}" Margin="0,0,18,8"/></WrapPanel>
+     <WrapPanel><CheckBox Content="有効" IsChecked="{Binding Enabled}" Margin="0,0,18,8"/><CheckBox Content="Windows通知" IsChecked="{Binding Desktop}" Margin="0,0,18,8"/><CheckBox Content="復帰通知" IsChecked="{Binding Recovery}" Margin="0,0,18,8"/></WrapPanel>
+     <WrapPanel Margin="0,4,0,12"><CheckBox Content="制御異常" IsChecked="{Binding Faults}" Margin="0,0,18,8"/><CheckBox Content="接続・更新停止" IsChecked="{Binding Disconnects}" Margin="0,0,18,8"/><CheckBox Content="操作失敗" IsChecked="{Binding Operations}" Margin="0,0,18,8"/></WrapPanel>
      <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="24"/><ColumnDefinition/></Grid.ColumnDefinitions>
-      <StackPanel><DockPanel Margin="0,0,0,10"><TextBlock Text="異常の継続時間" Style="{StaticResource Label}"/><TextBlock Text="{Binding Delay,StringFormat={}{0} 秒}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="0" Maximum="300" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Delay}" AutomationProperties.Name="通知までの秒数"/></StackPanel>
-      <StackPanel Grid.Column="2"><DockPanel Margin="0,0,0,10"><TextBlock Text="復帰の継続時間" Style="{StaticResource Label}"/><TextBlock Text="{Binding RecoveryDelay,StringFormat={}{0} 秒}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="0" Maximum="300" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding RecoveryDelay}" AutomationProperties.Name="復帰までの秒数"/></StackPanel>
+      <StackPanel><DockPanel Margin="0,0,0,10"><TextBlock Text="異常継続時間" Style="{StaticResource Label}"/><TextBlock Text="{Binding Delay,StringFormat={}{0} 秒}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="0" Maximum="300" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding Delay}" AutomationProperties.Name="通知までの秒数"/></StackPanel>
+      <StackPanel Grid.Column="2"><DockPanel Margin="0,0,0,10"><TextBlock Text="復帰継続時間" Style="{StaticResource Label}"/><TextBlock Text="{Binding RecoveryDelay,StringFormat={}{0} 秒}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="0" Maximum="300" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding RecoveryDelay}" AutomationProperties.Name="復帰までの秒数"/></StackPanel>
      </Grid>
-     <DockPanel Margin="0,16,0,14"><TextBlock Text="異常が続くとき" VerticalAlignment="Center" Margin="0,0,14,0"/><ComboBox ItemsSource="{Binding Repeats}" SelectedValue="{Binding Repeat}" SelectedValuePath="Value" DisplayMemberPath="Name" HorizontalAlignment="Left" Width="220" AutomationProperties.Name="通知の繰り返し"/></DockPanel>
+     <DockPanel Margin="0,16,0,14"><TextBlock Text="再通知" VerticalAlignment="Center" Margin="0,0,14,0"/><ComboBox ItemsSource="{Binding Repeats}" SelectedValue="{Binding Repeat}" SelectedValuePath="Value" DisplayMemberPath="Name" HorizontalAlignment="Left" Width="220" AutomationProperties.Name="通知の繰り返し"/></DockPanel>
     </StackPanel>
     <Border Style="{StaticResource Card}" Margin="0,0,0,12"><StackPanel>
-     <DockPanel><Button Content="条件を追加" Command="{Binding AddNotification}" DockPanel.Dock="Right"/><TextBlock Text="温度・回転数の通知" Style="{StaticResource SectionTitle}"/></DockPanel>
+     <DockPanel><Button Content="追加" Command="{Binding AddNotification}" DockPanel.Dock="Right"/><TextBlock Text="温度・回転数" Style="{StaticResource SectionTitle}"/></DockPanel>
      <ComboBox ItemsSource="{Binding NotificationRules}" SelectedItem="{Binding SelectedNotificationRule}" DisplayMemberPath="Label" AutomationProperties.Name="通知条件" Margin="0,0,0,14"/>
      <StackPanel Visibility="{Binding HasNotificationEditor,Converter={StaticResource BoolVisibility}}">
       <StackPanel DataContext="{Binding NotificationRuleEditor}">
@@ -25,16 +25,16 @@
         <StackPanel><DockPanel Margin="0,0,0,10"><TextBlock Text="しきい値" Style="{StaticResource Label}"/><TextBlock Text="{Binding ThresholdLabel}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="{Binding Minimum}" Maximum="{Binding Maximum}" Value="{Binding Threshold}" TickFrequency="1" IsSnapToTickEnabled="True" AutomationProperties.Name="通知のしきい値"/></StackPanel>
         <StackPanel Grid.Column="2"><DockPanel Margin="0,0,0,10"><TextBlock Text="復帰幅" Style="{StaticResource Label}"/><TextBlock Text="{Binding HysteresisLabel}" HorizontalAlignment="Right"/></DockPanel><Slider Minimum="0" Maximum="{Binding HysteresisMaximum}" Value="{Binding Hysteresis}" TickFrequency="1" IsSnapToTickEnabled="True" AutomationProperties.Name="通知の復帰幅"/></StackPanel>
        </Grid>
-       <WrapPanel Margin="0,18,0,8"><CheckBox Content="この条件を有効にする" IsChecked="{Binding Enabled}" Margin="0,0,18,8"/><CheckBox Content="未取得も通知" IsChecked="{Binding Missing}" Margin="0,0,18,8"/><CheckBox Content="意図した停止は除外" IsChecked="{Binding IgnoreStop}" Visibility="{Binding IsRpm,Converter={StaticResource BoolVisibility}}" Margin="0,0,18,8"/></WrapPanel>
+       <WrapPanel Margin="0,18,0,8"><CheckBox Content="有効" IsChecked="{Binding Enabled}" Margin="0,0,18,8"/><CheckBox Content="未取得も通知" IsChecked="{Binding Missing}" Margin="0,0,18,8"/><CheckBox Content="意図した停止は除外" IsChecked="{Binding IgnoreStop}" Visibility="{Binding IsRpm,Converter={StaticResource BoolVisibility}}" Margin="0,0,18,8"/></WrapPanel>
       </StackPanel>
-      <Button Content="条件を削除" Command="{Binding DeleteNotification}" HorizontalAlignment="Left"/>
+      <Button Content="削除" Command="{Binding DeleteNotification}" HorizontalAlignment="Left"/>
      </StackPanel>
     </StackPanel></Border>
-    <WrapPanel><Button Content="通知設定を保存" Command="{Binding SaveNotifications}" Style="{StaticResource Primary}"/><Button Content="再取得" Command="{Binding ReloadNotifications}"/><TextBlock Text="{Binding NotificationEditStatus}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0"/></WrapPanel>
+    <WrapPanel><Button Content="保存" Command="{Binding SaveNotifications}" Style="{StaticResource Primary}"/><Button Content="再取得" Command="{Binding ReloadNotifications}"/><TextBlock Text="{Binding NotificationEditStatus}" Style="{StaticResource Muted}" VerticalAlignment="Center" Margin="8,0"/></WrapPanel>
    </StackPanel>
    <TextBlock Text="{Binding NotificationMessage}" TextWrapping="Wrap" Margin="0,12,0,8"/>
    <Border Style="{StaticResource Card}" Margin="0,8,0,0"><StackPanel>
-    <TextBlock Text="現在の通知" Style="{StaticResource SectionTitle}"/>
+    <TextBlock Text="現在" Style="{StaticResource SectionTitle}"/>
     <ItemsControl ItemsSource="{Binding ActiveNotifications}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,4"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
     <WrapPanel Margin="0,8,0,10"><Button Content="前へ" Command="{Binding PreviousNotificationPage}"/><Button Content="次へ" Command="{Binding NextNotificationPage}"/><TextBlock Text="{Binding NotificationActivePage}" Style="{StaticResource Muted}" Margin="8,0" VerticalAlignment="Center"/></WrapPanel>
     <TextBlock Text="履歴 · 直近256件" Style="{StaticResource SectionTitle}"/>

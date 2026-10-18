@@ -7,7 +7,7 @@ function Get-FlowDeckDirectoryBytes {
 }
 function Get-FlowDeckPackagePlan {
     param([Parameter(Mandatory)][string]$Root, [switch]$ServiceOnly, [switch]$IncludeService,
-        [switch]$OpenRgb, [switch]$SkipArchive, [switch]$FirmwareOnly, [string]$ExistingOutput)
+        [switch]$OpenRgb, [switch]$SkipArchive, [switch]$ArchiveOnly, [string]$ExistingOutput)
     $rootPath = [IO.Path]::GetFullPath($Root)
     # Length metadata only. Publishing still performs all existing input/hash verification.
     $materials = [long]0
@@ -25,10 +25,10 @@ function Get-FlowDeckPackagePlan {
     $expanded = [long]($payloads * $unit)
     $intermediate = [long]($payloads * 512MB)
     if ($OpenRgb) { $intermediate += $unit; $expanded += 256MB }
-    if ($FirmwareOnly) { $expanded = 64MB; $intermediate = 0 }
+    if ($ArchiveOnly) { $expanded = 0; $intermediate = 0 }
     $zip = [long]0
     if (-not $ServiceOnly -and -not $SkipArchive) {
-        $zip = if ($FirmwareOnly) { (Get-FlowDeckDirectoryBytes $ExistingOutput) + 64MB } else { $expanded }
+        $zip = if ($ArchiveOnly) { Get-FlowDeckDirectoryBytes $ExistingOutput } else { $expanded }
         $zip = [long]([Math]::Ceiling($zip * 1.02) + 64MB)
     }
     $additional = [long]($expanded + $intermediate + $zip)

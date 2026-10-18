@@ -113,7 +113,7 @@ public sealed class ServiceSetupSession
         {
             ct.ThrowIfCancellationRequested();
             var plan = ServiceSetupInspection.Create(null, root, [], runtime: "devices-v2");
-            if (prepare is not null) plan = plan with { Steps = ["現在の制御とM5GO接続を終了。未保存の画面編集は引き継がない", .. plan.Steps] };
+            if (prepare is not null) plan = plan with { Steps = ["現在の制御を終了。未保存の画面編集は引き継がない", .. plan.Steps] };
             ct.ThrowIfCancellationRequested(); return plan;
         }, ct), plan => RunElevatedAsync(root, plan), plan => Task.Run(() => ConfirmInstalled(plan)), prepare);
     }

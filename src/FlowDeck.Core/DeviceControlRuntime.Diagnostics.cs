@@ -19,7 +19,7 @@ public sealed partial class DeviceControlRuntime
     private void RecordDiagnosticOperation(DeviceServiceRequest request, DeviceServiceReply reply, long start)
     {
         if (request.Operation is DeviceOperation.State or DeviceOperation.ReadStateSnapshot or DeviceOperation.Renew or DeviceOperation.Result or DeviceOperation.ReadDiagnostics or
-            DeviceOperation.ReadNotifications or DeviceOperation.ReportM5Connection || request.Operation == DeviceOperation.Configuration &&
+            DeviceOperation.ReadNotifications || request.Operation == DeviceOperation.Configuration &&
             request.Configuration?.Operation is DeviceConfigurationOperation.Snapshot or DeviceConfigurationOperation.SnapshotWithCandidates or DeviceConfigurationOperation.ReadSnapshot) return;
         var targets = reply.Result?.Targets.Select(t => new DiagnosticTarget(t.Target, t.Generation, t.Outcome, t.ReportedDuty)).ToArray() ?? [];
         AddDiagnosticEvent(new(++diagnosticSequence, clock.GetUtcNow(), request.Operation, request.Configuration?.Operation, null, null,

@@ -50,7 +50,7 @@ public static partial class SmokeRunner
         vm.TestNotification.Execute(null); await Settle();
         check(app.LastNotificationBatch.Any(e=>e.Kind=="test") && app.NotificationDeliveryAttempts == nativeRequests && vm.NotificationHistory.Any(e=>e.Kind=="テスト"),
             "The test notification reaches the desktop delivery route while demo mode suppresses actual Windows popups");
-        vm.ReloadNotifications.Execute(null); await Until(()=>vm.NotificationIdle && vm.NotificationResult.Contains("再読み込み"));
+        vm.ReloadNotifications.Execute(null); await Until(()=>vm.NotificationIdle && vm.NotificationResult.Contains("再読込"));
         vm.NotificationRule = vm.NotificationRules.Single(r=>r.Rule.Id==rule.Id); await Settle();
         check(vm.NotificationThreshold==55 && vm.NotificationHysteresis==3 && vm.NotificationTarget?.Address==rule.Address,
             "Reloaded notification rules retain their physical source, threshold and recovery margin");

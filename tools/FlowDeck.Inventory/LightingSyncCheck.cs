@@ -5,7 +5,7 @@ using FlowDeck.Infrastructure;
 
 internal static class LightingSyncCheck
 {
-    // Explicit developer check; never starts cooling, edits settings, opens M5, or requests elevation.
+    // Explicit developer check; never starts cooling, edits settings, or requests elevation.
     public static async Task RunAsync(string python, string worker, string settingsFile, string output)
     {
         foreach (var name in new[] { "FlowDeck", "NzxtControl" })

@@ -169,15 +169,15 @@ public class HubLightingDriverTests
         Assert.All(await stream.WriteAsync(frame, default), r => Assert.Equal(Outcome.Rejected, r.Result.Outcome)); Assert.Empty(hub.Writes);
         await stream.EndAsync(DeviceLightingStopReason.Normal, default); Assert.Empty(hub.Writes); Assert.Empty(Journal(driver, dir.Path).Pending);
     }
-    [Fact] public async Task LightingNeedsItsOwnBindingWiringCountAndExplicitExitAndDoesNotEnableCooling()
+    [Fact] public async Task LightingNeedsItsOwnBindingActualCountAndExitAndDoesNotEnableCooling()
     {
         using var dir = new ServiceTestDirectory(); var hub = new Hub(); await using var driver = new HubDeviceDriver(Installation, hub.Identity.Id, hub, dir.Path);
         await driver.InitializeAsync(); var action = new DeviceEndpointAction("led1", DeviceOperation.SetLighting, Lighting: Blue);
         Assert.NotNull(driver.Validate(action));
-        foreach (var config in new[] { Lights(driver)[0] with { WiringConfirmed = false }, Lights(driver)[0] with { Exit = null },
+        foreach (var config in new[] { Lights(driver)[0] with { Exit = null },
                      Lights(driver)[0] with { Exit = new(LightingExitAction.RestoreOriginal) } })
         { driver.ConfigureLighting(driver.BindingCandidate, [config], Ports); Assert.NotNull(driver.Validate(action)); }
-        foreach (var setup in new[] { new EndpointSetup("RGB", 24, false), new("wrong", 24, true), new("RGB", 25, true), new("RGB", 12, true) })
+        foreach (var setup in new[] { new EndpointSetup("wrong", 24, true), new("RGB", 25, true), new("RGB", 12, true) })
         { driver.ConfigureLighting(driver.BindingCandidate, Lights(driver), [Ports[0] with { Setup = setup }, .. Ports.Skip(1)]); Assert.NotNull(driver.Validate(action)); }
         driver.ConfigureLighting(null, Lights(driver), Ports); Assert.NotNull(driver.Validate(action));
         driver.ConfigureLighting(driver.BindingCandidate, Lights(driver), Ports); Assert.Null(driver.Validate(action));
@@ -253,6 +253,66 @@ public class HubLightingDriverTests
         Assert.Equal(count, hub.Writes.Count); Assert.Single(Journal(driver, dir.Path).Pending);
         Assert.Equal(Outcome.Unknown, Assert.Single(await driver.ReleaseAsync(DeviceReleaseReason.DeviceChanged, default)).Result.Outcome);
         Assert.Equal(count, hub.Writes.Count);
+    }
+    [Fact] public async Task FailedThreePortSynchronizationStopCanBeRetriedWithoutReapprovingOrLosingTheExitPolicy()
+    {
+        using var dir = new ServiceTestDirectory(); var hub = new Hub(); var clock = new TestClock();
+        var driver = await Ready(hub, dir.Path, clock); await using var rig = new Rig(driver, clock).Open();
+        var channels = new[] { "led1", "led2", "led3" };
+        Assert.True((await rig.Start(channels)).Success);
+        hub.OmitResults = true;
+        var replacement = await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.SetLighting, channels, Blue));
+        Assert.Equal(Outcome.Rejected, replacement.Result!.Outcome);
+        Assert.All(replacement.Result.Targets, t => Assert.Equal("以前の同期の停止を確認できません", t.Message));
+        Assert.Equal(3, Journal(driver, dir.Path).Pending.Length);
+        var writes = hub.Writes.Count;
+        hub.OmitResults = false; await driver.RefreshAsync();
+        var observed = rig.Runtime.State();
+        Assert.Equal(writes, hub.Writes.Count);
+        Assert.All(observed.Inventory.Devices.Single().Device.Endpoints.Where(e => channels.Contains(e.Id)), e =>
+        {
+            Assert.Equal(DeviceAvailability.Failed, e.Capabilities.Single(c => c.Feature == DeviceFeature.FixedColor).Availability);
+            Assert.True(e.Capabilities.Single(c => c.Feature == DeviceFeature.RestoreLighting).Usable);
+        });
+        Assert.False((await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.SetLighting, channels, Blue))).Success);
+        Assert.Equal(writes, hub.Writes.Count);
+        var ended = await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.StopLighting, channels));
+        Assert.Equal(Outcome.WrittenUnverified, ended.Result!.Outcome);
+        Assert.Empty(Journal(driver, dir.Path).Pending);
+        Assert.Equal(new RgbColor(9, 8, 7), hub.Colors["led1"].Colors[0]);
+        Assert.Equal("off", hub.Colors["led2"].Mode);
+        Assert.Equal(new RgbColor(1, 2, 3), hub.Colors["led3"].Colors[0]);
+        Assert.True((await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.SetLighting, channels, Blue))).Success);
+        Assert.Equal(0, hub.Fans.Writes);
+    }
+    [Fact] public async Task UnconfirmedLightingIsReportedAsFailureUntilExplicitStopWithoutRequiringSetup()
+    {
+        using var dir = new ServiceTestDirectory(); var hub = new Hub(); var clock = new TestClock();
+        var driver = await Ready(hub, dir.Path, clock); await using var rig = new Rig(driver, clock).Open();
+        hub.OmitResults = true;
+        var failed = await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.SetLighting, ["led1"], Blue));
+        Assert.Equal(Outcome.Unknown, failed.Result!.Outcome);
+        hub.OmitResults = false; await driver.RefreshAsync();
+        var endpoint = rig.Runtime.State().Inventory.Devices.Single().Device.Endpoints.Single(e => e.Id == "led1");
+        Assert.All(endpoint.Capabilities.Where(c => c.Feature != DeviceFeature.RestoreLighting), c =>
+        {
+            Assert.Equal(DeviceAvailability.Failed, c.Availability);
+            Assert.Equal("この照明端子の終了処理を完了してください", c.Reason);
+        });
+        Assert.True(endpoint.Capabilities.Single(c => c.Feature == DeviceFeature.RestoreLighting).Usable);
+        Assert.Single(Journal(driver, dir.Path).Pending);
+        var writes = hub.Writes.Count;
+        Assert.False((await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.SetLighting, ["led1"], Blue))).Success);
+        Assert.Equal(writes, hub.Writes.Count);
+        Assert.Equal(Outcome.WrittenUnverified,
+            (await rig.Runtime.ExecuteAsync(rig.Request(DeviceOperation.StopLighting, ["led1"]))).Result!.Outcome);
+        Assert.Empty(Journal(driver, dir.Path).Pending);
+        Assert.Null(driver.Validate(new("led1", DeviceOperation.SetLighting, Lighting: Blue)));
+        Assert.All(rig.Runtime.State().Inventory.Devices.Single().Device.Endpoints.Single(e => e.Id == "led1").Capabilities,
+            c => Assert.True(c.Usable));
+        Assert.Equal(new RgbColor(9, 8, 7), hub.Colors["led1"].Colors[0]);
+        Assert.Equal(0, hub.Fans.Writes);
+        Assert.False(hub.Colors.ContainsKey("led2")); Assert.False(hub.Colors.ContainsKey("led3"));
     }
     [Fact] public async Task MissingResultCannotClearOwnershipAndColdRecoveryUsesSavedExitBeforeNewSettings()
     {

@@ -12,8 +12,8 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool LightIdentificationRunning => identificationBusy || client.IdentificationRunning;
     public string LightIdentificationMessage => identificationMessage;
     public bool CanEditLightAlias => LightingIdle && HasLightAliasTarget;
-    public string? LightIdentificationProblem => LightAliasTarget is null ? "照明を選択してください" : LightingDraft.Dirty ? "未適用の照明編集を適用するか、現在の設定を読み込んでください" :
-        client.Snapshot is not { Connected: true, ElapsedSeconds: >= 0 and < 3 } snapshot ? "状態を更新してください" : DeviceLightingIdentification.Problem(snapshot.State, LightAliasTarget.Target);
+    public string? LightIdentificationProblem => LightAliasTarget is null ? "照明未選択" : LightingDraft.Dirty ? "未適用の編集あり · 適用または再取得が必要" :
+        client.Snapshot is not { Connected: true, ElapsedSeconds: >= 0 and < 3 } snapshot ? "状態更新が必要" : DeviceLightingIdentification.Problem(snapshot.State, LightAliasTarget.Target);
     public bool CanIdentifyLight => LightingIdle && LightIdentificationSupported && LightIdentificationProblem is null;
     public ICommand IdentifyLight => new AsyncCommand(_ => IdentifyLightAsync(), _ => CanIdentifyLight, e => { identificationMessage = e.Message; PublishIdentificationControls(); });
     public ICommand CancelLightIdentification => new AsyncCommand(_ => client.CancelLightingIdentificationAsync(), _ => LightIdentificationRunning && !closing, e => { identificationMessage=e.Message; PublishIdentificationControls(); });

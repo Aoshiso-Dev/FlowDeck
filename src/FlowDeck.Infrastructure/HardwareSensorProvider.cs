@@ -110,12 +110,25 @@ public sealed partial class HardwareSensorProvider(string installation, IHardwar
     }
 }
 
-public sealed class HardwareSensorDeviceDriver(HardwareSensorProvider owner, string deviceId) : IPhysicalDeviceDriver, IDeviceTelemetrySource, ILegacyMigrationSource, IDeviceDiagnosticHardwareSource
+public sealed class HardwareSensorDeviceDriver(HardwareSensorProvider owner, string deviceId) : IDeviceCurrentConnectionControlDriver, IDeviceTelemetrySource, ILegacyMigrationSource, IDeviceDiagnosticHardwareSource
 {
     public string DeviceId => deviceId;
     public DeviceDiagnosticHardware ReadCachedDiagnosticHardware() => owner.Cached(DeviceId)?.DiagnosticHardware is { } value ?
         DeviceDiagnosticHardwareRules.Normalize(value) : new(DeviceDiagnosticReadState.NotObserved, []);
     public PhysicalDeviceBinding? BindingCandidate => owner.Cached(DeviceId) is { } d ? BindingFor(DeviceId, d) : null;
+    public PhysicalDeviceBinding? CurrentControlBinding => BindingCandidate;
+    public bool AllowsCurrentConnectionControl(string endpointId, DeviceFeature feature) =>
+        feature == DeviceFeature.Temperature && owner.Cached(DeviceId) is { } current && current.Sensors.Any(s =>
+            s.Feature == feature && Endpoint(current, s).Id == endpointId && s.Issue == DeviceMeasurementIssue.None &&
+            s.Problem is null && s.Value is { } value && double.IsFinite(value));
+    public void ConfigureCurrentConnection(PhysicalDeviceBinding currentBinding, PhysicalDeviceBinding? savedBinding,
+        IEnumerable<CoolingEndpointConfiguration> cooling, IEnumerable<LightingEndpointConfiguration> lighting,
+        IEnumerable<RegisteredEndpoint> endpoints)
+    {
+        // This is a cached temperature source, never an output controller. The runtime checks
+        // freshness with its own clock before accepting the reading as an input to a policy.
+        if (currentBinding != BindingCandidate) throw new IOException("温度センサーの現在接続が変更されています");
+    }
     internal static PhysicalDeviceBinding BindingFor(string id, HardwareSensorDevice d) =>
         new(id, d.SerialIdentity is { } serial ? "serial:" + serial : d.LocationIdentity is { } location ? "location:" + location :
             "connection:" + d.ConnectionId, d.DefinitionId ?? "lhm-monitor-v1", d.Fingerprint);

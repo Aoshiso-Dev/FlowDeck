@@ -42,7 +42,7 @@ public sealed class DeviceLightingSceneTransitionTests
             var bindings=Drivers.Values.Select(d=>d.BindingCandidate).ToArray();
             var package=new DeviceConfigurationPackage(new(2,Drivers.Values.Select(d=>new RegisteredDevice(d.DeviceId,d.DeviceId,"demo-rgb",DeviceKind.Memory,
                 [new("light1","RGB",EndpointKind.Lighting)])).ToArray()),new(2,install,bindings),new(2,[],[]),new(2,[],[],[],[],[]),new(2,[]),
-                new(2,new(),new(),new(),new(Rules:[]),new([],[])),new(2,"native-v2",new('a',64),[],[]));
+                new(2,new(),new(),new(Rules:[]),new([],[])),new(2,"native-v2",new('a',64),[],[]));
             var store=DeviceConfigurationCodec.Store(Path.Combine(Directory.Path,"config")); store.Activate(store.Stage(DeviceConfigurationCodec.Write(package)));
             Authority=new(store,install,store.ReadActive()!);
             Runtime=new(Drivers.Values,["user"],new TestLog(),Clock,physicalBindings:bindings); Runtime.InstallConfigurationHandler(Authority); Hello=Runtime.OpenSession("user");

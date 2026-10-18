@@ -29,7 +29,7 @@ public static partial class SmokeRunner
             var slider=Descendants<Slider>(panel).Single(s=>System.Windows.Automation.AutomationProperties.GetName(s)=="グループの要求出力"); slider.SetCurrentValue(Slider.ValueProperty,25d);
             await model.PollAsync(); Check(model.CoolingGroupDuty==25&&model.CanApplyCoolingGroup,"A group request below endpoint minima is preserved until explicit apply");
             await model.OperateCoolingGroupAsync(); await Settle();
-            Check(model.CoolingGroupDuty==25&&model.CoolingGroupReadings.All(r=>r.Duty=="30%")&&model.Notice.Contains("確認"),"Requested 25 percent remains distinct from both reported 30 percent outputs");
+            Check(model.CoolingGroupDuty==25&&model.CoolingGroupReadings.All(r=>r.Duty=="30%")&&model.StatusMessage.Contains("確認")&&string.IsNullOrEmpty(model.WarningMessage),"Requested 25 percent remains distinct from both reported 30 percent outputs, with confirmation in ordinary status");
             foreach(var theme in new[]{"light","dark"}) { model.Theme=theme; expander.BringIntoView(); await Settle(); Capture(window,output,"cooling-groups-"+theme); }
             model.EditCoolingGroup.Execute(null); await Settle(); Descendants<DraftTextBox>(panel).Single().Text="天面・ケース";
             Descendants<CheckBox>(panel).Single(box=>box.DataContext is CoolingGroupChoiceRow row&&row.Target==c).SetCurrentValue(ToggleButton.IsCheckedProperty,true);

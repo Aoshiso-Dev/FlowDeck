@@ -2,7 +2,7 @@ using FlowDeck.Core;
 
 namespace FlowDeck.Infrastructure;
 
-public sealed record DeviceWorkspaceOptions(string Directory, bool Smoke, string? PipeName, int? ServerProcessId, bool MonitoringSetup = false, bool EndpointSetup = false, bool CoolingSettings = false, bool SettingsTransfer = false, bool CoolingLifecycle = false, bool CoolingGroups = false, bool CoolingCalibration = false, bool Notifications = false, bool M5Settings = false, bool M5Connection = false, bool LightingLibrary = false, bool LightingLevels = false, bool NativeLighting = false, bool LightingPersonalization = false, bool LightingIdentification = false, bool OpenRgbInspection = false, bool Diagnostics = false, bool LoginStartup = false, bool ProviderRoutes = false, bool RegistrationRemoval = false, bool CacheRetirement = false)
+public sealed record DeviceWorkspaceOptions(string Directory, bool Smoke, string? PipeName, int? ServerProcessId, bool MonitoringSetup = false, bool EndpointSetup = false, bool CoolingSettings = false, bool SettingsTransfer = false, bool CoolingLifecycle = false, bool CoolingGroups = false, bool CoolingCalibration = false, bool Notifications = false, bool LightingLibrary = false, bool LightingLevels = false, bool NativeLighting = false, bool LightingPersonalization = false, bool LightingIdentification = false, bool OpenRgbInspection = false, bool Diagnostics = false, bool LoginStartup = false, bool ProviderRoutes = false, bool RegistrationRemoval = false, bool CacheRetirement = false)
 {
     public bool External => PipeName is not null;
     public static bool DemoPipe(string? name) => name is not null && name.StartsWith("FlowDeck.Devices.Demo.", StringComparison.Ordinal) &&
@@ -13,7 +13,7 @@ public sealed record DeviceWorkspaceOptions(string Directory, bool Smoke, string
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
-            if (arg is "--devices-preview" or "--demo" or "--smoke" or "--monitoring-setup" or "--endpoint-setup" or "--cooling-settings" or "--settings-transfer" or "--cooling-lifecycle" or "--cooling-groups" or "--cooling-calibration" or "--notifications" or "--m5-settings" or "--m5-connection" or "--lighting-library" or "--lighting-levels" or "--native-lighting" or "--lighting-personalization" or "--lighting-identification" or "--openrgb-inspection" or "--diagnostics" or "--login-startup" or "--provider-routes" or "--registration-removal" or "--cache-retirement")
+            if (arg is "--devices-preview" or "--demo" or "--smoke" or "--monitoring-setup" or "--endpoint-setup" or "--cooling-settings" or "--settings-transfer" or "--cooling-lifecycle" or "--cooling-groups" or "--cooling-calibration" or "--notifications" or "--lighting-library" or "--lighting-levels" or "--native-lighting" or "--lighting-personalization" or "--lighting-identification" or "--openrgb-inspection" or "--diagnostics" or "--login-startup" or "--provider-routes" or "--registration-removal" or "--cache-retirement")
             { if (!flags.Add(arg)) throw new ArgumentException("起動指定が重複しています"); }
             else if (arg is "--data-dir" or "--devices-pipe" or "--server-pid")
             {
@@ -47,26 +47,20 @@ public sealed record DeviceWorkspaceOptions(string Directory, bool Smoke, string
         var notifications = flags.Contains("--notifications");
         if (notifications && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration))
             throw new ArgumentException("通知の画面試験には組み込みデモの--smokeが必要です");
-        var m5 = flags.Contains("--m5-settings");
-        if (m5 && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications))
-            throw new ArgumentException("M5GO設定の画面試験には組み込みデモの--smokeが必要です");
-        var m5Connection = flags.Contains("--m5-connection");
-        if (m5Connection && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5))
-            throw new ArgumentException("M5GO接続の画面試験には組み込みデモの--smokeが必要です");
         var lightingLibrary = flags.Contains("--lighting-library");
-        if (lightingLibrary && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5 || m5Connection))
+        if (lightingLibrary && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications))
             throw new ArgumentException("照明編集の画面試験には組み込みデモの--smokeが必要です");
         var lightingLevels = flags.Contains("--lighting-levels");
-        if (lightingLevels && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5 || m5Connection || lightingLibrary))
+        if (lightingLevels && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || lightingLibrary))
             throw new ArgumentException("照明の明るさ試験には組み込みデモの--smokeが必要です");
         var nativeLighting = flags.Contains("--native-lighting");
-        if (nativeLighting && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5 || m5Connection || lightingLibrary || lightingLevels))
+        if (nativeLighting && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || lightingLibrary || lightingLevels))
             throw new ArgumentException("機器内蔵効果の試験には組み込みデモの--smokeが必要です");
         var personalization = flags.Contains("--lighting-personalization");
-        if (personalization && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5 || m5Connection || lightingLibrary || lightingLevels || nativeLighting))
+        if (personalization && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || lightingLibrary || lightingLevels || nativeLighting))
             throw new ArgumentException("照明名・色見本の試験には組み込みデモの--smokeが必要です");
         var identification = flags.Contains("--lighting-identification");
-        if (identification && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || m5 || m5Connection || lightingLibrary || lightingLevels || nativeLighting || personalization))
+        if (identification && (!flags.Contains("--smoke") || pipe is not null || monitoring || endpoint || cooling || transfer || lifecycle || groups || calibration || notifications || lightingLibrary || lightingLevels || nativeLighting || personalization))
             throw new ArgumentException("照明識別の試験には組み込みデモの--smokeが必要です");
         var openRgb = flags.Contains("--openrgb-inspection");
         if (openRgb && (!flags.Contains("--smoke") || pipe is not null || flags.Any(f => f is not ("--devices-preview" or "--demo" or "--smoke" or "--openrgb-inspection"))))
@@ -86,6 +80,6 @@ public sealed record DeviceWorkspaceOptions(string Directory, bool Smoke, string
         var cacheRetirement = flags.Contains("--cache-retirement");
         if (cacheRetirement && (!flags.Contains("--smoke") || pipe is not null || flags.Any(f => f is not ("--devices-preview" or "--demo" or "--smoke" or "--cache-retirement"))))
             throw new ArgumentException("検出履歴整理の画面試験には組み込みデモの--smokeが必要です");
-        return new(Path.GetFullPath(directory), flags.Contains("--smoke"), pipe, pid, monitoring, endpoint, cooling, transfer, lifecycle,groups,calibration,notifications,m5,m5Connection,lightingLibrary,lightingLevels,nativeLighting,personalization,identification,openRgb,diagnostics,loginStartup,providerRoutes,registrationRemoval,cacheRetirement);
+        return new(Path.GetFullPath(directory), flags.Contains("--smoke"), pipe, pid, monitoring, endpoint, cooling, transfer, lifecycle,groups,calibration,notifications,lightingLibrary,lightingLevels,nativeLighting,personalization,identification,openRgb,diagnostics,loginStartup,providerRoutes,registrationRemoval,cacheRetirement);
     }
 }

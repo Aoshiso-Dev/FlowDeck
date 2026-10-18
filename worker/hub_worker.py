@@ -102,6 +102,12 @@ class LightingStatusDeferred(ValueError):
         super().__init__("LIGHTING_FRAME_EXPIRED")
 
 
+class LightingStatusStale(ValueError):
+    """The bounded frame cache expired; monitoring may acquire a fresh sample."""
+    def __init__(self):
+        super().__init__("LIGHTING_STATUS_STALE")
+
+
 class LightingStatusReader:
     """Bounded receive-only path for the pinned ControlHub's 0x67/0x02 report.
 
@@ -130,7 +136,7 @@ class LightingStatusReader:
         began = time.monotonic()
         if self.sample is None or not 0 <= began - self.drained_at <= self.MAX_AGE:
             self.sample = None
-            raise ValueError("LIGHTING_STATUS_STALE")
+            raise LightingStatusStale()
         try:
             for _ in range(64):
                 try:
@@ -157,7 +163,7 @@ class LightingStatusReader:
             now = time.monotonic()
             age = math.ceil((now - self.sampled_at) * 1000)
             if not 0 <= age <= 750:
-                raise ValueError("LIGHTING_STATUS_STALE")
+                raise LightingStatusStale()
             self.drained_at = began
             return {**self.sample, "sampleAgeMilliseconds": age}
         except LightingStatusDeferred:
@@ -327,19 +333,20 @@ class Worker:
             reader = self.lighting_reader
             now = time.monotonic() if reader is not None else 0
             streaming = reader is not None and 0 <= now - reader.last_frame <= 0.750
-            reuse = reader is not None and reader.device is self.device and (
+            reuse = reader is not None and reader.device is self.device and reader.sample is not None and (
                 streaming or
-                reader.sample is not None and 0 <= now - reader.confirmed_fan_sample_at <= 0.100)
+                0 <= now - reader.confirmed_fan_sample_at <= 0.100)
             try:
                 result["status"] = reader.read() if reuse else self.status()
                 if reuse and not streaming and not 0 <= time.monotonic() - reader.confirmed_fan_sample_at <= 0.100:
                     # Even an empty receive can resume late. Recheck the window
                     # after draining, before returning a post-fan cached sample.
                     result["status"] = self.status()
-            except LightingStatusDeferred:
-                # Monitoring has no frame-skip result. Complete a fresh normal
-                # read instead; never report a temporary scheduling delay as a
-                # disconnect or pretend the cached telemetry was just acquired.
+            except (LightingStatusDeferred, LightingStatusStale):
+                # A frame-cache expiry or scheduling delay does not establish a
+                # disconnect. Monitoring can acquire a fresh sample on the same
+                # connection. Frames still reject stale telemetry; transport,
+                # malformed-report and backlog errors still propagate.
                 result["status"] = self.status()
         elif command in ("SetFanGroup", "SetFanEndpoint"):
             channels, duty = payload.get("channels"), payload.get("duty")

@@ -1,12 +1,32 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FlowDeck.Core;
 
 namespace FlowDeck.Infrastructure;
 
-public sealed record DevicePreferences(int Version, UiSettings Ui, M5Settings M5, StartupSettings Startup,
+public sealed record DevicePreferences(int Version, UiSettings Ui, StartupSettings Startup,
     DeviceNotificationSettings Notifications, TransferPalette Palette, DeviceProviderPreferences? Providers = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] DeviceM5Selection? M5Selection = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool M5ConnectOnStart = false);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] DeviceDialDisplaySettings? DialDisplay = null)
+{
+    // Read-only compatibility for obsolete fields. They never grant connection/control authority or appear in exports.
+    [JsonPropertyName("m5"), JsonIgnore]
+    public JsonElement LegacyConnection { get; init; }
+    [JsonPropertyName("m5ConnectOnStart"), JsonIgnore]
+    public bool LegacyAutoConnect { get; init; }
+    [JsonPropertyName("m5Selection"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? LegacyDisplaySelection
+    {
+        get => null;
+        init
+        {
+            if (DialDisplay is not null || value is not { ValueKind: JsonValueKind.Object } selection) return;
+            EndpointReference? Read(string name) => selection.TryGetProperty(name, out var item) && item.ValueKind != JsonValueKind.Null
+                ? item.Deserialize<EndpointReference>(Contract.Json) : null;
+            var cpu = Read("cpu"); var gpu = Read("gpu");
+            if (cpu is not null || gpu is not null) DialDisplay = new(cpu, gpu);
+        }
+    }
+}
 public sealed record MigratedReference(string Source, string LegacyDeviceId, string LegacyEndpointId, EndpointReference Target);
 public sealed record ConfigurationMigration(int Version, string SourceFormat, string SourceHash, MigratedReference[] References, string[] Notices);
 public sealed record DeviceConfigurationPackage(DeviceRegistrations Devices, DeviceBindings Bindings, CoolingConfiguration Cooling,
@@ -38,16 +58,18 @@ public static class DeviceConfigurationCodec
         {
             DeviceConfigurationRules.Validate(value.Devices, value.Bindings, value.Cooling, value.Lighting, value.Dashboard);
             var p = value.Preferences;
-            if (p is not { Version: 2, Ui: not null, M5: not null, Startup: not null, Notifications: not null, Palette: not null } ||
+            if (p is not { Version: 2, Ui: not null, Startup: not null, Notifications: not null, Palette: not null } ||
                 p.Ui.Theme is not ("system" or "light" or "dark") || !double.IsFinite(p.Ui.Width) || !double.IsFinite(p.Ui.Height) ||
                 p.Ui.Width is < 1 or > 16384 || p.Ui.Height is < 1 or > 16384 || p.Ui.Left is { } x && !double.IsFinite(x) || p.Ui.Top is { } y && !double.IsFinite(y) ||
-                p.M5.Layout is not ("A" or "B") || p.M5.Transport is not ("usb" or "wifi" or "auto") || p.M5.WifiPort is < 1024 or > 65535 ||
-                !OptionalText(p.M5.Port, 128) || !OptionalText(p.M5.DeviceId, 64) || !OptionalText(p.M5.WifiAddress, 128) || !OptionalText(p.M5.WifiInterfaceId, 128) ||
                 p.Palette.Favorites is not { Length: <= 32 } || p.Palette.Recent is not { Length: <= 32 } ||
                 p.Palette.Favorites.Concat(p.Palette.Recent).Any(c => c is null || c.Length != 7 || c[0] != '#' || !c[1..].All(Uri.IsHexDigit)))
                 throw new IOException("表示・接続の設定形式が不正です");
             if (p.Providers is { } providers && !providers.Valid()) throw new IOException("OpenRGBのポート・選択機器が不正です");
-            DeviceM5Configuration.ValidateStored(value);
+            bool TemperatureTarget(EndpointReference? target, DeviceKind kind) => target is null ||
+                DeviceConfigurationRules.ValidReference(target) && value.Devices.Devices.Any(d => d.Id == target.DeviceId && d.Kind == kind &&
+                    d.Endpoints.Any(e => e.Id == target.EndpointId && e.Kind == EndpointKind.Sensor));
+            if (p.DialDisplay is { } display && (!TemperatureTarget(display.Cpu, DeviceKind.Processor) || !TemperatureTarget(display.Gpu, DeviceKind.Graphics)))
+                throw new IOException("ダイヤルの温度表示には対応する登録済みセンサーを選択してください");
             if (DeviceNotifications.Validate(p.Notifications) is { } notificationError) throw new IOException(notificationError);
             foreach (var rule in p.Notifications.Rules ?? [])
             {
@@ -66,7 +88,6 @@ public static class DeviceConfigurationCodec
         catch (DeviceControlCapacityException e) { throw new IOException(e.Message, e); }
         catch (Exception e) when (e is ArgumentException or NullReferenceException) { throw new IOException("汎用設定の形式が不正です", e); }
     }
-    private static bool OptionalText(string? value, int max) => value is null || DeviceConfigurationRules.Text(value, max);
     public static Dictionary<string, byte[]> Write(DeviceConfigurationPackage value)
     {
         Validate(value);
@@ -119,8 +140,7 @@ public static class DeviceConfigurationCodec
             Bindings = new(2, null, []),
             Cooling = value.Cooling with { Endpoints = value.Cooling.Endpoints.Select(c => c with { WiringConfirmed = false, SavedPolicy = null, ResumeOnStart = false }).ToArray() },
             Lighting = value.Lighting with { Endpoints = value.Lighting.Endpoints?.Select(e => e with { WiringConfirmed = false }).ToArray() },
-            Preferences = value.Preferences with { Startup = new(), M5 = new(Layout: value.Preferences.M5.Layout), M5Selection = value.Preferences.M5Selection?.WithoutControl(),
-                M5ConnectOnStart = false, Ui = value.Preferences.Ui with { Left = null, Top = null }, Providers = new() },
+            Preferences = value.Preferences with { Startup = new(), Ui = value.Preferences.Ui with { Left = null, Top = null }, Providers = new() },
             Migration = new(2, "portable-v2", SettingsTransfer.Hash(value.Devices), [], [])
         };
         Validate(result); return Contract.Copy(result);

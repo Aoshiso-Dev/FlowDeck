@@ -74,12 +74,12 @@ public static partial class SmokeRunner
             void FailingReceiver(NotificationEvent[] _) => throw new IOException("demo delivery unavailable");
             model.DesktopNotifications += FailingReceiver;
             await model.TestNotificationAsync(); model.DesktopNotifications -= FailingReceiver;
-            Check(model.NotificationMessage.Contains("Windows通知を要求できません") && model.NotificationHistory[0].Kind == "テスト" && demo.Hubs[0].Writes == writes,
+            Check(model.NotificationMessage.Contains("Windows通知要求失敗") && model.NotificationHistory[0].Kind == "テスト" && demo.Hubs[0].Writes == writes,
                 "Desktop delivery failure retains history and cannot affect cooling");
             model.NotificationOptions!.Desktop = false; await model.SaveNotificationsAsync(); await Settle();
             Check(!model.CanTestNotification && !test.Command.CanExecute(test.CommandParameter), "Saved desktop opt-out disables the test button");
             model.NotificationOptions.Enabled = false; await model.SaveNotificationsAsync();
-            Check(model.NotificationSummary == "通知は無効" && model.NotificationHistory.Count > 0, "Disabling notifications retains existing history");
+            Check(model.NotificationSummary == "通知無効" && model.NotificationHistory.Count > 0, "Disabling notifications retains existing history");
             Check(await model.CloseAsync() && (await demo.Hubs[0].ReadAsync()).Channels[0].Duty == 70,
                 "Normal exit retains the configured cooling release behavior after notification edits");
             await File.WriteAllLinesAsync(Path.Combine(output, "notifications-smoke.txt"), report); return 0;

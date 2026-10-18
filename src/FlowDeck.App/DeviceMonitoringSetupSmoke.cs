@@ -72,7 +72,7 @@ public static partial class SmokeRunner
             foreach (var theme in new[] { "system", "light", "dark" })
             {
                 model.Theme = theme; await model.PollAsync(); await Settle();
-                Descendants<Expander>(window).Single(e => Equals(e.Header, "検出した温度・回転数")).BringIntoView();
+                Descendants<Expander>(window).Single(e => Equals(e.Header, "センサーの追加")).BringIntoView();
                 await Settle(); Capture(window, output, "monitoring-pages-" + theme);
                 Check(model.HasMonitoringPages && model.MonitoringPageLabel.Contains("320") && model.CanRegisterMonitoring,
                     theme + " theme retains paging, total count and selected registrations");

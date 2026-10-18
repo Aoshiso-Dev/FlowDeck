@@ -37,7 +37,7 @@ public class DeviceControlSetupRemovalTests
         Assert.Equal(writes + 2, demo.Hubs[0].Writes); Assert.Equal(0, demo.Hubs[1].Writes);
     }
 
-    [Fact] public async Task DisconnectedLightingCanBeRemovedAndReconnectionDoesNotRestoreWriteAuthority()
+    [Fact] public async Task DisconnectedLightingSettingsCanBeRemovedAndKnownLightingReturnsWithoutRegistrationOrOutput()
     {
         using var directory = new ServiceTestDirectory(); await using var demo = await DemoDeviceWorkspace.CreateAsync(directory.Path);
         await using var client = demo.CreateClient(); await client.ConnectAsync(); var target = new EndpointReference(demo.DeviceIds[1], "led1");
@@ -49,14 +49,17 @@ public class DeviceControlSetupRemovalTests
         Assert.Equal(Outcome.Confirmed, (await client.ApplySetupAsync(await client.PreviewSetupAsync(edit))).Outcome);
         var config = client.Snapshot!.Configuration.Configuration;
         Assert.DoesNotContain(config.Lighting.Endpoints!, e => e.Target == target);
-        Assert.False(config.Devices.Devices.Single(d => d.Id == target.DeviceId).Endpoints.Single(e => e.Id == target.EndpointId).Setup!.LedCountConfirmed);
+        Assert.All(demo.Hubs, h => { Assert.Equal(0, h.Writes); Assert.Equal(0, h.LightingWrites); });
+        Assert.Equal(SettingsTransfer.Hash(snapshot.Configuration.Configuration.Bindings), SettingsTransfer.Hash(config.Bindings));
+        Assert.Equal(snapshot.Configuration.Configuration.Devices.Devices.Single(d => d.Id == target.DeviceId).Endpoints.Single(e => e.Id == target.EndpointId).Setup,
+            config.Devices.Devices.Single(d => d.Id == target.DeviceId).Endpoints.Single(e => e.Id == target.EndpointId).Setup);
         Assert.Equal(24, DeviceControlCapacity.Count(config.Devices, config.Cooling, config.Lighting).Leds);
         demo.Hubs[1].Disconnected = false; await demo.Runtime.PollAsync(); await demo.Runtime.PollAsync(); await client.RefreshAsync(true);
         var capability = client.Snapshot!.State.Inventory.Devices.Single(d => d.Device.Id == target.DeviceId).Device.Endpoints.Single(e => e.Id == target.EndpointId)
             .Capabilities.Single(c => c.Feature == DeviceFeature.FixedColor);
-        Assert.False(capability.Usable); Assert.All(demo.Hubs, h => { Assert.Equal(0, h.Writes); Assert.Equal(0, h.LightingWrites); });
+        Assert.True(capability.Usable); Assert.All(demo.Hubs, h => { Assert.Equal(0, h.Writes); Assert.Equal(0, h.LightingWrites); });
         var setup = new DeviceEndpointSetupDraft(client.Snapshot, target); Assert.False(setup.Values.Confirmed);
-        Assert.Throws<InvalidOperationException>(() => setup.Capture());
+        Assert.NotNull(setup.Capture());
     }
 
     [Fact] public async Task FailedExitKeepsControlSettingsAndRemovalCannotBeReportedAsSuccessful()

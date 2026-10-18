@@ -1,5 +1,5 @@
 <UserControl x:Class="FlowDeck.App.DeviceOpenRgbSettingsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:FlowDeck.App">
- <Expander Header="OpenRGB" IsExpanded="{Binding OpenRgbExpanded}" Margin="0,0,0,22">
+ <Expander Header="OpenRGB" Style="{StaticResource SettingsSectionExpander}" IsExpanded="{Binding OpenRgbExpanded}" Margin="0,0,0,22">
   <Border Style="{StaticResource Card}" Margin="0,12,0,0"><StackPanel>
    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,0,0,16" Margin="0,0,0,16"><Grid>
     <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -8,14 +8,14 @@
      <TextBlock Text="{Binding OpenRgbRuntimeVersion}" Style="{StaticResource Muted}" Margin="0,3,0,0"/>
     </StackPanel>
     <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-     <Button Content="導入状態を確認" Command="{Binding InspectOpenRgbRuntime}" Margin="0"/>
+     <Button Content="導入確認" Command="{Binding InspectOpenRgbRuntime}" Margin="0"/>
      <TextBlock Text="{Binding OpenRgbRuntimeCheckedAt}" Style="{StaticResource Muted}" HorizontalAlignment="Right" Margin="0,6,0,0"/>
     </StackPanel>
    </Grid></Border>
    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="116"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <StackPanel VerticalAlignment="Center"><TextBlock Text="このPCのSDKサーバー" FontWeight="SemiBold"/><TextBlock Text="127.0.0.1" Style="{StaticResource Muted}" Margin="0,4,0,0"/></StackPanel>
+    <StackPanel VerticalAlignment="Center"><TextBlock Text="ローカルSDKサーバー" FontWeight="SemiBold"/><TextBlock Text="127.0.0.1" Style="{StaticResource Muted}" Margin="0,4,0,0"/></StackPanel>
     <StackPanel Grid.Column="1" Margin="0,0,12,0"><TextBlock Text="ポート" Style="{StaticResource Label}"/><local:DraftTextBox Draft="{Binding OpenRgbPort}" IsEnabled="{Binding OpenRgbIdle}" Style="{StaticResource {x:Type TextBox}}" MaxLength="5" AutomationProperties.Name="OpenRGBのポート"/></StackPanel>
-    <Button Grid.Column="2" Content="接続を確認" Command="{Binding InspectOpenRgb}" VerticalAlignment="Bottom" Margin="0"/>
+    <Button Grid.Column="2" Content="接続確認" Command="{Binding InspectOpenRgb}" VerticalAlignment="Bottom" Margin="0"/>
    </Grid>
    <Grid Margin="0,16,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <TextBlock Text="{Binding OpenRgbStatus}" TextWrapping="Wrap" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding OpenRgbCheckedAt}" Style="{StaticResource Muted}" Margin="12,0,0,0"/>
@@ -26,10 +26,10 @@
     </Grid></Border>
    </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,12,0,0"><StackPanel>
-    <TextBlock Text="照明の制御接続" FontWeight="SemiBold"/><TextBlock Text="{Binding ProviderRouteStatus}" Style="{StaticResource Muted}" Margin="0,6,0,10"/>
+    <TextBlock Text="照明接続" FontWeight="SemiBold"/><TextBlock Text="{Binding ProviderRouteStatus}" Style="{StaticResource Muted}" Margin="0,6,0,10"/>
     <StackPanel Visibility="{Binding ProviderRouteAvailable,Converter={StaticResource BoolVisibility}}">
      <StackPanel Orientation="Horizontal"><ComboBox ItemsSource="{Binding ProviderRouteChoices}" DisplayMemberPath="Name" SelectedValuePath="Value" SelectedValue="{Binding UseOpenRgb}" IsEnabled="{Binding ProviderRouteIdle}" Width="180" AutomationProperties.Name="照明の制御接続"/>
-      <Button Content="切替内容を確認" Command="{Binding PreviewProviderRoute}" Margin="12,0,0,0"/></StackPanel>
+      <Button Content="切替確認" Command="{Binding PreviewProviderRoute}" Margin="12,0,0,0"/></StackPanel>
      <StackPanel Visibility="{Binding ProviderDeviceSelectionAvailable,Converter={StaticResource BoolVisibility}}" Margin="0,14,0,0">
       <TextBlock Text="{Binding ProviderDeviceSelectionStatus}" Style="{StaticResource Muted}" Margin="0,0,0,8"/>
       <ItemsControl ItemsSource="{Binding ProviderDeviceChoices}" IsEnabled="{Binding ProviderDeviceSelectionIdle}"><ItemsControl.ItemTemplate><DataTemplate>
@@ -41,7 +41,7 @@
      </StackPanel>
      <StackPanel Visibility="{Binding HasProviderRoutePreview,Converter={StaticResource BoolVisibility}}" Margin="0,14,0,0">
       <TextBlock Text="{Binding ProviderRouteChanges}" TextWrapping="Wrap" LineHeight="23"/>
-      <Button Content="切替を適用" Command="{Binding ApplyProviderRoute}" Style="{StaticResource Primary}" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+      <Button Content="適用" Command="{Binding ApplyProviderRoute}" Style="{StaticResource Primary}" HorizontalAlignment="Left" Margin="0,12,0,0"/>
      </StackPanel>
     </StackPanel>
    </StackPanel></Border>

@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "directory": "third-party/Distribution-r5",
-  "manifestSha256": "e20d7a9717b6ad936285ac8e2ea1ec969f5417213ed2d77c31421874ef76fe21",
+  "directory": "third-party/Distribution-desktop-20261018",
+  "manifestSha256": "194468cd43d97c16e6de363fd70c23e0a447cd3d31cd6ea63453b9981e5a6c50",
   "publicDistributionReady": false
 }

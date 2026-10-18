@@ -11,7 +11,7 @@ public class DeviceLightingConfigurationTests
         new(2, [new("memory", "照明", "memory", DeviceKind.Memory, [new("rgb", "照明", EndpointKind.Lighting, Setup: new("RGB", 12, true))])]),
         new(2, Guid.NewGuid().ToString("N"), [new("memory", "serial", "memory-v1", new('a', 64))]), new(2, [], []),
         new(2, [], [], [], [], [], Endpoints: [new(new("memory", "rgb"), true, new(LightingExitAction.FixedColor, new(2, 4, 8)))]),
-        new(2, []), new(2, new(), new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
+        new(2, []), new(2, new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
 
     [Fact] public void ExitPolicyRoundTripsAndOlderV2LightingWithoutEndpointPoliciesStaysAValidDraft()
     {
@@ -21,7 +21,7 @@ public class DeviceLightingConfigurationTests
         files["lighting.json"] = JsonSerializer.SerializeToUtf8Bytes(lighting, Contract.Json);
         Assert.Null(DeviceConfigurationCodec.Read(files).Lighting.Endpoints);
     }
-    [Fact] public void PortableLightingKeepsChosenExitColorButRequiresWiringAndLedCountConfirmationAgain()
+    [Fact] public void PortableLightingKeepsActualValuesWithoutCarryingPhysicalBindingOrLegacyApprovalMetadata()
     {
         var original = Package(); var portable = DeviceConfigurationCodec.Portable(original);
         var saved = Assert.Single(portable.Lighting.Endpoints!); Assert.False(saved.WiringConfirmed);
@@ -41,7 +41,7 @@ public class DeviceLightingConfigurationTests
         Assert.Throws<ArgumentException>(() => DeviceLightingConfiguration.ExitProgram(new(LightingExitAction.RestoreOriginal)));
     }
     [Theory] [InlineData(true)] [InlineData(false)]
-    public async Task ColdServiceConfigurationEnablesOnlyMatchingHubLightingWithoutAutomaticOutput(bool sameInstallation)
+    public async Task ColdServiceNeverWritesAutomaticallyAndDoesNotControlThroughAForeignInstallationGeneration(bool sameInstallation)
     {
         using var dir = new ServiceTestDirectory(); var hub = new DemoHub { DelayMs = 0 };
         var config = await DeviceRuntimeStartupTests.Package(hub, dir.Path, resume: false); var id = config.Devices.Devices[0].Id;

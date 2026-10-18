@@ -17,8 +17,8 @@ public static partial class SmokeRunner
             model.SelectedPage = 3; model.OpenRgbExpanded = true; await Settle();
             var panel = Descendants<DeviceOpenRgbSettingsView>(window).Single();
             var input = Descendants<DraftTextBox>(panel).Single();
-            var button = Descendants<Button>(panel).Single(b => b.Content as string == "接続を確認");
-            var runtimeButton = Descendants<Button>(panel).Single(b => b.Content as string == "導入状態を確認");
+            var button = Descendants<Button>(panel).Single(b => b.Content as string == "接続確認");
+            var runtimeButton = Descendants<Button>(panel).Single(b => b.Content as string == "導入確認");
             Check(model.OpenRgbPort == "6742" && model.OpenRgbStatus == "未確認" && model.OpenRgbItems.Count == 0 && demo.OpenRgb.Calls == 0,
                 "Opening settings neither connects nor fabricates a successful inspection");
             Check(model.OpenRgbRuntimeStatus == "未確認" && model.OpenRgbRuntimeVersion == "" && demo.OpenRgbRuntime.Calls == 0 &&
@@ -40,13 +40,13 @@ public static partial class SmokeRunner
                 (OpenRgbRuntimeInspectionStatus.NotInstalled,false,"未導入"),
                 (OpenRgbRuntimeInspectionStatus.AccessDenied,false,"読み取り権限なし"),
                 (OpenRgbRuntimeInspectionStatus.Invalid,false,"導入状態の確認失敗"),
-                (OpenRgbRuntimeInspectionStatus.Verified,false,"導入済み・連携は検証待ち"),
+                (OpenRgbRuntimeInspectionStatus.Verified,false,"導入済み・連携検証待ち"),
                 (OpenRgbRuntimeInspectionStatus.Verified,true,"導入済み")
             })
             {
                 demo.OpenRgbRuntime.Result = new(status,accepted,"1.0-demo");
                 await model.InspectOpenRgbRuntimeAsync(); await Settle();
-                Check(model.OpenRgbRuntimeStatus == text && model.OpenRgbRuntimeVersion == "必要な専用版 1.0-demo" &&
+                Check(model.OpenRgbRuntimeStatus == text && model.OpenRgbRuntimeVersion == "対応専用版 1.0-demo" &&
                     model.OpenRgbRuntimeCheckedAt.StartsWith("前回確認"), "Runtime status is represented separately: " + status + "/" + accepted);
             }
             Check(demo.OpenRgb.Calls == 0 && demo.Hubs[0].Writes == writes && client.Snapshot!.Configuration.Generation == generation,
@@ -122,7 +122,7 @@ public static partial class SmokeRunner
             await model.ReconnectAsync(); await model.InspectOpenRgbAsync();
             Check(model.OpenRgbRuntimeStatus == "未確認", "Reconnected sessions cannot reuse the previous runtime readiness result");
             await model.InspectOpenRgbRuntimeAsync();
-            Check(model.OpenRgbRuntimeStatus == "導入済み・連携は検証待ち", "Runtime inspection can be repeated on the new session");
+            Check(model.OpenRgbRuntimeStatus == "導入済み・連携検証待ち", "Runtime inspection can be repeated on the new session");
             Check(model.OpenRgbItems.Count == 7 && model.CanInspectOpenRgb, "A new authenticated session can perform a new inspection");
             Check(await model.CloseAsync(), "Normal application exit releases control after inspection");
             await File.WriteAllLinesAsync(Path.Combine(output, "openrgb-inspection-smoke.txt"), report); return 0;

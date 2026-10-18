@@ -81,7 +81,7 @@ public sealed class EneMemoryPreparationTests
         }, default);
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(3)); clock.Advance(2.1); resume.SetResult();
         await Assert.ThrowsAnyAsync<IOException>(() => command); Assert.Equal(opens, rack.Opens); Assert.Empty(rack.Writes); backend.Check(c);
-        await Assert.ThrowsAsync<IOException>(() => backend.ExecuteAsync(c, false, s => s.Read(0x8020), default)); Assert.Equal(opens, rack.Opens);
+        await Assert.ThrowsAsync<EneMemoryFreshnessException>(() => backend.ExecuteAsync(c, false, s => s.Read(0x8020), default)); Assert.Equal(opens, rack.Opens);
     }
     [Fact]
     public async Task AnOlderPreparationCannotOverrideNewerProofOrInvalidateTheNewConnection()

@@ -124,21 +124,10 @@ if (args.Length == 2 && args[0] is "--motherboard" or "--fan-counters")
     return;
 }
 
-if (args.Length == 2 && args[0] == "--m5-trust-info")
+if (args.Length != 0 && args is not ["--hub", _, _, _])
 {
-    M5TlsCheck.CertificateInfo(args[1]);
-    return;
-}
-
-if (args.Length == 4 && args[0] == "--m5-tls")
-{
-    await M5TlsCheck.RunAsync(args[1], args[2], args[3]);
-    return;
-}
-
-if (args.Length == 2 && args[0] == "--m5")
-{
-    await M5ReadOnlyCheck.RunAsync(args[1]);
+    Console.Error.WriteLine("Unknown or incomplete diagnostic command.");
+    Environment.ExitCode = 2;
     return;
 }
 

@@ -17,7 +17,7 @@ public sealed class CoolingGroupEditor : Observable
     public DeviceCoolingGroupEditorDraft Draft { get; }
     public ObservableCollection<CoolingGroupChoiceRow> Members { get; }=[];
     public string Name { get=>Draft.Name; set { Draft.Name=value; Refresh(); changed(); } }
-    public string Status=>Draft.Problem??"保存できます";
+    public string Status=>Draft.Problem??"";
     public CoolingGroupEditor(DeviceCoolingGroupEditorDraft draft,Action changed)
     { Draft=draft; this.changed=changed; foreach(var candidate in draft.Candidates) Members.Add(new(draft,candidate,changed)); }
     public void Update(DeviceWorkspaceSnapshot snapshot) { Draft.Update(snapshot); Notify(nameof(Status)); }
@@ -62,14 +62,18 @@ public sealed partial class DeviceWorkspaceViewModel
     public string[] CoolingGroupModes { get; }=["固定","自動"];
     public DeviceProfileChoice? SelectedCoolingGroup { get=>selectedCoolingGroup; set {
         if(updatingCoolingGroups||selectedCoolingGroup?.Id==value?.Id) return; selectedCoolingGroup=value; coolingGroupDraft=null; groupProfile=null; coolingGroupResults.Clear(); Render(); } }
-    public int CoolingGroupDuty { get=>coolingGroupDraft?.Duty??50; set { if(updatingCoolingGroups||value==CoolingGroupDuty) return; coolingGroupDraft?.Change(value,CoolingGroupAutomatic,SelectedGroupProfile()); PublishCoolingGroups(); } }
-    public string CoolingGroupMode { get=>CoolingGroupAutomatic?"自動":"固定"; set { if(updatingCoolingGroups||value is not ("固定" or "自動")||value==CoolingGroupMode) return; coolingGroupDraft?.Change(CoolingGroupDuty,value=="自動",SelectedGroupProfile()); PublishCoolingGroups(); } }
+    public int CoolingGroupDuty { get=>coolingGroupDraft?.Duty??50; set { if(updatingCoolingGroups) return; coolingGroupDraft?.Change(value,CoolingGroupAutomatic,SelectedGroupProfile()); PublishCoolingGroups(); } }
+    public string CoolingGroupMode { get=>CoolingGroupAutomatic?"自動":"固定"; set { if(updatingCoolingGroups||value is not ("固定" or "自動")) return; coolingGroupDraft?.Change(CoolingGroupDuty,value=="自動",SelectedGroupProfile()); PublishCoolingGroups(); } }
     public bool CoolingGroupAutomatic=>coolingGroupDraft?.Automatic==true;
     public bool CoolingGroupFixed=>!CoolingGroupAutomatic;
+    public bool CoolingGroupHasPendingChanges=>coolingGroupDraft?.Dirty==true;
+    public bool CoolingGroupModeChanged=>coolingGroupDraft?.ModeChanged==true;
+    public bool CoolingGroupDutyChanged=>coolingGroupDraft?.DutyChanged==true;
+    public bool CoolingGroupProfileChanged=>coolingGroupDraft?.ProfileChanged==true;
     public DeviceProfileChoice? CoolingGroupProfile { get=>groupProfile; set { if(updatingCoolingGroups||Equals(groupProfile,value)) return; groupProfile=value; coolingGroupDraft?.Change(CoolingGroupDuty,CoolingGroupAutomatic,SelectedGroupProfile()); PublishCoolingGroups(); } }
     private CoolingTemperatureProfile? SelectedGroupProfile()=>groupProfile is null?null:groupProfiles[int.Parse(groupProfile.Id)];
     public string CoolingGroupStatus=>coolingGroupDraft?.Problem()??(coolingGroupDraft?.Dirty==true?"未適用":"");
-    public bool CanApplyCoolingGroup=>SetupIdle&&coolingGroupDraft is not null&&coolingGroupDraft.Problem() is null;
+    public bool CanApplyCoolingGroup=>SetupIdle&&coolingGroupDraft is { Dirty:true }&&coolingGroupDraft.Problem() is null;
     public bool CanReleaseCoolingGroup=>SetupIdle&&coolingGroupDraft is not null&&coolingGroupDraft.Problem(DeviceOperation.ReleaseCooling) is null;
     public bool ShowReleaseCoolingGroup=>coolingGroupDraft is { } draft&&client.Snapshot is { } s&&draft.Group.Targets.All(t=>
         s.State.Inventory.Devices.SingleOrDefault(d=>d.Device.Id==t.DeviceId)?.Device.Endpoints.SingleOrDefault(e=>e.Id==t.EndpointId)?.Capabilities.Any(c=>c.Feature==DeviceFeature.ReleaseCooling&&c.Support==ImplementationSupport.Supported)==true);
@@ -87,6 +91,7 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         foreach(var name in new[]{nameof(SelectedCoolingGroup),nameof(HasCoolingGroup),nameof(HasCoolingGroupEditor),nameof(GroupEditor),nameof(CoolingGroupsSupported),
             nameof(CoolingGroupsIdle),nameof(CoolingGroupDuty),nameof(CoolingGroupMode),nameof(CoolingGroupAutomatic),nameof(CoolingGroupFixed),nameof(CoolingGroupProfile),
+            nameof(CoolingGroupHasPendingChanges),nameof(CoolingGroupModeChanged),nameof(CoolingGroupDutyChanged),nameof(CoolingGroupProfileChanged),
             nameof(CoolingGroupStatus),nameof(CanApplyCoolingGroup),nameof(CanReleaseCoolingGroup),nameof(ShowReleaseCoolingGroup),nameof(CanSaveCoolingGroup),nameof(CanDeleteCoolingGroup)}) Notify(name);
         GroupEditor?.Refresh(); CommandManager.InvalidateRequerySuggested();
     }
@@ -97,20 +102,22 @@ public sealed partial class DeviceWorkspaceViewModel
         {
         var config=snapshot.Configuration.Configuration;
         Reconcile(CoolingGroups,config.Cooling.Groups.Select(g=>new DeviceProfileChoice(g.Id,g.Name)).ToArray());
-        if(selectedCoolingGroup is not null&&!CoolingGroups.Any(g=>g.Id==selectedCoolingGroup.Id)&&coolingGroupDraft?.Dirty!=true) { selectedCoolingGroup=null; coolingGroupDraft=null; }
+        if(selectedCoolingGroup is not null&&!CoolingGroups.Any(g=>g.Id==selectedCoolingGroup.Id)&&coolingGroupDraft is not { Dirty:true } and not { Conflict:true }) { selectedCoolingGroup=null; coolingGroupDraft=null; }
         if(selectedCoolingGroup is not null&&coolingGroupDraft is null) coolingGroupDraft=new(snapshot,selectedCoolingGroup.Id);
         coolingGroupDraft?.Update(snapshot);
         // Refresh an untouched selection after a saved policy/group edit; retain explicit slider edits as conflicts.
-        if(coolingGroupDraft is { Dirty:false } draft&&config.Cooling.Groups.Any(g=>g.Id==draft.Group.Id)) coolingGroupDraft=new(snapshot,draft.Group.Id);
+        if(!setupBusy&&coolingGroupDraft is { Dirty:false,Conflict:false } draft&&config.Cooling.Groups.Any(g=>g.Id==draft.Group.Id)) coolingGroupDraft=new(snapshot,draft.Group.Id);
         var targets=coolingGroupDraft?.Group.Targets??[];
-        foreach(var old in CoolingGroupReadings.Where(r=>!targets.Contains(r.Target)).ToArray()) CoolingGroupReadings.Remove(old);
-        foreach(var target in targets)
+        var visibleTargets=targets.Where(t=>snapshot.Connected&&snapshot.State.Inventory.Devices.Any(d=>
+            d.Connected&&d.Device.Id==t.DeviceId&&d.Device.Endpoints.Any(e=>e.Id==t.EndpointId))).ToArray();
+        foreach(var old in CoolingGroupReadings.Where(r=>!visibleTargets.Contains(r.Target)).ToArray()) CoolingGroupReadings.Remove(old);
+        foreach(var target in visibleTargets)
         {
             var row=CoolingGroupReadings.SingleOrDefault(r=>r.Target==target);
             if(row is null) { row=new(target); CoolingGroupReadings.Add(row); }
             row.Update(snapshot,coolingGroupResults.GetValueOrDefault(target));
         }
-        if(coolingGroupDraft?.Dirty!=true)
+        if(coolingGroupDraft is not { Dirty:true } and not { Conflict:true })
         {
             var choices=config.Cooling.Endpoints.Where(e=>targets.Contains(e.Target)).SelectMany(e=>e.Profiles.Select(p=>(Profile:p,Source:coolingGroupDraft!.Name(e.Target))))
                 .Concat((config.Cooling.ProfileTemplates??[]).Select(p=>(Profile:p,Source:"共通"))).DistinctBy(p=>SettingsTransfer.Canonical(p.Profile)).ToArray();
@@ -133,9 +140,10 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         Render(); if(delete?!CanDeleteCoolingGroup:!CanSaveCoolingGroup) return;
         var edit=GroupEditor!.Draft.Capture(delete); setupBusy=true; ClearConfigurationPreviews(); Render();
+        using var status = BeginStatus("冷却グループを保存中");
         try
         {
-            var reply=await client.SaveCoolingGroupAsync(edit); Notice=reply.Message; GroupEditor=null;
+            var reply=await client.SaveCoolingGroupAsync(edit); ReportResult(reply.Message, reply.Outcome); GroupEditor=null;
             if(delete&&selectedCoolingGroup?.Id==edit.Change.Id) selectedCoolingGroup=null;
             else if(!delete) selectedCoolingGroup=new(edit.Change.Id,edit.Change.Group!.Name);
             coolingGroupDraft=null; groupProfile=null;
@@ -154,12 +162,19 @@ public sealed partial class DeviceWorkspaceViewModel
     }
     public async Task OperateCoolingGroupAsync(DeviceOperation? operation=null)
     {
-        Render(); if(!SetupIdle||coolingGroupDraft is null) return; var edit=coolingGroupDraft.Capture(operation); setupBusy=true; Render();
+        Render(); if(!SetupIdle||coolingGroupDraft is null) return; var draft=coolingGroupDraft; var edit=draft.Capture(operation); var editRevision=draft.EditRevision; setupBusy=true; Render();
+        using var status = BeginStatus("冷却グループの結果を確認中");
         try
         {
-            var result=await client.ApplyCoolingGroupAsync(edit); coolingGroupResults.Clear();
-            foreach(var target in result.Targets) coolingGroupResults[target.Target]=target;
-            Notice=result.Message; coolingGroupDraft=null; groupProfile=null;
+            var result=await client.ApplyCoolingGroupAsync(edit);
+            if(ReferenceEquals(coolingGroupDraft,draft))
+            {
+                if(client.Snapshot is { } snapshot) draft.Update(snapshot);
+                coolingGroupResults.Clear();
+                foreach(var target in result.Targets) coolingGroupResults[target.Target]=target;
+                if(draft.Confirmed(edit,editRevision,result)) { coolingGroupDraft=null; groupProfile=null; }
+            }
+            ReportResult(result);
         }
         finally { setupBusy=false; Render(); }
     }

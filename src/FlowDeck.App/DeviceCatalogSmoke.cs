@@ -35,7 +35,7 @@ public static partial class SmokeRunner
                     new(DeviceFeature.FixedColor, ImplementationSupport.Supported, VerificationEvidence.SourceReview, DeviceAvailability.NeedsSetup, "LED数を確認してください"),
                     new(DeviceFeature.ColorFrames, ImplementationSupport.Supported, VerificationEvidence.FamilyHardware, DeviceAvailability.Conflict, "ほかの照明ソフトが使用しています")])]);
         var config = new DeviceConfigurationPackage(new(2, []), new(2, new string('a', 32), []), new(2, [], []),
-            new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(), new(), new([], [])),
+            new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(), new([], [])),
             new(2, "native-v2", new string('a', 64), [], []));
         var snapshot = new DeviceWorkspaceSnapshot(new(new("epoch", 1, [new(observation, 1, true)]), [], false, null,
             [new(new(observation.Id, "fan"), DeviceFeature.Rpm, 900, 0, false)]), new("generation", config, []), 0, true, null, Session: "session");
@@ -56,13 +56,10 @@ public static partial class SmokeRunner
             {
                 model.Theme = theme; await Settle(); detail.BringIntoView(new Rect(0, 0, detail.ActualWidth, 400)); await Settle();
                 Capture(window, output, "device-capabilities-" + theme);
-                check(detail.IsVisible && Descendants<TextBlock>(detail).Any(t => t.IsVisible && t.Text == "確認の根拠"), theme + " catalog details render");
+                check(detail.IsVisible && Descendants<TextBlock>(detail).Any(t => t.IsVisible && t.Text == "確認根拠"), theme + " catalog details render");
             }
-            example.Update(DeviceCatalogPresentation.Build(snapshot with { Connected = false }).Single()); await Settle();
-            check(example.Status == "サービス未接続" && example.Endpoints.SelectMany(e => e.Capabilities).All(c => !c.Value.Available && c.Value.Availability == "サービス未接続"),
-                "Lost service connection removes every cached ready status without deleting verification evidence");
-            check(detail.IsExpanded && Descendants<TextBlock>(detail).Any(t => t.Text.Contains("前回の理由：LED数を確認してください")),
-                "Disconnected details retain expansion and clearly label the previous reason");
+            check(DeviceCatalogPresentation.Build(snapshot with { Connected = false }).Length == 0,
+                "Lost service connection hides cached catalog devices");
             example.Update(DeviceCatalogPresentation.Build(snapshot).Single()); window.Width = 960; window.Height = 640;
             await Settle(); detail.BringIntoView(new Rect(0, 0, detail.ActualWidth, 380)); await Settle();
             Capture(window, output, "device-capabilities-minimum");

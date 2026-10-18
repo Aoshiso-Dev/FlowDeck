@@ -11,6 +11,9 @@ public sealed class DeviceLightingLevelDraft
     private EndpointReference[] selected = [], targets = [];
     private DeviceLightingEditVersion? editedAt;
     private string? editedSession;
+    private int baselineBrightness = 100;
+    private bool baselineMixed;
+    private DeviceLightingLevelEdit? captured;
     public LightingAdjustmentScope Scope { get; private set; } = LightingAdjustmentScope.All;
     public string? GroupId { get; private set; }
     public EndpointReference[] Targets => targets.ToArray();
@@ -28,11 +31,17 @@ public sealed class DeviceLightingLevelDraft
         if (!Enum.IsDefined(scope) || (scope != LightingAdjustmentScope.Group && groupId is not null)) throw new ArgumentException("明るさの対象が不正です");
         if (scope == Scope && groupId == GroupId) return;
         if (Dirty) throw new InvalidOperationException("明るさの編集を適用または取り消してください");
-        Scope = scope; GroupId = groupId; Refresh();
+        Scope = scope; GroupId = groupId; captured = null; Refresh();
     }
     public void Update(DeviceWorkspaceSnapshot value, IEnumerable<EndpointReference> selection)
     {
-        snapshot = value; selected = selection.Distinct().ToArray(); Refresh();
+        var next = selection.Distinct().ToArray();
+        var selectionChanged = selected.Length != next.Length || !selected.All(next.Contains);
+        snapshot = value; selected = next;
+        // Only the selected-target layer belongs to these checkboxes. All/group drafts
+        // retain their own scope, and service membership changes still report conflicts.
+        if (Scope == LightingAdjustmentScope.Targets && selectionChanged) Reset();
+        else Refresh();
     }
     private void Refresh()
     {
@@ -48,15 +57,29 @@ public sealed class DeviceLightingLevelDraft
         var off = levels.Length == 0 ? "" : levels.All(l => l.Off) ? " · 消灯中" : levels.Any(l => l.Off) ? " · 一部消灯中" : "";
         Current = levels.Length == 0 ? "照明を選択してください" : (Mixed ? "明るさが混在" : $"現在 {levels[0].Brightness}%") + off;
         if (targets.Any(t => Library?.Preferences?.Any(p => p.Target == t) != true)) Current = "色・効果が未設定";
-        if (!Dirty) Brightness = Mixed || levels.Length == 0 ? 100 : levels[0].Brightness;
+        if (!Dirty)
+        {
+            Brightness = Mixed || levels.Length == 0 ? 100 : levels[0].Brightness;
+            baselineBrightness = Brightness; baselineMixed = Mixed;
+        }
     }
     public void SetBrightness(int value)
     {
         if (value is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(value));
+        if (!Mixed && value == Brightness) return;
         if (!Dirty) { editedAt = Version(); editedSession = snapshot?.Session; }
-        Brightness = value; Dirty = true;
+        captured = null; Brightness = value;
+        Dirty = Conflict || baselineMixed || value != baselineBrightness;
+        if (!Dirty) Reset();
     }
-    public void Reset() { Dirty = false; Conflict = false; editedAt = null; editedSession = null; Refresh(); }
+    public void Reset() { Dirty = false; Conflict = false; editedAt = null; editedSession = null; captured = null; Refresh(); }
+    public bool AcceptApplied(DeviceLightingLevelEdit edit, DeviceOperationResult result)
+    {
+        if (!ReferenceEquals(captured, edit) || edit.Session != snapshot?.Session ||
+            targets.Length != edit.Lighting.Version.Targets.Length || !targets.All(t => edit.Lighting.Version.Targets.Any(v => v.Target == t)) ||
+            !DeviceLightingDraft.AppliedSuccessfully(edit.Lighting, result, snapshot?.State)) return false;
+        Reset(); return true;
+    }
     public string? Problem
     {
         get
@@ -90,6 +113,6 @@ public sealed class DeviceLightingLevelDraft
             kind == LightingAdjustmentKind.Brightness ? Brightness : null, Scope == LightingAdjustmentScope.Group ? GroupId : null,
             Scope == LightingAdjustmentScope.Group ? Group!.Revision : 0);
         DeviceLightingAdjustments.Resolve(Library!, Registered, request, targets);
-        return new(snapshot.Session!, new(Contract.Copy(Dirty ? editedAt! : Version()!), DeviceOperation.AdjustLighting, Adjustment: request));
+        return captured = new(snapshot.Session!, new(Contract.Copy(Dirty ? editedAt! : Version()!), DeviceOperation.AdjustLighting, Adjustment: request));
     }
 }

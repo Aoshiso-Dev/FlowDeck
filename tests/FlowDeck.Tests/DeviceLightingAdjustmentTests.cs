@@ -29,8 +29,14 @@ public sealed class DeviceLightingAdjustmentTests
             var ports = observed.Endpoints.Select(e => new RegisteredEndpoint(e.Id, e.Name, e.Kind,
                 Setup: e.Kind == EndpointKind.Lighting ? new("RGB", 24, true) : null)).ToArray();
             var package = new DeviceConfigurationPackage(new(2, [new(observed.Id, observed.Name, observed.Provider, observed.Kind, ports)]),
-                new(2, Installation, [r.Driver.BindingCandidate!]), new(2, [], []), new(2, [], [], [], [], []),
-                new(2, []), new(2, new(), new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
+                new(2, Installation, [r.Driver.BindingCandidate!]), new(2, [], []),
+                // The authority is the source of operational templates. Match
+                // the explicit per-port exits installed by the Hub fixture.
+                new(2, [], [], [], [], [], Endpoints: [
+                    new(new(observed.Id, "led1"), false, new(LightingExitAction.FixedColor, new(9, 8, 7))),
+                    new(new(observed.Id, "led2"), false, new(LightingExitAction.Off)),
+                    new(new(observed.Id, "led3"), false, new(LightingExitAction.FixedColor, new(1, 2, 3)))]),
+                new(2, []), new(2, new(), new(), new(Rules: []), new([], [])), new(2, "native-v2", new('a', 64), [], []));
             var store = DeviceConfigurationCodec.Store(Path.Combine(r.directory.Path, "config"));
             store.Activate(store.Stage(DeviceConfigurationCodec.Write(package)));
             r.Authority = new(store, Installation, store.ReadActive()!);

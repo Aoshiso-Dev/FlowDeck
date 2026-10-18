@@ -60,10 +60,10 @@ public sealed partial class DeviceWorkspaceViewModel
     public ICommand CreateDiagnostics => new AsyncCommand(_ => CreateDiagnosticsAsync(), _ => CanCreateDiagnostics, e => { diagnosticMessage = e.Message; PublishDiagnostics(); });
     public ICommand SaveDiagnostics => new AsyncCommand(async _ =>
     {
-        var dialog = new SaveFileDialog { Title = "FlowDeckの診断情報を書き出す", Filter = "診断情報 (*.json)|*.json", DefaultExt = ".json",
+        var dialog = new SaveFileDialog { Title = "診断情報の書き出し", Filter = "診断情報 (*.json)|*.json", DefaultExt = ".json",
             AddExtension = true, OverwritePrompt = true, FileName = $"FlowDeck-diagnostics-{DateTime.Now:yyyyMMdd-HHmm}.json" };
         if (dialog.ShowDialog() == true) await SaveDiagnosticsToAsync(dialog.FileName);
-    }, _ => CanSaveDiagnostics, e => { diagnosticMessage = "保存できませんでした。保存先を確認してください"; PublishDiagnostics(); });
+    }, _ => CanSaveDiagnostics, e => { diagnosticMessage = "保存失敗 · 保存先の確認が必要"; PublishDiagnostics(); });
     private void ClearDiagnosticExport() { diagnosticExport = null; diagnosticMessage = null; PublishDiagnostics(); }
     private void PublishDiagnostics()
     {
@@ -85,7 +85,7 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         if (!CanSaveDiagnostics || diagnosticExport is not { } value) return;
         diagnosticsBusy = true; PublishDiagnostics();
-        try { await DeviceDiagnosticFiles.SaveAsync(path, value); diagnosticMessage = "保存しました: " + Path.GetFileName(path); }
+        try { await DeviceDiagnosticFiles.SaveAsync(path, value); diagnosticMessage = "保存済み: " + Path.GetFileName(path); }
         finally { diagnosticsBusy = false; PublishDiagnostics(); }
     }
 }

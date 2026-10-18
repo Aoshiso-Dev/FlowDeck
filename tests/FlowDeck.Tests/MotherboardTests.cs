@@ -22,61 +22,21 @@ public class MotherboardTests
     public void InvalidMeasurementsAreNotUsable(string kind, double value, bool expected)
         => Assert.Equal(expected, MotherboardDisplay.IsUsable(kind, value));
 
-    [Fact] public void StaleAndMissingSelectionsNeverBecomeOtherSensors()
-    {
-        var clock = new TestClock();
-        var snapshot = new BoardSnapshot("White", [new("fan0", "Fan #1", "Nuvoton", "fan", "rpm", 1500, 1500)], clock.GetTimestamp());
-        var settings = new MotherboardSettings([new("missing", "ポンプ", true), new("fan0", "ファン", true)]);
-        var panel = MotherboardDisplay.Panel(snapshot, settings, clock);
-        Assert.Null(panel.Rows[0].Value); Assert.Equal(1500, panel.Rows[1].Value);
-        clock.Advance(3); panel = MotherboardDisplay.Panel(snapshot, settings, clock);
-        Assert.False(panel.Fresh); Assert.All(panel.Rows, row => Assert.Null(row.Value)); Assert.Equal(3000, panel.AgeMs);
-    }
     [Fact] public async Task DisplaySettingsDoNotChangeFanPolicyOrRevision()
     {
         await using var f = new Fixture(); await f.Initialize(); await f.Manual(54);
         var before = f.Core.Snapshot; var writes = f.Hub.Writes;
-        f.Core.UpdateSettings(f.Core.Settings with { Motherboard = new([new("fan0", "CPU FAN", true)]) }, false);
+        f.Core.UpdateSettings(f.Core.Settings with { Motherboard = new([new("fan0", "CPU FAN")]) }, false);
         Assert.Equal(before.ControlRevision, f.Core.Snapshot.ControlRevision);
         Assert.Equal(before.ConfirmedDuty, f.Core.Snapshot.ConfirmedDuty); Assert.Equal(writes, f.Hub.Writes);
     }
     [Fact] public void DisplayLimitsRejectAmbiguousOrExcessiveConfiguration()
     {
-        Assert.NotNull(MotherboardDisplay.Validate(new([new("x", "Fan", true), new("x", "Pump", true)])));
-        Assert.NotNull(MotherboardDisplay.Validate(new(Enumerable.Range(0, 9).Select(i => new BoardSensorSetting(i.ToString(), "Fan", true)).ToArray())));
+        Assert.NotNull(MotherboardDisplay.Validate(new([new("x", "Fan"), new("x", "Pump")])));
+        Assert.NotNull(MotherboardDisplay.Validate(new(Enumerable.Range(0, 257).Select(i => new BoardSensorSetting(i.ToString(), "Fan")).ToArray())));
         Assert.NotNull(MotherboardDisplay.Validate(new(OpenRgbPort: 80)));
     }
-    [Fact] public async Task SeparateFrameIsCapabilityGatedBoundedAndExpires()
-    {
-        await using var f = new Fixture(); await f.Initialize();
-        var sensors = Enumerable.Range(0, 8).Select(i => new BoardSensor(i.ToString(), "温度", "chip", "temperature", "°C", 40, 40)).ToArray();
-        var snapshot = new BoardSnapshot(new string('板', 100), sensors, f.Clock.GetTimestamp());
-        var settings = new MotherboardSettings(sensors.Select(s => new BoardSensorSetting(s.Id, string.Concat(Enumerable.Repeat("😀温度", 30)), true)).ToArray());
-        var protocol = new M5ProtocolSession(f.Core, time: f.Clock, motherboard: () => MotherboardDisplay.Panel(snapshot, settings, f.Clock));
-        var frames = new List<JsonElement>(); protocol.Outgoing += line => { Assert.True(Encoding.UTF8.GetByteCount(line) + 1 <= 4096); using var doc = JsonDocument.Parse(line); frames.Add(doc.RootElement.Clone()); };
-        void Hello(bool capable) => protocol.Receive(JsonSerializer.Serialize(new { v = 1, type = "hello", deviceType = "M5GO", deviceId = "test", bootId = capable ? "new" : "old", firmwareVersion = "1.2.0", capabilities = capable ? new[] { "motherboard-v1" } : [] }));
-        Hello(false); Assert.DoesNotContain(frames, p => p.GetProperty("type").GetString() == "motherboardState");
-        Hello(true); var board = frames.Last(); Assert.Equal("motherboardState", board.GetProperty("type").GetString());
-        Assert.Equal(8, board.GetProperty("rows").GetArrayLength()); Assert.False(protocol.Synchronized);
-        f.Clock.Advance(2);
-        protocol.Receive(JsonSerializer.Serialize(new { v = 1, type = "heartbeat", sessionId = protocol.SessionId, controllerEpoch = f.Core.Epoch }));
-        f.Clock.Advance(1); protocol.SendState();
-        Assert.False(frames.Last().GetProperty("fresh").GetBoolean());
-        Assert.All(frames.Last().GetProperty("rows").EnumerateArray(), r => Assert.Equal(JsonValueKind.Null, r.GetProperty("value").ValueKind));
-        Assert.Equal(0, f.Hub.Writes);
-    }
-    [Fact] public async Task BoardFramesUseSelectedTransportOnly()
-    {
-        await using var f = new Fixture(); await f.Initialize();
-        var router = new M5TransportRouter(f.Core, new(Transport: "auto"), f.Clock,
-            () => new("Board", true, "監視のみ", [], 0));
-        var routes = new List<(string Route, string Type)>();
-        router.Outgoing += (route, json) => { using var doc = JsonDocument.Parse(json); routes.Add((route, doc.RootElement.GetProperty("type").GetString()!)); };
-        var hello = JsonSerializer.Serialize(new { v = 1, type = "hello", deviceType = "M5GO", deviceId = "test", bootId = "boot", firmwareVersion = "1.2.0", capabilities = new[] { "motherboard-v1" } });
-        router.Receive("wifi", hello); Assert.Contains(("wifi", "motherboardState"), routes);
-        routes.Clear(); router.Receive("usb", hello); router.Receive("wifi", hello);
-        Assert.Contains(("usb", "motherboardState"), routes); Assert.DoesNotContain(("wifi", "motherboardState"), routes);
-    }
+
 }
 
 public class OpenRgbTests

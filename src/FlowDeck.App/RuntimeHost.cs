@@ -32,7 +32,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
     public IBoardFanController CpuFan => BoardFans[MotherboardFans.Cpu.Id];
     public RgbInventory Rgb { get; private set; } = new([], Error: "OpenRGBは未接続");
     private readonly SemaphoreSlim rgbGate = new(1);
-    public BoardPanel BoardPanel() => MotherboardDisplay.Panel(Motherboard.Board, Coordinator.Settings.Motherboard);
     public async Task UseAsrockRgbAsync()
     {
         await Coordinator.UpdateSettingsAsync(Coordinator.Settings with { Motherboard = Coordinator.Settings.Motherboard with { OpenRgbEnabled = false } }, false);
@@ -72,7 +71,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
     }
     private async Task<BoardLightApplyResult> ApplyBoardLightingCoreAsync(string identity, BoardLightChange[] changes)
     {
-            Interlocked.Increment(ref lightingMutation);
             var owner = Coordinator;
             if (owner.Settings.Motherboard.OpenRgbEnabled && !Demo && !MemoryLighting.IsIdentity(identity))
                 throw new InvalidOperationException("マザー照明はUSB直接接続で利用できます。設定でOpenRGB連携をオフにしてください");
@@ -112,8 +110,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
             }
             return result;
     }
-    public M5Connection? M5 { get; private set; }
-    public M5SerialSession? Serial => M5?.Serial;
     public string? Warning { get; private set; }
     public bool Demo { get; private set; }
     public event Action? Reinitialized;
@@ -184,7 +180,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
         }
         }
         settings = Coordinator.Settings;
-        if (!demo && (settings.M5.Port is not null || settings.M5.Transport != "usb")) ConnectM5(settings.M5);
         Coordinator.Start(); BoardFans.Start(); await RefreshRgbAsync(); await StartNotificationsAsync(); Reinitialized?.Invoke();
     }
     public async Task<bool> SwitchAsync(bool demo)
@@ -219,19 +214,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
         }
     }
     public async Task FlushSettingsAsync() { Task task; lock (saveSync) task = saveTask; await task; }
-    public void ConnectM5(M5Settings settings)
-    {
-        if (Demo) throw new InvalidOperationException("デモではCOMポートを開きません");
-        if (M5 is not null) throw new InvalidOperationException("先にM5GOを切断してください");
-        M5 = new(Coordinator, settings, Store.DirectoryPath, Log, BoardPanel, this); M5.Start();
-    }
-    public async Task DisconnectM5Async()
-    {
-        if (M5 is null) return;
-        M5NotificationClosing(true);
-        try { await M5.DisposeAsync(); M5 = null; }
-        finally { M5NotificationClosing(false); }
-    }
     public static void ConfigureLogin(bool enabled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
@@ -243,7 +225,6 @@ public sealed partial class RuntimeHost(string dataRoot, bool demoOnly = false, 
     {
         await StopNotificationsAsync();
         await StopLightingSyncAsync();
-        await DisconnectM5Async();
         try { await BoardFans.DisposeAsync(); }
         finally
         {

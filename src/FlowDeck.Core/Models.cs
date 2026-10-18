@@ -36,8 +36,6 @@ public record HardwareSettings(HubIdentity? Hub = null, string[]? Fans = null, s
     string? WiringSignature = null, bool WiringConfirmed = false, LedChannel[]? LedDetails = null);
 public record StartupSettings(bool Login = false, bool ResumeControl = false);
 public record UiSettings(string Theme = "system", double? Left = null, double? Top = null, double Width = 1100, double Height = 800);
-public record M5Settings(string? Port = null, string? DeviceId = null, string Layout = "A",
-    string Transport = "usb", string? WifiAddress = null, string? WifiInterfaceId = null, int WifiPort = 47631);
 public record FanPolicy(FanMode Mode, int? ManualDuty = null, AutoProfile? Profile = null, FanLimits? Limits = null,
     string? CpuSensorId = null, string? GpuSensorId = null);
 public record LightingState(string? Requested = null, string? LastSent = null, Outcome Outcome = Outcome.Unknown,
@@ -53,7 +51,9 @@ public record AppSettings
     public FanPolicy? LastConfirmedPolicy { get; init; }
     public LightingState Lighting { get; init; } = new();
     public Dictionary<string, HubPortLighting> LightingPorts { get; init; } = [];
-    public M5Settings M5 { get; init; } = new();
+    // Accept the removed connection field in older settings without exporting it.
+    [JsonPropertyName("m5"), JsonIgnore]
+    public JsonElement LegacyConnection { get; init; }
     public MotherboardSettings Motherboard { get; init; } = new();
     public CpuFanSettings CpuFan { get; init; } = new();
     public CpuFanSettings ChassisFan { get; init; } = new();

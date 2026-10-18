@@ -10,6 +10,7 @@ public sealed class DeviceCoolingCalibrationDraft
     public PhysicalDeviceBinding Binding { get; }
     public DeviceSetupCandidate Candidate { get; }
     public int Duty { get; private set; }=100;
+    // Legacy caller compatibility only; a trial uses the explicit operation plus fresh service evidence.
     public bool Confirmed { get; set; }
     public bool MinimumConfirmed { get; set; }
     public bool Conflict { get; private set; }
@@ -39,11 +40,11 @@ public sealed class DeviceCoolingCalibrationDraft
     {
         if(Busy) return;
         if(value is <1 or >100||value!=100&&!CanReduce) throw new ArgumentOutOfRangeException(nameof(value));
-        if(Duty==value) return; Duty=value; Confirmed=false; MinimumConfirmed=false;
+        if(Duty==value) return; Duty=value;
     }
     public void Update(DeviceWorkspaceSnapshot snapshot)
     {
-        var previousDuty=CurrentDuty; latest=Contract.Copy(snapshot);
+        latest=Contract.Copy(snapshot);
         if(Busy) return;
         var before=original.State.Endpoints.SingleOrDefault(e=>e.Target==Target);
         var current=snapshot.State.Inventory.Devices.SingleOrDefault(d=>d.Device.Id==Target.DeviceId);
@@ -51,17 +52,15 @@ public sealed class DeviceCoolingCalibrationDraft
             snapshot.Configuration.Generation!=original.Configuration.Generation||snapshot.State.Inventory.TopologyRevision!=original.State.Inventory.TopologyRevision||
             current is null||current.Generation!=Candidate.Generation||Execution?.PolicyRevision!=before?.PolicyRevision||
             !snapshot.Configuration.Candidates.Contains(Binding)||snapshot.Configuration.Setup?.Any(c=>c.Target==Target&&c.Generation==Candidate.Generation&&c.Options.CoolingCalibrationSupported)!=true;
-        if(Conflict||!DeviceManagedExit&&previousDuty!=CurrentDuty) Confirmed=false;
-        if(!CanReduce&&Duty!=100) { Duty=100; Confirmed=false; }
+        if(!CanReduce&&Duty!=100) Duty=100;
     }
     public string? Problem=>Busy?"試験中・復元待ち":Conflict?"対象・設定が変わりました。再取得してください":
         !latest.Connected||latest.ExitAttempted||latest.State.Releasing||latest.State.ConfigurationChanging?"サービスへ接続してください":
         latest.State.LifecycleError is { } error?error:
         !latest.State.Inventory.Devices.Any(d=>d.Connected&&d.Device.Id==Target.DeviceId&&d.Generation==Candidate.Generation)?"機器へ接続してください":
         Execution is null||Execution.Owned||Execution.Outcome==Outcome.Pending?"この端子の制御を終了してください":
-        Rpm is not >0||CurrentDuty is null?"回転中の端子と新しい測定値を確認してください":
-        !Confirmed?"対象・試験内容を確認してください":null;
-    public bool CanAdopt=>!Busy&&!Conflict&&MinimumConfirmed&&latest.Connected&&CanReduce&&
+        Rpm is not >0||CurrentDuty is null?"回転数と現在の出力を取得できません":null;
+    public bool CanAdopt=>!Busy&&!Conflict&&latest.Connected&&CanReduce&&
         Result is { Completed:true,Restored:true,Outcome:Outcome.Confirmed }&&Equals(Execution?.Calibration,Result);
     public DeviceCoolingCalibrationEdit Capture()
     {
@@ -70,7 +69,7 @@ public sealed class DeviceCoolingCalibrationDraft
         return new(latest.State.Inventory.Epoch,latest.Session!,latest.Configuration.Generation,latest.State.Inventory.TopologyRevision,
             new(Target,Candidate.Generation,Execution!.PolicyRevision),new(Binding,Duty,CurrentDuty!.Value,true));
     }
-    public void Begin() { trialBeforeDuty=CurrentDuty; Busy=true; Confirmed=false; MinimumConfirmed=false; }
+    public void Begin() { trialBeforeDuty=CurrentDuty; Busy=true; }
     public void Complete(DeviceOperationResult? result,DeviceWorkspaceSnapshot snapshot)
     {
         Busy=false; latest=Contract.Copy(snapshot);
@@ -83,9 +82,9 @@ public sealed class DeviceCoolingCalibrationDraft
     }
     public DeviceEndpointSetupDraft AdoptMinimum()
     {
-        if(!CanAdopt) throw new InvalidOperationException("成功した試験と安定した回転を確認してください");
+        if(!CanAdopt) throw new InvalidOperationException("復元済みの試験結果を取得できません");
         var draft=new DeviceEndpointSetupDraft(latest,Target);
-        draft.Change(draft.Values with { Safety=draft.Values.Safety! with { Minimum=Result!.Duty },Confirmed=false });
+        draft.Change(draft.Values with { Safety=draft.Values.Safety! with { Minimum=Result!.Duty } });
         return draft;
     }
 }

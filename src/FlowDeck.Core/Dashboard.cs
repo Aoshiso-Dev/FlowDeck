@@ -40,7 +40,6 @@ public static class DashboardDisplay
             result.Add(new("nzxt", id, "fan", "NZXT FAN" + i, present || settings.Hardware.Fans?.Contains(id) == true));
         }
         var boardTemps = board.Sensors.Where(s => s.Kind == "temperature")
-            .OrderByDescending(s => settings.Motherboard.Sensors?.Any(c => c.Id == s.Id && c.ShowOnM5) == true)
             .Take(2).Select(s => s.Id).ToHashSet();
         foreach (var sensor in board.Sensors.Where(s => s.Kind is "temperature" or "fan"))
         {

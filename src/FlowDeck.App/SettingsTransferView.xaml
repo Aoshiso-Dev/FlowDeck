@@ -2,11 +2,11 @@
  <StackPanel>
   <Border Style="{StaticResource Card}"><StackPanel>
    <TextBlock Text="設定ファイル" Style="{StaticResource SectionTitle}"/>
-   <WrapPanel><Button x:Name="ExportButton" Content="書き出す" Command="{Binding ExportSettingsFile}"/><Button Content="復元ファイルを選択" Command="{Binding ChooseSettingsFile}" Style="{StaticResource Primary}"/></WrapPanel>
+   <WrapPanel><Button x:Name="ExportButton" Content="書き出し" Command="{Binding ExportSettingsFile}"/><Button Content="ファイル選択" Command="{Binding ChooseSettingsFile}" Style="{StaticResource Primary}"/></WrapPanel>
    <TextBlock Text="{Binding SettingsTransferFile}" Style="{StaticResource Muted}" Margin="0,12,0,0"/>
-   <Expander Header="対象の設定" Margin="0,10,0,0"><StackPanel>
-    <TextBlock Text="ファン・温度カーブ、照明・シーン・グループ・明るさ、色見本、表示、通知、M5GOレイアウト" TextWrapping="Wrap"/>
-    <TextBlock Text="Wi-Fiの秘密情報、M5GO接続先、Pythonの実行パス、自動起動、動作中の制御状態は書き出しません。機器の識別IDは含まれます。" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+   <Expander Header="対象" Margin="0,10,0,0"><StackPanel>
+    <TextBlock Text="ファン・温度カーブ、照明・シーン・グループ・明るさ、色見本、表示、通知" TextWrapping="Wrap"/>
+    <TextBlock Text="対象外：Pythonパス・自動起動・制御状態 / 機器IDは対象" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
    </StackPanel></Expander>
   </StackPanel></Border>
   <Border x:Name="PreviewCard" Style="{StaticResource Card}" Visibility="{Binding SettingsHasPreview,Converter={StaticResource BoolVisibility}}"><StackPanel>
@@ -14,14 +14,14 @@
    <DataGrid x:Name="DifferenceGrid" ItemsSource="{Binding SettingsDifferences}" IsReadOnly="True" MaxHeight="300" MinHeight="90" CanUserSortColumns="False" AutomationProperties.Name="復元前後の差分"><DataGrid.Columns>
     <DataGridTextColumn Header="項目" Binding="{Binding Item}" Width="1.4*"/><DataGridTextColumn Header="現在" Binding="{Binding Before}" Width="*"/><DataGridTextColumn Header="復元後" Binding="{Binding After}" Width="*"/>
    </DataGrid.Columns><DataGrid.CellStyle><Style TargetType="DataGridCell"><Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self},Path=Content.Text}"/></Style></DataGrid.CellStyle></DataGrid>
-   <Expander Header="機器との対応" IsExpanded="True" Margin="0,14,0,0"><ItemsControl ItemsSource="{Binding SettingsDeviceChecks}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Style="{StaticResource Muted}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Expander>
-   <TextBlock Text="次回起動時に復元し、監視状態で開始します。元の設定は自動で退避します。" TextWrapping="Wrap" Margin="0,16,0,12"/>
+   <Expander Header="機器" IsExpanded="True" Margin="0,14,0,0"><ItemsControl ItemsSource="{Binding SettingsDeviceChecks}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,3" Style="{StaticResource Muted}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></Expander>
+   <TextBlock Text="次回起動時に復元・監視のみで開始 / 元の設定は自動退避" TextWrapping="Wrap" Margin="0,16,0,12"/>
    <Button x:Name="RestoreButton" Content="次回起動時に復元" Command="{Binding ScheduleSettingsRestore}" HorizontalAlignment="Left" Style="{StaticResource Primary}"/>
   </StackPanel></Border>
   <Border Style="{StaticResource Card}" Visibility="{Binding SettingsHasPending,Converter={StaticResource BoolVisibility}}"><StackPanel>
-   <TextBlock Text="復元を予約済み" Style="{StaticResource SectionTitle}"/>
-   <TextBlock Text="トレイから通常終了し、再び起動すると反映されます。予約後に設定を変更した場合は差分の再確認が必要です。" TextWrapping="Wrap"/>
-   <Button Content="予約を取り消す" Command="{Binding CancelSettingsRestore}" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+   <TextBlock Text="復元予約済み" Style="{StaticResource SectionTitle}"/>
+   <TextBlock Text="反映：トレイから終了 → 再起動 / 予約後の設定変更：差分の再確認が必要" TextWrapping="Wrap"/>
+   <Button Content="予約取消" Command="{Binding CancelSettingsRestore}" HorizontalAlignment="Left" Margin="0,12,0,0"/>
   </StackPanel></Border>
   <TextBlock Text="{Binding SettingsTransferResult}" TextWrapping="Wrap" Margin="0,4,0,16"/>
  </StackPanel>

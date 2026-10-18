@@ -71,7 +71,8 @@ public sealed partial class DeviceWorkspaceViewModel
     {
         var config = snapshot.Configuration.Configuration;
         DashboardDraft.Update(config.Devices, config.Dashboard, snapshot.State, snapshot.Configuration.Generation, snapshot.Connected);
-        var rows = DashboardDraft.Items.Select(item =>
+        var rows = DashboardDraft.Items.Where(item => snapshot.Connected && snapshot.State.Inventory.Devices.Any(d =>
+            d.Connected && d.Device.Id == item.Target.DeviceId && d.Device.Endpoints.Any(e => e.Id == item.Target.EndpointId))).Select(item =>
         {
             var row = DashboardSettings.SingleOrDefault(r => r.Item.Target == item.Target && r.Item.Measurement == item.Measurement) ??
                 new DeviceDashboardRow(item, next => { DashboardDraft.Set(next); PublishDashboardState(); });
@@ -89,17 +90,28 @@ public sealed partial class DeviceWorkspaceViewModel
     }
     public void MoveDashboard(DeviceDashboardRow row, int direction)
     {
-        if (!DashboardSettingsIdle) return;
-        DashboardDraft.Move(row.Item.Target, row.Item.Measurement, direction); Render();
+        if (!DashboardSettingsIdle || direction is not (-1 or 1)) return;
+        var visibleIndex = DashboardSettings.IndexOf(row);
+        var neighborIndex = visibleIndex + direction;
+        if (visibleIndex < 0 || neighborIndex < 0 || neighborIndex >= DashboardSettings.Count) return;
+        var items = DashboardDraft.Items;
+        var neighbor = DashboardSettings[neighborIndex].Item;
+        var index = Array.FindIndex(items, item => item.Target == row.Item.Target && item.Measurement == row.Item.Measurement);
+        var destination = Array.FindIndex(items, item => item.Target == neighbor.Target && item.Measurement == neighbor.Measurement);
+        // Hidden saved items remain in the draft; move past them to the next visible row.
+        for (var step = 0; step < Math.Abs(destination - index); step++)
+            DashboardDraft.Move(row.Item.Target, row.Item.Measurement, direction);
+        Render();
     }
     public async Task SaveDashboardAsync()
     {
         if (dashboardBusy || closing) return;
         Render(); var edit = DashboardDraft.Capture(); dashboardBusy = true; PublishDashboardState();
+        using var status = BeginStatus("表示設定を保存中");
         try
         {
             var result = await client.SaveDashboardAsync(edit);
-            DashboardDraft.Reset(); Render(); Notice = result.Message;
+            DashboardDraft.Reset(); Render(); ReportResult(result.Message, result.Outcome);
         }
         finally { dashboardBusy = false; Render(); }
     }

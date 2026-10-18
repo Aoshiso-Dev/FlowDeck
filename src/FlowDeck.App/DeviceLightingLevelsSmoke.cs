@@ -15,11 +15,16 @@ public static partial class SmokeRunner
         void Check(bool value, string message) { if (!value) throw new InvalidOperationException(message); report.Add("PASS " + message); }
         try
         {
-            model.SelectedPage = 2; await Settle(); var panel = Descendants<DeviceLightingLevelsView>(window).Single();
+            model.SelectedPage = 2; await Settle();
+            Descendants<Expander>(window).Single(e => AutomationProperties.GetAutomationId(e) == "LightingAdvancedSection")
+                .SetCurrentValue(Expander.IsExpandedProperty, true);
+            await Settle(); var panel = Descendants<DeviceLightingLevelsView>(window).Single();
             Descendants<Expander>(panel).Single().IsExpanded = true; panel.BringIntoView(); await Settle();
             Check(!model.LightLevelDraft.Dirty && !model.CanApplyLightLevel && !model.CanToggleLightLevel, "Unconfigured lighting has no fabricated applied brightness and no enabled operation");
             var fan = model.Cooling.First(); fan.Mode = "固定"; fan.Duty = 55; await model.OperateAsync(fan); var writes = demo.Hubs.Select(h => h.Writes).ToArray();
-            var refs = model.Lights.Select(l => l.Target).ToArray(); model.SelectLights(refs); model.LightEffect = "fixed"; model.LightColor = Color.FromRgb(0, 0, 200); model.LightBrightness = 100; await model.ApplyLightsAsync();
+            // Inventory is sorted by randomized device IDs; match the fixture's Hub order explicitly.
+            var refs = demo.DeviceIds.Select(id => model.Lights.Single(l => l.Target.DeviceId == id && l.Target.EndpointId == "led1").Target).ToArray();
+            model.SelectLights(refs); model.LightEffect = "fixed"; model.LightColor = Color.FromRgb(0, 0, 200); model.LightBrightness = 100; await model.ApplyLightsAsync();
             Check(model.CanToggleLightLevel && model.LightLevelBrightness == 100 && !model.LightLevelDraft.Dirty, "Saved baseline becomes adjustable and polling does not manufacture slider edits");
             var slider = Descendants<Slider>(panel).Single(); slider.SetCurrentValue(Slider.ValueProperty, 50d);
             for (var i = 0; i < 3; i++) await model.PollAsync(); await Settle();

@@ -17,7 +17,7 @@ public class DeviceConfigurationCodecTests
             new(2, [new(fan, true, new(30, 100, 50, CoolingExitAction.FixedDuty, []), [profile],
                 new(FanMode.Auto, Profile: profile, SafetySnapshot: new(30, 100, 50, CoolingExitAction.FixedDuty, [])), true)], []),
             new(2, [], [], [], [], []), new(2, [new(sensor, DeviceFeature.Temperature, "水温", "temperature")]),
-            new(2, new(Left: 200, Top: 100), new(Port: "COM14", DeviceId: "panel", Transport: "auto", WifiAddress: "192.168.1.19"),
+            new(2, new(Left: 200, Top: 100),
                 new(true, true), new(Rules: []), new(["#123456"], ["#345678"])),
             new(2, "legacy-v1", new('c', 64), [new("sensor", "legacy-native", "temperature", sensor)], []));
     }
@@ -34,8 +34,8 @@ public class DeviceConfigurationCodecTests
         var original = Package(); var portable = DeviceConfigurationCodec.Portable(original);
         Assert.Null(portable.Bindings.InstallationId); Assert.Empty(portable.Bindings.Devices);
         Assert.False(portable.Cooling.Endpoints[0].WiringConfirmed); Assert.Null(portable.Cooling.Endpoints[0].SavedPolicy); Assert.False(portable.Cooling.Endpoints[0].ResumeOnStart);
-        Assert.False(portable.Preferences.Startup.ResumeControl); Assert.Null(portable.Preferences.M5.Port);
-        Assert.Null(portable.Preferences.M5.DeviceId); Assert.Null(portable.Preferences.M5.WifiAddress); Assert.Null(portable.Preferences.Ui.Left);
+        Assert.False(portable.Preferences.Startup.ResumeControl);
+        Assert.Null(portable.Preferences.Ui.Left);
         Assert.Equal(30, portable.Cooling.Endpoints[0].Safety.Minimum); Assert.Equal("前面", portable.Devices.Devices[0].Endpoints[0].Name);
         Assert.Equal(original.Preferences.Palette.Favorites, portable.Preferences.Palette.Favorites); Assert.Empty(portable.Migration.References);
         Assert.True(original.Cooling.Endpoints[0].WiringConfirmed); Assert.NotEmpty(original.Bindings.Devices);
@@ -68,8 +68,6 @@ public class DeviceConfigurationCodecTests
         var rule = new DeviceNotificationRule(Guid.NewGuid().ToString("N"), new("controller", "light"), DeviceFeature.Temperature, "照明", 80);
         Assert.Throws<IOException>(() => DeviceConfigurationCodec.Validate(value with {
             Preferences = value.Preferences with { Notifications = new(Rules: [rule]) } }));
-        Assert.Throws<IOException>(() => DeviceConfigurationCodec.Validate(value with {
-            Devices = new(2, [controller with { Endpoints = [.. controller.Endpoints, light with { Setup = new("ARGB", 24, ShowOnM5: true) }] }]) }));
         Assert.Throws<IOException>(() => DeviceConfigurationCodec.Validate(value with {
             Devices = new(2, [controller with { Endpoints = [controller.Endpoints[0] with { Setup = new(LedCount: 24) }, controller.Endpoints[1]] }]) }));
         Assert.Throws<IOException>(() => DeviceConfigurationCodec.Validate(value with {

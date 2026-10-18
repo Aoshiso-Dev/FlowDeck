@@ -13,7 +13,7 @@ public class DeviceLightingLibraryDraftTests
         var config = new DeviceConfigurationPackage(new(2, [new("a", "同じ機器", "demo", DeviceKind.Controller, [new("led1", "同じ照明", EndpointKind.Lighting)]),
             new("b", "同じ機器", "demo", DeviceKind.Controller, [new("led1", "同じ照明", EndpointKind.Lighting), new("led2", "別の照明", EndpointKind.Lighting)])]),
             new(2, Epoch, []), new(2, [], []), new(2, scene is null ? [] : [scene], [new("group", "照明", EndpointKind.Lighting, [A, B], 3)], [], [], []),
-            new(2, []), new(2, new(), new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
+            new(2, []), new(2, new(), new(), new(), new([], [])), new(2, "fresh", new('a', 64), [], []));
         return new(new(new(Epoch, 0, []), [], false, null), new(Generation, config, []), 0, true, null, Session: Session);
     }
     [Fact] public void NamesAreNotIdentityAndPollingPreservesGroupNameAndMembership()
@@ -107,7 +107,7 @@ public class DeviceLightingLibraryDraftTests
     public void LibraryLimitsBlockNewEntriesButAllowEditingAndDeletion(bool scene)
     {
         var s = Snapshot(); var lighting = s.Configuration.Configuration.Lighting;
-        lighting = scene ? lighting with { Scenes = Enumerable.Range(0, 64).Select(i => new DeviceLightingScene("s" + i, "シーン", [new(A, Red)], [], ShowOnM5: i < 32)).ToArray() } :
+        lighting = scene ? lighting with { Scenes = Enumerable.Range(0, 64).Select(i => new DeviceLightingScene("s" + i, "シーン", [new(A, Red)], [])).ToArray() } :
             lighting with { Groups = Enumerable.Range(0, 32).Select(i => new EndpointGroup("g" + i, "グループ", EndpointKind.Lighting, [A])).ToArray() };
         s = s with { Configuration = s.Configuration with { Configuration = s.Configuration.Configuration with { Lighting = lighting } } };
         var kind = scene ? LightingPresetKind.Scene : LightingPresetKind.Group; var fresh = new DeviceLightingLibraryDraft(s, kind) { Name = "超過" };
@@ -119,7 +119,7 @@ public class DeviceLightingLibraryDraftTests
     {
         string[] args = ["--devices-preview", "--demo", "--data-dir", Path.GetTempPath(), "--lighting-library"];
         if (mode != "missing-smoke") args = [.. args, "--smoke"];
-        if (mode == "other-smoke") args = [.. args, "--m5-connection"];
+        if (mode == "other-smoke") args = [.. args, "--notifications"];
         if (mode == "external") args = [.. args, "--devices-pipe", "FlowDeck.Devices.Demo." + Epoch, "--server-pid", "1"];
         Assert.Throws<ArgumentException>(() => DeviceWorkspaceOptions.Parse(args));
     }

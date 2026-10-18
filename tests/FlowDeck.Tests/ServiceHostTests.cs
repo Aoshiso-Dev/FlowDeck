@@ -128,7 +128,7 @@ public class ServiceHostTests
     [Fact] public void ServiceSettingsExcludeUserSecretsExecutablePathsAndDisplayPreferences()
     {
         using var dir = new ServiceTestDirectory(); var store = new ServiceSettingsStore(dir.Path);
-        var settings = DemoHub.CreateSettings() with { PythonPath = "untrusted.exe", Ui = new("dark"), M5 = new("COM99", WifiAddress: "private-address"), Startup = new(true, true) };
+        var settings = DemoHub.CreateSettings() with { PythonPath = "untrusted.exe", Ui = new("dark"), Startup = new(true, true) };
         store.Save(settings); var restored = store.Load();
         Assert.Equal(settings.Hardware.Hub, restored.Hardware.Hub); Assert.Equal(settings.Limits, restored.Limits);
         var json = File.ReadAllText(System.IO.Path.Combine(dir.Path, "cooling-settings.json"));

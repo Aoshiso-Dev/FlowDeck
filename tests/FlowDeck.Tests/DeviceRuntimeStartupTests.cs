@@ -25,7 +25,7 @@ public class DeviceRuntimeStartupTests
                 observation.Endpoints.Select(e => new RegisteredEndpoint(e.Id, e.Name, e.Kind)).ToArray())]),
             new(2, Installation, [inventory.BindingCandidate!]),
             new(2, [new(new(inventory.DeviceId, "fan1"), true, safety, [], new(FanMode.Manual, 65, SafetySnapshot: safety), true)], []),
-            new(2, [], [], [], [], []), new(2, []), new(2, new(), new(), new(true, resume), new(Rules: []), new([], [])),
+            new(2, [], [], [], [], []), new(2, []), new(2, new(), new(true, resume), new(Rules: []), new([], [])),
             new(2, "native-v2", new('a', 64), [], []));
     }
     private static ConfigurationGenerationStore Save(string directory, DeviceConfigurationPackage config)
@@ -79,16 +79,22 @@ public class DeviceRuntimeStartupTests
         Assert.Equal(globalResume, reply.Success); Assert.Equal(globalResume ? 1 : 0, hub.Writes);
     }
     [Fact]
-    public async Task AGenerationFromAnotherInstallationRemainsMonitoringOnly()
+    public async Task ForeignInstallationTemplatesCannotAdoptSavedPolicyOrWriteToItsConfiguration()
     {
         using var directory = new ServiceTestDirectory(); var hub = new DemoHub() { DelayMs = 0 };
         var config = await Package(hub, directory.Path); var store = Save(directory.Path, config);
         var driver = new HubDeviceDriver(Installation, DemoHub.Identity.Id, hub, directory.Path);
         await using var startup = await DeviceRuntimeStartup.CreateAsync(store, Guid.NewGuid().ToString("N"), () => new([driver], []), ["user"], new TestLog(), demo: true);
-        Assert.False(startup.SameInstallation); Assert.Equal(10, startup.Runtime.State().Telemetry!.Length); Assert.Null(driver.CoolingConfiguration("fan1"));
+        Assert.False(startup.SameInstallation); Assert.Equal(10, startup.Runtime.State().Telemetry!.Length);
+        var template = driver.CoolingConfiguration("fan1")!;
+        Assert.Equal(SettingsTransfer.Hash(config.Cooling.Endpoints.Single().Safety), SettingsTransfer.Hash(template.Safety));
+        Assert.Null(template.SavedPolicy); Assert.False(template.ResumeOnStart);
+        Assert.Equal(0, hub.Writes); var before = startup.Generation;
         var hello = startup.Runtime.OpenSession("user");
-        Assert.False((await startup.Runtime.ExecuteAsync(Request(startup, hello, DeviceOperation.SetDuty, duty: 60))).Success);
-        Assert.Equal(0, hub.Writes);
+        Assert.False((await startup.Runtime.ExecuteAsync(Request(startup, hello, DeviceOperation.RestoreSavedCooling))).Success);
+        Assert.False((await startup.Runtime.ExecuteAsync(Request(startup, hello, DeviceOperation.SetDuty, sequence: 2, duty: 60))).Success);
+        Assert.Equal(0, hub.Writes); Assert.Equal(before, store.ReadActivePointer());
+        Assert.Equal(SettingsTransfer.Hash(config), SettingsTransfer.Hash(startup.Configuration));
     }
     [Fact]
     public async Task AnOldJournalIsRecoveredBeforeTheNewConfigurationIsApplied()

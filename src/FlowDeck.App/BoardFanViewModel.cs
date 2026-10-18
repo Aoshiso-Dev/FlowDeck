@@ -17,7 +17,7 @@ public sealed class BoardFanRow(MotherboardFanPort port) : Observable
     public bool Bar => true;
     public bool Inline => true;
     public double ScaleMaximum => RpmScaleConverter.Scale(Value, Role == "ポンプ");
-    public string ScaleDescription => $"表示目盛 0–{ScaleMaximum:N0} rpm（定格上限・出力率とは別です）";
+    public string ScaleDescription => $"表示目盛 0–{ScaleMaximum:N0} rpm（定格・出力率とは別）";
     public string Role { get; private set; } = "ファン";
     public string Mode { get; private set; } = "マザー管理";
     public void Update(CpuFanState state, AppSettings settings, BoardSnapshot board)
@@ -64,11 +64,11 @@ public sealed partial class FlowDeckViewModel
     private CpuFanSettings SelectedFanSettings => MotherboardFans.Settings(core.Settings, SelectedBoardFan.Id);
     public string BoardFanTitle => BoardFanRows.FirstOrDefault(r => r.Port == SelectedBoardFan)?.Name ?? SelectedBoardFan.Name;
     public string BoardFanOutputNote => SelectedBoardFan.Chip == "NCT6799D" && SelectedBoardFan.Channel >= 5
-        ? "出力欄は設定値です。回転数で実際の変化を確認してください。" : "";
+        ? "出力：設定値 / 実動作：回転数で確認" : "";
     public string BoardFanSetupSummary => !SelectedFanSettings.WiringConfirmed || SelectedFanSettings.Minimum is null
-        ? "初回は「初期設定」で端子と最低出力を確認してください。"
+        ? "端子・最低出力が未確認"
         : $"最低出力 {SelectedFanSettings.Minimum}% · " + (SelectedFanSettings.Profile is null ? "自動カーブ未設定" : "自動カーブ設定済み");
-    public string BoardFanWiringLabel => SelectedBoardFan.Name + "にファンを接続し、端子テストで対象の変化を確認した";
+    public string BoardFanWiringLabel => SelectedBoardFan.Name + "の実配線・端子テストを確認済み";
     public bool BoardFanCanSelect => !cpuFanBusy;
     public ObservableCollection<FanTemperatureChoice> BoardFanTemperatures { get; } = [];
     public ObservableCollection<CurvePointRow> CpuFanGpuPoints { get; } = [];

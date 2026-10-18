@@ -40,7 +40,6 @@ public class DeviceCatalogPresentationTests
         Assert.Equal("FAN1", s.State.Inventory.Devices[0].Device.Endpoints.Single(e => e.Id == "fan1").Name);
     }
     [Theory]
-    [InlineData("disconnected", "サービス未接続")]
     [InlineData("stale", "状態の更新待ち")]
     [InlineData("invalid-age", "状態の更新待ち")]
     [InlineData("exit", "終了処理中")]
@@ -50,7 +49,7 @@ public class DeviceCatalogPresentationTests
     public void UnavailableSnapshotCannotRetainReadyLabelsButKeepsEvidenceAndLastReasons(string condition, string expected)
     {
         var s = Snapshot(); var next = condition switch {
-            "disconnected" => s with { Connected = false }, "stale" => s with { ElapsedSeconds = 3 },
+            "stale" => s with { ElapsedSeconds = 3 },
             "invalid-age" => s with { ElapsedSeconds = double.NaN }, "exit" => s with { ExitAttempted = true },
             "releasing" => s with { State = s.State with { Releasing = true } },
             "configuring" => s with { State = s.State with { ConfigurationChanging = true } },
@@ -71,22 +70,39 @@ public class DeviceCatalogPresentationTests
         rpm = Assert.Single(DeviceCatalogPresentation.Build(s)).Endpoints.Single(e => e.Id == "fan1").Capabilities[0];
         Assert.True(rpm.Available); Assert.Equal("利用可", rpm.Availability);
     }
-    [Fact] public void RegisteredDeviceAbsentFromNewInventoryRemainsNamedWithoutInventedCapabilities()
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("disconnected")]
+    [InlineData("service")]
+    public void UnavailableDeviceIsHiddenAndReconnectRestoresSavedNamesWithoutChangingConfiguration(string condition)
     {
-        var s = Snapshot(); s = s with { State = s.State with { Inventory = s.State.Inventory with { Devices = [] } } };
-        var row = Assert.Single(DeviceCatalogPresentation.Build(s)); Assert.Equal("board", row.Id); Assert.Equal("自分のマザー", row.Name);
-        Assert.Equal("未接続", row.Status); Assert.Equal(3, row.Endpoints.Length); Assert.All(row.Endpoints, e => Assert.Empty(e.Capabilities));
-        Assert.Contains("対応定義：未取得", row.IdentityDetails); Assert.Contains("接続位置：未取得", row.IdentityDetails);
+        var s = Snapshot(); var before = SettingsTransfer.Hash(s.Configuration.Configuration);
+        var next = condition switch {
+            "service" => s with { Connected = false },
+            "disconnected" => s with { State = s.State with { Inventory = s.State.Inventory with {
+                Devices = [s.State.Inventory.Devices[0] with { Connected = false }] } } },
+            _ => s with { State = s.State with { Inventory = s.State.Inventory with { Devices = [] } } } };
+        Assert.Empty(DeviceCatalogPresentation.Build(next));
+        Assert.Equal(before, SettingsTransfer.Hash(next.Configuration.Configuration));
+        var restored = Assert.Single(DeviceCatalogPresentation.Build(next with { Connected = true, State = s.State }));
+        Assert.Equal("自分のマザー", restored.Name); Assert.Equal("背面ファン", restored.Endpoints.Single(e => e.Id == "fan1").Name);
+    }
+    [Fact] public void SavedOnlyEndpointsAreHiddenWithoutRemovingTheirConfiguration()
+    {
+        var s = Snapshot(); var observed = s.State.Inventory.Devices[0];
+        var next = s with { State = s.State with { Inventory = s.State.Inventory with {
+            Devices = [observed with { Device = observed.Device with { Endpoints = [observed.Device.Endpoints[0]] } }] } } };
+        var row = Assert.Single(DeviceCatalogPresentation.Build(next)); Assert.Equal("temp", Assert.Single(row.Endpoints).Id);
+        Assert.Equal(3, next.Configuration.Configuration.Devices.Devices[0].Endpoints.Length);
+        Assert.Equal(3, Assert.Single(DeviceCatalogPresentation.Build(next with { State = s.State })).Endpoints.Length);
     }
     [Fact] public void UnpluggingOneDeviceDoesNotDowngradeAnotherWithTheSameName()
     {
         var s = Snapshot(); var original = s.State.Inventory.Devices[0];
         var second = original with { Device = original.Device with { Id = "another-board", Name = "自分のマザー", Endpoints = [original.Device.Endpoints[2]] } };
         s = s with { State = s.State with { Inventory = s.State.Inventory with { Devices = [original with { Connected = false }, second] } } };
-        var rows = DeviceCatalogPresentation.Build(s); Assert.Equal(2, rows.Length);
-        Assert.Equal("未接続", rows.Single(d => d.Id == "board").Status);
-        Assert.All(rows.Single(d => d.Id == "board").Endpoints.SelectMany(e => e.Capabilities), c => Assert.False(c.Available));
-        Assert.Equal("設定待ち", rows.Single(d => d.Id == "another-board").Endpoints[0].Capabilities[0].Availability);
+        var rows = DeviceCatalogPresentation.Build(s); var row = Assert.Single(rows);
+        Assert.Equal("another-board", row.Id); Assert.Equal("設定待ち", row.Endpoints[0].Capabilities[0].Availability);
         var reversed = DeviceCatalogPresentation.Build(s with { State = s.State with { Inventory = s.State.Inventory with { Devices = s.State.Inventory.Devices.Reverse().ToArray() } } });
         Assert.Equal(rows.Select(d => d.Id), reversed.Select(d => d.Id));
     }

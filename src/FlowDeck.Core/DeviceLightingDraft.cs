@@ -13,10 +13,20 @@ public sealed class DeviceLightingDraft
     private EndpointReference[] selected = [];
     private LightingProgram program = new("fixed", [new(52, 137, 255)]);
     private DeviceLightingEditVersion? editedAt;
+    private DeviceLightingEdit? captured;
+    private LightingProgram?[] baseline = [];
     private bool live;
     public EndpointReference[] Targets => selected.ToArray();
     public LightingProgram Program => Contract.Copy(program);
     public bool Dirty { get; private set; }
+    public bool EffectChanged => Changed((a, b) => a.EffectId == b.EffectId);
+    public bool ColorChanged => Changed((a, b) => a.Colors.SequenceEqual(b.Colors) &&
+        (a.LedColors is null ? b.LedColors is null : b.LedColors is not null && a.LedColors.SequenceEqual(b.LedColors)));
+    public bool BrightnessChanged => Changed((a, b) => a.Brightness == b.Brightness);
+    public bool SpeedChanged => Changed((a, b) => a.Speed == b.Speed);
+    public bool DirectionChanged => Changed((a, b) => a.Reverse == b.Reverse);
+    public bool PerLedChanged => Changed((a, b) => (a.LedColors is null) == (b.LedColors is null));
+    private bool Changed(Func<LightingProgram, LightingProgram, bool> same) => Dirty && baseline.Any(value => value is null || !same(value, program));
     public bool Mixed { get; private set; }
     public bool Conflict => Dirty && !SameVersion(editedAt, CurrentVersion());
     public string? Problem => selected.Length == 0 ? "照明を選択してください" : !live ? "状態を更新してください" :
@@ -47,20 +57,41 @@ public sealed class DeviceLightingDraft
         var next = references.ToArray();
         if (next.Length > DeviceServiceProtocol.MaximumTargets || next.Any(t => !DeviceConfigurationRules.ValidReference(t)) || next.Distinct().Count() != next.Length)
             throw new ArgumentException("照明対象の指定が不正です");
-        if (selected.SequenceEqual(next)) return;
+        if (selected.Length == next.Length && selected.All(next.Contains)) return;
         selected = next;
-        if (!Dirty) Adopt();
-        else if (editedAt is { } before && CurrentVersion() is { } current)
-            editedAt = before with { Targets = current.Targets.Select(t => before.Targets.SingleOrDefault(p => p.Target == t.Target) ?? t).ToArray() };
+        // A draft belongs to exactly one target set. Selection itself never applies it.
+        Reset();
     }
     public void SetProgram(LightingProgram value)
     {
         if (!DeviceLighting.FrameProgram(value) && !NativeEffects.Any(e => DeviceNativeLighting.Accepts(e, value))) throw new ArgumentException("選択した照明で使える効果・設定を選んでください");
         if (!Mixed && DeviceLighting.SameProgram(program, value)) return;
+        var conflicted = Conflict;
         if (!Dirty) editedAt = CurrentVersion();
-        program = Contract.Copy(value); Dirty = true; Mixed = false;
+        captured = null;
+        program = Contract.Copy(value); Mixed = false;
+        Dirty = conflicted || baseline.Any(before => before is null || !DeviceLighting.SameProgram(before, program));
+        if (!Dirty) { editedAt = null; Adopt(); }
     }
-    public void Reset() { Dirty = false; editedAt = null; Adopt(); }
+    public void Reset() { Dirty = false; editedAt = null; captured = null; Adopt(); }
+    public static bool AppliedSuccessfully(DeviceLightingEdit edit, DeviceOperationResult result, DeviceServiceState? current) =>
+        result.Outcome is Outcome.Confirmed or Outcome.WrittenUnverified &&
+        current is not null && current.Inventory.Epoch == edit.Version.Epoch &&
+        edit.Version.Targets.Length > 0 && result.Targets.Length == edit.Version.Targets.Length &&
+        result.Targets.Select(t => t.Target).Distinct().Count() == result.Targets.Length &&
+        edit.Version.Targets.All(t => result.Targets.Any(r => r.Target == t.Target && r.Generation == t.Generation &&
+            r.Outcome is Outcome.Confirmed or Outcome.WrittenUnverified &&
+            r.Persistence?.State is not (DevicePolicySaveState.Failed or DevicePolicySaveState.Superseded) &&
+            current.Endpoints.SingleOrDefault(e => e.Target == r.Target) is { } latest &&
+            latest.Generation == r.Generation && latest.PolicyRevision == r.PolicyRevision));
+    public bool AcceptApplied(DeviceLightingEdit edit, DeviceOperationResult result)
+    {
+        // Late completion of a cancelled or replaced draft must not clear the new editor.
+        if (!ReferenceEquals(captured, edit) || edit.Operation != DeviceOperation.SetLighting || !Dirty ||
+            !SameVersion(editedAt, edit.Version) || edit.Program is null || !DeviceLighting.SameProgram(program, edit.Program) ||
+            !AppliedSuccessfully(edit, result, state)) return false;
+        Reset(); return true;
+    }
     // The service adapter calls this only after proving that a metadata save left all operating settings unchanged.
     public void AcceptMetadataSave(DeviceLightingEditVersion before, DeviceLightingEditVersion after)
     {
@@ -73,7 +104,8 @@ public sealed class DeviceLightingDraft
             ? current.RequestedLighting : lighting?.Preferences?.SingleOrDefault(p => p.Target == t)?.Program).ToArray();
         Mixed = values.Length > 0 && values.Any(v => v is not null) &&
             (values.Any(v => v is null) || values.Skip(1).Any(v => !DeviceLighting.SameProgram(values[0]!, v!)));
-        if (!Mixed && values.FirstOrDefault() is { } value) program = Contract.Copy(value);
+        program = !Mixed && values.FirstOrDefault() is { } value ? Contract.Copy(value) : new("fixed", [new(52, 137, 255)]);
+        baseline = values.Any(v => v is not null) ? values.Select(v => v is null ? null : Contract.Copy(v)).ToArray() : [Contract.Copy(program)];
     }
     public DeviceNativeLightingEffect[] NativeEffects => DeviceNativeLighting.Common(selected.Select(t => state?.Inventory.Devices.SingleOrDefault(d => d.Device.Id == t.DeviceId)?.Device.Endpoints.SingleOrDefault(e => e.Id == t.EndpointId)));
     public bool Supports(string effect) => selected.Length > 0 && Check(Feature(new(effect, []))) is null &&
@@ -108,7 +140,7 @@ public sealed class DeviceLightingDraft
     public DeviceLightingEdit Capture()
     {
         if (!CanApply) throw new InvalidOperationException(Mixed ? "選択した照明の設定が混在しています。色・効果を選んでください" : Problem);
-        return new(Contract.Copy(Dirty ? editedAt! : CurrentVersion()!), DeviceOperation.SetLighting, Program);
+        return captured = new(Contract.Copy(Dirty ? editedAt! : CurrentVersion()!), DeviceOperation.SetLighting, Program);
     }
     public DeviceLightingEdit CaptureAdjustment(LightingAdjustmentKind kind, int? brightness = null)
     {

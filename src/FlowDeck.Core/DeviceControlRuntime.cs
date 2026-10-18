@@ -82,13 +82,14 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
                     .. configurationHandler is IDeviceMonitoringConfigurationHandler ? new[] { "monitoring-registration-v2" } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceSetupConfigurationHandler ? new[] { "endpoint-setup-v2" } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceConnectionLightingHandler ? new[] { DeviceConnectionLighting.Feature } : Array.Empty<string>(),
+                    .. configurationHandler is IDeviceCurrentConnectionConfiguration ? new[] { DeviceCurrentConnectionControl.Feature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceLightingSetupHandler ? new[] { DeviceEndpointSetupScope.LightingFeature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceIndividualCoolingSetupHandler ? new[] { DeviceEndpointSetupScope.Feature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceChunkedConfigurationSnapshotHandler ? new[] { DeviceConfigurationProtocol.SnapshotFeature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceStartupConfigurationHandler ? new[] { "cooling-startup-settings-v2" } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceCoolingGroups ? new[] { "cooling-groups-v2" } : Array.Empty<string>(),
-                    .. configurationHandler is IDeviceNotificationConfiguration ? new[] { "notifications-v2", DeviceM5NotificationReport.Feature } : Array.Empty<string>(),
-                    .. configurationHandler is IDeviceM5ConfigurationHandler ? new[] { "m5-settings-v2" } : Array.Empty<string>(),
+                    .. configurationHandler is IDeviceDialDisplayConfigurationHandler ? new[] { DeviceDialDisplaySettings.Feature } : Array.Empty<string>(),
+                    .. configurationHandler is IDeviceNotificationConfiguration ? new[] { "notifications-v2" } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceOpenRgbInspectionHandler { SupportsOpenRgbInspection: true } ? new[] { DeviceOpenRgbInspection.Feature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceOpenRgbRuntimeInspectionHandler { SupportsOpenRgbRuntimeInspection: true } ? new[] { DeviceOpenRgbRuntimeInspection.Feature } : Array.Empty<string>(),
                     .. configurationHandler is IDeviceProviderRoutingHandler { SupportsProviderRouting: true } ? new[] { DeviceProviderRouteReview.Feature } : Array.Empty<string>(),
@@ -104,9 +105,8 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
     {
         lock (gate)
         {
-            RefreshCore(); var inventory = registry.Snapshot; var sampledAt = clock.GetTimestamp();
-            return new(inventory, Contract.Copy(states.Values.Select(s=>s with { CalibrationReady=CalibrationReadyCore(s),
-                Lighting = LightingMirrorCore(s, sampledAt) }).ToArray()), releasing, lifecycleError, TelemetryCore(inventory), configurationChanging);
+            RefreshCore(); var inventory = registry.Snapshot;
+            return new(inventory, Contract.Copy(states.Values.Select(s=>s with { CalibrationReady=CalibrationReadyCore(s) }).ToArray()), releasing, lifecycleError, TelemetryCore(inventory), configurationChanging);
         }
     }
     private DeviceTelemetry[] TelemetryCore(DeviceInventory inventory)
@@ -240,6 +240,7 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
             if (shutdownClosedDrivers.Contains(driver)) continue;
             try
             {
+                PrepareCurrentControlCore(driver);
                 var device = driver.Observe();
                 if (device is not null)
                 {
@@ -379,7 +380,7 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
             else if (request.Operation == DeviceOperation.ReadDiagnostics) QueueDiagnosticsCore(request, completion);
             else if (request.Operation == DeviceOperation.ReadStateSnapshot) QueueStateSnapshotCore(request, completion);
             else if (request.Operation == DeviceOperation.State) completion.SetResult(LegacyStateReply(request));
-            else if (request.Operation is DeviceOperation.ReadNotifications or DeviceOperation.TestNotification or DeviceOperation.ReportM5Connection)
+            else if (request.Operation is DeviceOperation.ReadNotifications or DeviceOperation.TestNotification)
                 completion.SetResult(ExecuteNotificationCore(request));
             else if (request.Operation == DeviceOperation.Result)
             {
@@ -435,7 +436,8 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
         if(calibrationTrials.ContainsKey(target.Target)) return "この端子の試験が終了するまでお待ちください";
         if (request.Operation == DeviceOperation.SetLighting && lightingRecoveryRequired.Any(t => t.DeviceId == target.Target.DeviceId))
             return "この機器の照明の復元を確認してから操作してください";
-        if (request.Operation is not (DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting) && PhysicalBindingError(target.Target.DeviceId) is { } physicalError)
+        if (request.Operation is not (DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting) &&
+            PhysicalBindingError(target.Target, DeviceServiceProtocol.Feature(request), request.Operation == DeviceOperation.RestoreSavedCooling) is { } physicalError)
             return physicalError;
         if (request.Operation is not (DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting) &&
             recoveryRequired.Any(t => t.DeviceId == target.Target.DeviceId)) return "接続・構成変更前の制御を終了してから操作してください";
@@ -502,24 +504,34 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
     }
     private async Task<DeviceTargetResult> ExecuteTargetAsync(DeviceServiceRequest request, DeviceTargetVersion target, CancellationToken ct, Func<string?>? precondition = null)
     {
-        DeviceDriverResult result; var issued = false; int? requestedDuty = request.Duty;
+        DeviceDriverResult result; var issued = false; var initiallyUnowned = false; var coolingPolicyRequest = false; int? requestedDuty = request.Duty;
         string? saveTicket = null; DevicePolicySaveResult? saved = null;
         try
         {
-            CoolingPolicyChange? change;
-            lock (gate) change = PrepareCoolingChangeCore(request, target);
-            if (change is not null)
+            try
             {
-                saveTicket = await coolingPersistence!.BeginCoolingChangeAsync(change, ct).ConfigureAwait(false);
-                // Resume was durably disabled before I/O. Only this exact in-flight request may use its approved saved snapshot.
-                if(request.Operation==DeviceOperation.RestoreSavedCooling)
-                    lock(gate) coolingRestorePermits[(request.Id,target.Target)]=new(request.Session,target,CoolingPolicyKey(change.Policy!));
+                CoolingPolicyChange? change;
+                lock (gate) change = PrepareCoolingChangeCore(request, target);
+                if (change is not null)
+                {
+                    saveTicket = await coolingPersistence!.BeginCoolingChangeAsync(change, ct).ConfigureAwait(false);
+                    // Resume was durably disabled before I/O. Only this exact in-flight request may use its approved saved snapshot.
+                    if(request.Operation==DeviceOperation.RestoreSavedCooling)
+                        lock(gate) coolingRestorePermits[(request.Id,target.Target)]=new(request.Session,target,CoolingPolicyKey(change.Policy!));
+                }
+            }
+            catch (Exception e) when (request.Operation == DeviceOperation.ReleaseCooling && e is not OperationCanceledException)
+            {
+                // Storage cannot prevent an explicitly requested recovery. The scheduler
+                // and driver still validate this target, owner and original exit obligation.
+                saved = new(DevicePolicySaveState.Failed, "冷却の終了設定を保存できませんでした: " + e.Message);
             }
             string[] domains; IDeviceControlDriver preparedDriver;
             lock (gate)
             {
                 domains = registry.Snapshot.Devices.Single(d => d.Device.Id == target.Target.DeviceId).Device.ResourceDomains;
                 preparedDriver = drivers[target.Target.DeviceId];
+                coolingPolicyRequest = preparedDriver is IDeviceCoolingDriver && IsCoolingPolicy(request.Operation);
             }
             result = await scheduler.RunPreparedAsync(domains, request.Operation is DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting ? HardwarePriority.Recovery : HardwarePriority.Manual,
                 preparedDriver, DevicePreparationKind.Command,
@@ -532,7 +544,8 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
                             request.TopologyRevision != registry.Snapshot.TopologyRevision || !states.TryGetValue(target.Target, out var current) ||
                             current.PolicyRevision != target.ExpectedPolicyRevision || CheckTarget(request, target) is not null)
                             return new DeviceDriverResult(Outcome.Rejected, "実行前に対象・所有・設定が変更されたため未実行です");
-                        if (request.Operation is DeviceOperation.SetDuty or DeviceOperation.SetAutomatic or DeviceOperation.SetLighting or DeviceOperation.ResumeCooling or DeviceOperation.RestoreSavedCooling)
+                        initiallyUnowned = !current.Owned && !recoveryRequired.Contains(target.Target);
+                        if (!coolingPolicyRequest && request.Operation is (DeviceOperation.SetDuty or DeviceOperation.SetAutomatic or DeviceOperation.SetLighting or DeviceOperation.ResumeCooling or DeviceOperation.RestoreSavedCooling))
                             states[target.Target] = current with { Owned = true };
                         if (request.Operation == DeviceOperation.RestoreSavedCooling && drivers[target.Target.DeviceId] is IDeviceCoolingDriver configured)
                             requestedDuty = CoolingConfiguration(configured, target.Target.EndpointId)?.SavedPolicy?.Duty;
@@ -542,7 +555,7 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
                     try
                     {
                         if (drivers[target.Target.DeviceId] is IDeviceCoolingDriver cooling && IsCoolingPolicy(request.Operation))
-                            return await ApplyCoolingRequestAsync(request, target, cooling, token, precondition).ConfigureAwait(false);
+                            return await ApplyCoolingRequestAsync(request, target, cooling, initiallyUnowned, token, precondition).ConfigureAwait(false);
                         return await drivers[target.Target.DeviceId].ApplyAsync(Action(request, target), token).ConfigureAwait(false);
                     }
                     catch (Exception e) { return new DeviceDriverResult(Outcome.Unknown, e.Message); }
@@ -551,6 +564,9 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
                     lock (gate)
                     {
                         RefreshCore();
+                        if (request.Operation is not (DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting) &&
+                            configurationHandler is IDeviceCurrentConnectionConfiguration { CurrentControlError: { } configurationError })
+                            throw new IOException(configurationError);
                         if (ct.IsCancellationRequested || request.Session != session || stopping || releasing || configurationChanging || precondition?.Invoke() is not null ||
                             request.TopologyRevision != registry.Snapshot.TopologyRevision || !states.TryGetValue(target.Target, out var current) ||
                             current.Generation != target.Generation || current.PolicyRevision != target.ExpectedPolicyRevision)
@@ -577,6 +593,7 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
                     !lightingOwners.ContainsKey(target.Target) ? null : state.Lighting,
                 Owned = request.Operation is DeviceOperation.ReleaseCooling or DeviceOperation.StopLighting ?
                     result.Outcome is not (Outcome.Confirmed or Outcome.WrittenUnverified) && state.Owned :
+                    coolingPolicyRequest ? state.Owned :
                     result.Outcome is Outcome.Confirmed or Outcome.WrittenUnverified or Outcome.Unknown || state.Owned };
                 if (!states[target.Target].Owned) { recoveryRequired.Remove(target.Target); lightingRecoveryRequired.Remove(target.Target); }
                 CoolingRequestFinishedCore(request, target, result);
@@ -586,6 +603,9 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
         {
             try { saved = await coolingPersistence!.FinishCoolingChangeAsync(saveTicket, result.Outcome == Outcome.Confirmed).ConfigureAwait(false); }
             catch (Exception e) { saved = new(DevicePolicySaveState.Failed, "冷却設定を保存できませんでした: " + e.Message); }
+        }
+        if (saved is not null)
+        {
             lock (gate)
                 if (request.Session == session && states.TryGetValue(target.Target, out var current) && current.Generation == target.Generation && current.PolicyRevision == target.ExpectedPolicyRevision)
                     states[target.Target] = current with { Persistence = saved };
@@ -617,7 +637,7 @@ public sealed partial class DeviceControlRuntime : IAsyncDisposable
         RevokeConnectionLightingCore(); session = null; releasing = true; var previous = sessionLifetime; sessionLifetime = null;
         Exception? cancellationError = null;
         try { previous?.Cancel(); } catch (Exception e) { cancellationError = e; }
-        notifications.ClearM5(); diagnosticTransfer = null; stateTransfer = null;
+        diagnosticTransfer = null; stateTransfer = null;
         var configurationWait = Task.WhenAll(lightingLibraryWork.Append(configurationCompletion?.Task ?? Task.CompletedTask).Append(diagnosticWork).Append(stateSnapshotWork));
         var commands = commandWork.ToArray();
         var trials=calibrationTrials.Values.Select(t=>t.Completion.Task).Concat(lightingIdentifications.Values.Select(t=>t.Completion.Task)).ToArray();

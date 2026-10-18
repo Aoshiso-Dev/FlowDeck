@@ -34,6 +34,7 @@ public sealed partial class HubDeviceDriver
             ObjectDisposedException.ThrowIf(disposed, this);
             if (lightingPreparing || lightingJournal.Pending.Length != 0 || lightingStreams.Count != 0)
                 throw new IOException("端子の制御を終了してから照明設定を変更してください");
+            currentControlBinding = null;
             lightingBinding = binding;
             lightingSetup = values.ToDictionary(c => c.Target.EndpointId, c => (c, registered.Single(e => e.Id == c.Target.EndpointId).Setup));
         }
@@ -44,11 +45,11 @@ public sealed partial class HubDeviceDriver
         if (!connected || status is null) return "Hubが切断されています";
         if (LightingAdapter is not { SupportsLightingEndpoints: true }) return "個体を照合する照明Workerへ更新してください";
         if (streaming && LightingAdapter.SupportsLightingDeadlines != true) return "期限付き照明フレームに未対応です";
-        if (lightingBinding is null || lightingBinding != candidate) return "Hubの個体・構成の関連付けを確認してください";
+        if (lightingBinding is null || lightingBinding != candidate || CurrentControlConnectionChanged) return "Hubの現在の個体・接続情報を再取得してください";
         if (status.Lighting.SingleOrDefault(l => l.Id == channel) is not { } port) return "照明端子を検出できません";
-        if (!lightingSetup.TryGetValue(channel, out var value) || !value.Config.WiringConfirmed ||
-            value.Setup is not { LedCountConfirmed: true, LedCount: >= 1 } setup || setup.LedCount > DefinitionData.Lighting.MaximumLedsPerEndpoint || setup.Accessory != port.Accessory ||
-            port.LedCount is { } observed && observed != setup.LedCount) return "照明の配線・アクセサリー・LED数を確認してください";
+        if (!lightingSetup.TryGetValue(channel, out var value) ||
+            value.Setup is not { LedCount: >= 1 } setup || setup.LedCount > DefinitionData.Lighting.MaximumLedsPerEndpoint || setup.Accessory != port.Accessory ||
+            port.LedCount is { } observed && observed != setup.LedCount) return "現在の照明アクセサリーのLED数が未設定、非対応、または実機と一致しません";
         if (!DeviceLightingConfiguration.ValidExit(value.Config.Exit) || !DefinitionData.Lighting.ExitActions.Contains(value.Config.Exit!.Action))
             return "このHubでは終了時の指定色または消灯を設定してください";
         if (lightingFaulted.Contains(channel)) return "この照明端子の終了処理を完了してください";
@@ -60,8 +61,12 @@ public sealed partial class HubDeviceDriver
         {
             var supported = LightingAdapter is { SupportsLightingEndpoints: true } && (!streaming || LightingAdapter.SupportsLightingDeadlines);
             var reason = feature == DeviceFeature.RestoreLighting ? supported ? null : "照明Workerの更新が必要です" : LightingReady(port.Id, streaming);
+            // An unconfirmed write/release needs recovery, not another wiring approval.
+            // Keep the explicit restore capability available while output remains blocked.
+            var availability = reason is null ? DeviceAvailability.Ready :
+                lightingFaulted.Contains(port.Id) ? DeviceAvailability.Failed : DeviceAvailability.NeedsSetup;
             return new(feature, supported ? ImplementationSupport.Supported : ImplementationSupport.Unsupported, VerificationEvidence.Automated,
-                reason is null ? DeviceAvailability.Ready : DeviceAvailability.NeedsSetup, reason ??
+                availability, reason ??
                     (feature == DeviceFeature.RestoreLighting ? "指定した終了色・消灯を送信します。元設定の読み戻しはできません" : null));
         }
         return new(port.Id, port.Id.ToUpperInvariant(), EndpointKind.Lighting,

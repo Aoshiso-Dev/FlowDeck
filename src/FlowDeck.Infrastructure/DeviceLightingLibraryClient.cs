@@ -2,7 +2,7 @@ using FlowDeck.Core;
 
 namespace FlowDeck.Infrastructure;
 
-// GUI and M5 adapters use the same revisioned service commands. Saving never implies applying.
+// GUI adapters use the same revisioned service commands. Saving never implies applying.
 public static class DeviceLightingLibraryClient
 {
     public static async Task<LightingLibraryReply> SaveLightingLibraryAsync(this DeviceServicePipeClient client,

@@ -25,6 +25,9 @@ public static partial class SmokeRunner
         try
         {
             model.SelectedPage=2; model.SelectLights(model.Lights.Select(l=>l.Target)); await Settle();
+            Descendants<Expander>(window).Single(e=>System.Windows.Automation.AutomationProperties.GetAutomationId(e)=="LightingAdvancedSection")
+                .SetCurrentValue(Expander.IsExpandedProperty,true);
+            await Settle();
             var expander=Descendants<Expander>(window).Single(e=>Equals(e.Header,"照明の名前")); expander.IsExpanded=true;
             model.LightAliasTarget=model.LightAliasTargets.Single(t=>t.Target==new EndpointReference(demo.DeviceIds[0],"led1"));
             await Settle(); var identify=Descendants<Button>(expander).Single(b=>Equals(b.Content,"3秒点灯"));

@@ -20,6 +20,10 @@ public partial class MotherboardDeviceDriverTests
         Assert.Throws<IOException>(() => rig.Driver.ConfigureCoolingEndpoint(binding with { Fingerprint = new('f', 64) }, selected.Id, rig.Config(selected)));
         rig.Driver.ConfigureCoolingEndpoint(binding, selected.Id, null);
         Assert.Null(rig.Driver.CoolingConfiguration(selected.Id)); Assert.Equal(retained, Assert.Single(rig.Journal().Pending));
+        Assert.NotNull(rig.Driver.ValidateCoolingSetup(selected.Id));
+        Assert.False(rig.Driver.AllowsCurrentConnectionControl(selected.Id, DeviceFeature.FixedDuty));
+        Assert.False(rig.Driver.AllowsCurrentConnectionControl(selected.Id, DeviceFeature.AutomaticDuty));
+        Assert.Equal(writes, rig.Backend.Writes);
         await rig.Driver.ReleaseAsync(DeviceReleaseReason.NormalExit, default);
         Assert.Empty(rig.Journal().Pending); Assert.Equal(67, (int)Math.Round(rig.Backend.Duty(other)));
     }

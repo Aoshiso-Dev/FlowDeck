@@ -43,7 +43,8 @@ public sealed partial class AsrockDeviceDriverTests
         Assert.Equal(6, reports.Count);
         Assert.All(reports, p => Assert.Contains(p[1], new byte[] { 0x14, 0x11 }));
         Assert.NotEqual(previousBinding, driver.BindingCandidate);
-        Assert.Equal(16, driver.DescribeSetup().Single(s => s.EndpointId == "zone:5").DetectedLeds);
+        var setup = driver.DescribeSetup().Single(s => s.EndpointId == "zone:5");
+        Assert.Equal(16, setup.MinimumLeds); Assert.Equal(16, setup.MaximumLeds); Assert.Null(setup.DetectedLeds);
         Assert.Empty(a.Device.Writes);
         reports.Clear(); await driver.PollAsync(default); Assert.Empty(reports);
         r.Backend.BeforeTransport = null;

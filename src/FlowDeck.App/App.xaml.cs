@@ -31,7 +31,7 @@ public partial class FlowDeckApplication : Application
                 var startup = DeviceStartupOptions.Parse(e.Args, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
                 if (startup.Smoke) { await SmokeRunner.RunDeviceStartupAsync(this, startup); return; }
                 instance = new(false, service: true);
-                if (!instance.Acquired) { MessageBox.Show("FlowDeckが既に起動しています。タスクトレイから開いてください。", "FlowDeck"); Shutdown(); return; }
+                if (!instance.Acquired) { MessageBox.Show("FlowDeckは起動済み · タスクトレイから表示", "FlowDeck"); Shutdown(); return; }
                 await DeviceStartupWindow.RunAsync(this, startup); return;
             }
             var smoke = e.Args.Contains("--smoke");
@@ -42,7 +42,7 @@ public partial class FlowDeckApplication : Application
                 : ApplicationDataMigration.EnsureRoot(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             var options = CoolingConnectionOptions.Resolve(e.Args, new CoolingConnectionPreferenceStore(dataRoot).Load(), smoke ? false : WindowsCoolingServiceIdentity.IsInstalled());
             instance = new(smoke, service: options.UseService);
-            if (!instance.Acquired) { MessageBox.Show("FlowDeckまたは旧版が既に起動しています。タスクトレイから開いてください。", "FlowDeck"); Shutdown(); return; }
+            if (!instance.Acquired) { MessageBox.Show("FlowDeckまたは旧版が起動済み · タスクトレイから表示", "FlowDeck"); Shutdown(); return; }
             CoolingServicePipeClient? legacyConnection = null;
             if (options.UseService && !e.Args.Contains("--demo") && !smoke)
             {
@@ -60,8 +60,6 @@ public partial class FlowDeckApplication : Application
             if (!host.Demo)
             {
                 RuntimeHost.ConfigureLogin(host.Coordinator.Settings.Startup.Login);
-                try { M5Firewall.MigrateLegacy(Environment.ProcessPath!); }
-                catch (Exception migrationError) { host.Log.Write("firewallMigration", new { error = migrationError.Message }); }
             }
             ThemeManager.Apply(host.Coordinator.Settings.Ui.Theme);
             model = new(host); var window = new FlowDeckWindow(this, model); MainWindow = window;
@@ -88,7 +86,7 @@ public partial class FlowDeckApplication : Application
                 else await SmokeRunner.RunAsync(this, host, model, window, dataRoot);
             }
         }
-        catch (UnauthorizedAccessException e1) { MessageBox.Show("別セッションの起動またはアクセス権を確認してください。\n" + e1.Message); Shutdown(1); }
+        catch (UnauthorizedAccessException e1) { MessageBox.Show("別セッションまたはアクセス権の確認が必要\n" + e1.Message); Shutdown(1); }
         catch (Exception error) { MessageBox.Show(error.ToString(), "起動エラー"); Shutdown(1); }
     }
     private static string EnsureDirectory(string path) { Directory.CreateDirectory(path); return path; }
@@ -131,7 +129,7 @@ public partial class FlowDeckApplication : Application
     public void HideToTray()
     {
         MainWindow.Hide();
-        if (!notified) { notified = true; tray?.ShowBalloonTip(4000, "FlowDeck", "タスクトレイで制御を継続しています", System.Windows.Forms.ToolTipIcon.Info); }
+        if (!notified) { notified = true; tray?.ShowBalloonTip(4000, "FlowDeck", "タスクトレイで制御継続中", System.Windows.Forms.ToolTipIcon.Info); }
     }
     public async Task ExitAsync()
     {
@@ -142,11 +140,11 @@ public partial class FlowDeckApplication : Application
         {
             while (true)
             {
-                model!.Notice = "終了時出力を確認しています。自動制御を終了します。";
+                model!.Notice = "自動制御終了・終了時出力を確認中";
                 var progress = new Window { Title = "FlowDeck の終了", Width = 420, Height = 150,
                     ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterScreen,
                     ShowInTaskbar = false, Content = new System.Windows.Controls.StackPanel { Margin = new Thickness(20), Children =
-                    { new System.Windows.Controls.TextBlock { Text = "終了時出力を確認しています。自動制御を終了します。", Margin = new Thickness(0, 0, 0, 16) },
+                    { new System.Windows.Controls.TextBlock { Text = "自動制御終了・終了時出力を確認中", Margin = new Thickness(0, 0, 0, 16) },
                       new System.Windows.Controls.ProgressBar { IsIndeterminate = true, Height = 5 } } } };
                 var completed = false;
                 progress.Closing += (_, e) => e.Cancel = !completed;
@@ -156,7 +154,7 @@ public partial class FlowDeckApplication : Application
                 {
                     result = await host.Coordinator.StopControlAsync();
                     try { await host.BoardFans.RestoreAsync(); }
-                    catch (Exception error) { result = result with { Outcome = Outcome.Unknown, Message = "マザーファンの復元が未確認です: " + error.Message }; }
+                    catch (Exception error) { result = result with { Outcome = Outcome.Unknown, Message = "マザーファンの復元未確認: " + error.Message }; }
                 }
                 finally { completed = true; progress.Close(); }
                 if (result.Outcome == Outcome.Confirmed) break;

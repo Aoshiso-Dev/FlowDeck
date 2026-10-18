@@ -22,6 +22,8 @@ public sealed partial class DeviceControlRuntime
             lightingLibrary = handler as IDeviceLightingLibrary;
             lightingPersistence = handler as IDeviceLightingPersistence;
             lightingAdjustments = handler as IDeviceLightingAdjustments;
+            if (handler is IDeviceCurrentConnectionConfiguration current)
+                current.AttachCurrentControlResolver(CurrentControlBinding);
         }
     }
     public PhysicalDeviceBinding[] PhysicalCandidates()

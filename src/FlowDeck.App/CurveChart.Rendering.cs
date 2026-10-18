@@ -54,7 +54,7 @@ public sealed partial class CurveChart
             if (CurrentDuty is { } duty && double.IsFinite(duty) && duty is >= 0 and <= 100) dc.DrawEllipse(Brush("WarningBrush"), new(Brush("PanelBrush"), 2), Position(temperature, duty), 5, 5);
         }
         dc.Pop();
-        var note = MinimumDuty is null ? "最低出力を設定してください" : !CurveEditing.ValidShape(Values, MinimumDuty, AllowStop) ? "数値一覧で範囲・順序を確認" : SelectedPoint is { } selected
+        var note = MinimumDuty is null ? "最低出力が未設定" : !CurveEditing.ValidShape(Values, MinimumDuty, AllowStop) ? "数値一覧で範囲・順序を確認" : SelectedPoint is { } selected
             ? $"選択 {selected.Temperature:0.#}°C · {selected.Duty}%" : rows.Length == 0 ? "点を追加" : $"最低 {MinimumDuty}%" + (AllowStop ? " · 停止許可" : "");
         Label(note, new(10, ActualHeight - 16), CanEdit ? muted : Brush("WarningBrush"));
     }

@@ -19,10 +19,10 @@ public sealed partial class FlowDeckViewModel
         ReconnectCooling = Command(async _ =>
         {
             reconnectingCooling = true;
-            try { await host.ReconnectCoolingAsync(); LoadSettings(); Notice = "サービスに接続しました"; }
+            try { await host.ReconnectCoolingAsync(); LoadSettings(); Notice = "サービス接続済み"; }
             finally { reconnectingCooling = false; Refresh(); }
         }, _ => UsesService && !reconnectingCooling);
         SaveCoolingConnection = Command(_ =>
-        { host.CoolingConnectionPreference = SelectedCoolingConnection; Notice = "接続方式を保存しました。次回起動から使用します"; return Task.CompletedTask; });
+        { host.CoolingConnectionPreference = SelectedCoolingConnection; Notice = "保存済み・次回起動時に反映"; return Task.CompletedTask; });
     }
 }

@@ -23,7 +23,7 @@ internal sealed partial class EneMemoryDeviceDriver
             lock (gate)
             {
                 if (ValidateLightingStream(endpoints, program) is { } error) throw new IOException(error);
-                active = new(this, connection!, Candidate()!, Contract.Copy(program), Contract.Copy(configuration!.Exit!), journal!.Pending, Contract.Copy(observed!));
+                active = new(this, connection!, Candidate()!, Contract.Copy(program), Contract.Copy(CurrentExit), journal!.Pending, Contract.Copy(observed!));
                 return active;
             }
         }

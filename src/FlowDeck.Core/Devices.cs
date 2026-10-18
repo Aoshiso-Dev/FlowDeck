@@ -9,7 +9,7 @@ public enum EndpointKind { Sensor, Cooling, Lighting }
 public enum DeviceFeature { Temperature, Rpm, DutyRead, FixedDuty, AutomaticDuty, ReleaseCooling, FixedColor, NativeEffect, ColorFrames, RestoreLighting }
 public enum ImplementationSupport { Unknown, Unsupported, Candidate, Experimental, Supported }
 public enum VerificationEvidence { None, SourceReview, Automated, FamilyHardware, MatchingHardware }
-public enum DeviceAvailability { Ready, NeedsSetup, NeedsPermission, Conflict, Disconnected, Failed }
+public enum DeviceAvailability { Ready, NeedsSetup, NeedsPermission, Conflict, Disconnected, Failed, TemporarilyUnavailable }
 public enum IdentityConfidence { ConnectionBound, SerialBound }
 public sealed record DeviceCapability(DeviceFeature Feature, ImplementationSupport Support,
     VerificationEvidence Evidence, DeviceAvailability Availability, string? Reason = null)

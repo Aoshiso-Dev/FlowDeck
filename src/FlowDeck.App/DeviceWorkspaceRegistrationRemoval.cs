@@ -10,11 +10,11 @@ public sealed partial class DeviceWorkspaceViewModel
     public bool RegistrationRemovalSupported => client.SupportsRegistrationRemoval;
     public bool HasRegistrationRemovalPreview => registrationRemovalPreview is not null;
     public string RegistrationRemovalText => registrationRemovalPreview is null ? "" : string.Join(Environment.NewLine,registrationRemovalPreview.Edit.Changes);
-    private string? RegistrationRemovalProblem => selectedDeviceName is null||client.Snapshot is not { } snapshot ? "登録を選択してください" :
-        SelectedDeviceNameDraft is { Dirty:true } or { Conflict:true } ? "名前を保存するか、現在の名前を読み込んでください" :
+    private string? RegistrationRemovalProblem => selectedDeviceName is null||client.Snapshot is not { } snapshot ? "登録未選択" :
+        SelectedDeviceNameDraft is { Dirty:true } or { Conflict:true } ? "名前の保存または再取得が必要" :
         DeviceRegistrationRemoval.Problem(snapshot,selectedDeviceName.Id);
     public string RegistrationRemovalStatus => selectedDeviceName is null ? "" : RegistrationRemovalProblem ??
-        (registrationRemovalPreview is not null&&!registrationRemovalPreview.Edit.Matches(client.Snapshot) ? "接続・機器・設定が変わりました。解除内容を確認し直してください" : "");
+        (registrationRemovalPreview is not null&&!registrationRemovalPreview.Edit.Matches(client.Snapshot) ? "接続・機器・設定に変更あり · 解除内容の再確認が必要" : "");
     public bool CanPreviewRegistrationRemoval => DeviceNamesIdle&&RegistrationRemovalSupported&&RegistrationRemovalProblem is null;
     public bool CanApplyRegistrationRemoval => CanPreviewRegistrationRemoval&&registrationRemovalPreview is not null&&
         registrationRemovalPreview.Edit.DeviceId==selectedDeviceName!.Id&&registrationRemovalPreview.Edit.Matches(client.Snapshot);
@@ -33,16 +33,18 @@ public sealed partial class DeviceWorkspaceViewModel
         Render(); if(!CanPreviewRegistrationRemoval) return;
         var edit=DeviceRegistrationRemoval.Capture(client.Snapshot!,selectedDeviceName!.Id);
         setupBusy=true; ClearConfigurationPreviews(); Render();
-        try { registrationRemovalPreview=await client.PreviewRegistrationRemovalAsync(edit); Notice="解除する登録と関連設定を確認してください"; }
+        using var status = BeginStatus("登録解除の内容を確認中");
+        try { registrationRemovalPreview=await client.PreviewRegistrationRemovalAsync(edit); ReportStatus("登録・関連設定の解除確認待ち"); }
         finally { setupBusy=false; Render(); }
     }
     public async Task ApplyRegistrationRemovalAsync()
     {
         Render(); if(!CanApplyRegistrationRemoval) return;
         var preview=registrationRemovalPreview!; setupBusy=true; ClearConfigurationPreviews(); Render();
+        using var status = BeginStatus("登録解除中");
         try
         {
-            var result=await client.ApplyRegistrationRemovalAsync(preview); Notice=result.Message;
+            var result=await client.ApplyRegistrationRemovalAsync(preview); ReportResult(result.Message, result.Outcome);
             if(result.Outcome==Outcome.Confirmed)
             {
                 reconcilingDeviceNames=true;

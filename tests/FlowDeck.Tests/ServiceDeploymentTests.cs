@@ -1,3 +1,4 @@
+using System.Security.AccessControl;
 using FlowDeck.Core;
 using FlowDeck.Infrastructure;
 
@@ -104,6 +105,38 @@ public partial class ServiceDeploymentTests
         await Assert.ThrowsAsync<IOException>(() => f.Apply("update", f.Package("1.21.0")));
         Assert.Equal("1.20.0", f.InstalledVersion()); Assert.True(f.Scm.Registration.Running); Assert.Null(ServiceDeployment.ReadPending(f.Data));
         Assert.Equal(settings, File.ReadAllBytes(Path.Combine(f.Data, "cooling-settings.json")));
+    }
+    [Theory]
+    [InlineData("service.json")] [InlineData("cooling-settings.json")]
+    [InlineData(ServiceDeployment.InstalledManifestName)] [InlineData(ServiceRuntimeSelection.FileName)]
+    public async Task RollbackRetainsIdenticalSnapshotFilesAndTheirMetadata(string name)
+    {
+        using var f = new Fixture(); await InstallDevices(f);
+        var path = Path.Combine(f.Data, name); var original = File.ReadAllBytes(path);
+        File.SetCreationTimeUtc(path, new DateTime(2002, 3, 4, 5, 6, 7, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(path, new DateTime(2003, 4, 5, 6, 7, 8, DateTimeKind.Utc));
+        var created = File.GetCreationTimeUtc(path); var written = File.GetLastWriteTimeUtc(path);
+        const AccessControlSections sections = AccessControlSections.Owner | AccessControlSections.Group | AccessControlSections.Access;
+        var security = new FileInfo(path).GetAccessControl(sections).GetSecurityDescriptorSddlForm(sections);
+        // A read-only observer permits hashing/copying but not replacing the original file object.
+        using var observer = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var engine = f.Engine(); engine.AfterStep = step => { if (step == "backed-up") throw new IOException("simulated failure after snapshot"); };
+        await Assert.ThrowsAsync<IOException>(() => f.Apply("update", f.Package("2.1.0", devices: true), engine));
+        Assert.Null(ServiceDeployment.ReadPending(f.Data)); Assert.True(f.Scm.Registration.Running);
+        Assert.Equal("2.0.0", f.InstalledVersion()); Assert.Equal(original, File.ReadAllBytes(path));
+        Assert.Equal(created, File.GetCreationTimeUtc(path)); Assert.Equal(written, File.GetLastWriteTimeUtc(path));
+        Assert.Equal(security, new FileInfo(path).GetAccessControl(sections).GetSecurityDescriptorSddlForm(sections));
+    }
+    [Theory] [InlineData(false)] [InlineData(true)]
+    public async Task RollbackStillRestoresChangedOrMissingSnapshotFiles(bool missing)
+    {
+        using var f = new Fixture(); await f.Apply("install", f.Package("1.20.0"), seed: DemoHub.CreateSettings());
+        var path = Path.Combine(f.Data, "cooling-settings.json"); var original = File.ReadAllBytes(path);
+        f.Scm.BeforeStartOnce = () => { if (missing) File.Delete(path); else File.WriteAllText(path, "changed by candidate startup"); };
+        f.Scm.FailOnce = "start";
+        await Assert.ThrowsAsync<IOException>(() => f.Apply("update", f.Package("1.21.0")));
+        Assert.Equal(original, File.ReadAllBytes(path)); Assert.Equal("1.20.0", f.InstalledVersion());
+        Assert.True(f.Scm.Registration.Running); Assert.Null(ServiceDeployment.ReadPending(f.Data));
     }
     [Fact] public async Task PendingFanRecoveryPreventsReplacementAndRemainsAvailableForLaterRecovery()
     {

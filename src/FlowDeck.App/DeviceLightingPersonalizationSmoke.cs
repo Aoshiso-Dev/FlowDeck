@@ -16,6 +16,9 @@ public static partial class SmokeRunner
         try
         {
             model.SelectedPage = 2; model.SelectLights(model.Lights.Select(l => l.Target)); await Settle();
+            Descendants<Expander>(window).Single(e => AutomationProperties.GetAutomationId(e) == "LightingAdvancedSection")
+                .SetCurrentValue(Expander.IsExpandedProperty, true);
+            await Settle();
             Check(model.LightPersonalizationSupported && model.LightAliasTargets.Count == 2 && model.LightSavedColors!.Favorites.Count == 0, "Service advertises registered alias targets and a fresh v2 palette without loading legacy colors");
             var fan = model.Cooling.First(); fan.Mode = "固定"; fan.Duty = 55; await model.OperateAsync(fan); var fanWrites = demo.Hubs.Select(h => h.Writes).ToArray();
             model.LightColor = Color.FromRgb(12, 34, 56); model.LightBrightness = 63;
@@ -51,7 +54,9 @@ public static partial class SmokeRunner
             await model.PollAsync();
             Check(model.LightAlias == "残す入力" && !model.CanSaveLightAlias && model.LightAliasDraft!.Conflict && model.LightingDraft.Conflict, "An external settings edit preserves local text and blocks stale alias and output writes");
             model.ReloadLightAlias(); model.ReloadLights.Execute(null); await Settle();
-            Check(model.LightAlias == "別の編集" && !model.LightAliasDraft!.Conflict && model.CanApplyLighting, "Explicit reload adopts the new alias and current output");
+            Check(model.LightAlias == "別の編集" && !model.LightAliasDraft!.Conflict && model.LightingDraft.CanApply &&
+                !model.LightHasPendingChanges && !model.CanApplyLighting,
+                "Explicit reload adopts the new alias and current output without inventing a pending edit");
             model.LightAlias = ""; await model.SaveLightAliasAsync();
             Check(!client.Snapshot!.Configuration.Configuration.Lighting.Names.Any(n => n.Target == target) && model.LightAliasTarget.Name.EndsWith("LED1"), "Saving an empty alias restores the registered default name");
             var palette = model.LightSavedColors; await palette.ToggleFavoriteAsync(Color.FromRgb(12,34,56));
@@ -63,13 +68,21 @@ public static partial class SmokeRunner
             var removed = snapshot with { Configuration = snapshot.Configuration with { Generation = new('f',32), Configuration = config with {
                 Devices = config.Devices with { Devices = config.Devices.Devices.Select(d => d with { Endpoints = d.Endpoints.Where(e => new EndpointReference(d.Id,e.Id) != target).ToArray() }).ToArray() } } } };
             model.RenderLightPersonalization(removed); await Settle();
-            Check(model.LightAliasTarget?.Target == target && model.LightAliasDraft!.Conflict && !model.CanSaveLightAlias, "Removing an unedited registered target retains its identity without reconstructing an invalid alias editor");
-            model.ReloadLightAlias(); name.Text = "削除後も残す入力"; model.RenderLightPersonalization(removed); await Settle();
-            Check(model.LightAliasTarget?.Target == target && name.Text == "削除後も残す入力" && !model.CanSaveLightAlias, "Removing a target during Japanese input keeps the selected row and text while blocking stale save");
+            Check(model.LightAliasTarget is null && !model.HasLightAliasTarget && model.LightAlias == "" && model.LightAliasDraft is { Conflict: true } && !model.CanSaveLightAlias,
+                "Removing an unedited registered target hides its visible selection while retaining its internal draft conflict");
+            model.Render(); model.ReloadLightAlias(); await Settle(); name.Text = "削除後も残す入力"; model.RenderLightPersonalization(removed); await Settle();
+            Check(model.LightAliasTarget is null && name.Text == "" && model.LightAliasDraft!.Name == "削除後も残す入力" && !model.CanSaveLightAlias,
+                "Removing a target during Japanese input hides its row and text while retaining the draft and blocking stale save");
+            model.Render(); await Settle();
+            Check(model.LightAliasTarget?.Target == target && name.Text == "削除後も残す入力",
+                "Restoring an endpoint reveals its preserved alias draft without selecting another device");
+            model.RenderLightPersonalization(snapshot with { Connected = false }); await Settle();
+            Check(model.LightAliasTargets.Count == 0 && model.LightAliasTarget is null && name.Text == "" && model.LightAliasDraft!.Name == "削除後も残す入力",
+                "A disconnected service hides alias targets and current input without discarding the internal draft");
             model.ReloadLightAlias(); model.Render(); ThemeManager.Apply(model.Theme);
             var selector = Descendants<ComboBox>(expander).Single(); await Settle();
             Check(ReferenceEquals(selector.SelectedItem, model.LightAliasTarget) && selector.SelectedItem is DeviceLightRow,
-                "The visible alias selector retains its selected endpoint through removal and restoration");
+                "The visible alias selector restores its selected endpoint after removal and disconnection");
             var saveAlias = Descendants<Button>(expander).Single(b => Equals(b.Content, "保存"));
             window.Width = 960; window.Height = 640; saveAlias.BringIntoView(); await Settle(); Capture(window, output, "lighting-alias-minimum");
             var saveBounds = saveAlias.TransformToAncestor(window).TransformBounds(new Rect(saveAlias.RenderSize));

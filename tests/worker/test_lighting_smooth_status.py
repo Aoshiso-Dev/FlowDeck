@@ -109,6 +109,105 @@ class SmoothStatusTests(unittest.TestCase):
         self.now += .02
         self.assertGreaterEqual(self.reader.read()["sampleAgeMilliseconds"], 320)
 
+    def test_status_after_a_stale_stream_frame_reacquires_a_sample_without_reopening(self):
+        self.now = 1.740
+        self.assertEqual("writtenUnverified", self.frame()["outcome"])
+        writes = list(self.hid.writes)
+        self.now = 1.751
+        self.assertEqual("LIGHTING_STATUS_STALE", self.frame()["error"])
+        self.assertIsNone(self.reader.sample)
+        with patch.object(self.worker, "status", return_value=self.original) as fresh:
+            self.assertEqual(self.original, self.call("ReadStatus", {})["status"])
+            fresh.assert_called_once()
+        self.assertIs(self.device, self.worker.device)
+        self.assertEqual(writes, self.hid.writes)
+
+    def test_monitoring_that_first_observes_an_expired_stream_sample_reacquires_it(self):
+        self.now = 1.740
+        self.assertEqual("writtenUnverified", self.frame()["outcome"])
+        writes = list(self.hid.writes)
+        self.now = 1.751
+        with patch.object(self.worker, "status", return_value=self.original) as fresh:
+            self.assertEqual(self.original, self.call("ReadStatus", {})["status"])
+            fresh.assert_called_once()
+        self.assertIs(self.device, self.worker.device)
+        self.assertEqual(writes, self.hid.writes)
+
+    def test_monitoring_with_an_expired_stream_drain_reacquires_the_sample(self):
+        self.frame()
+        self.reader.drained_at = .249
+        with patch.object(self.worker, "status", return_value=self.original) as fresh:
+            self.assertEqual(self.original, self.call("ReadStatus", {})["status"])
+            fresh.assert_called_once()
+        self.assertEqual(6, len(self.hid.writes))
+
+    def test_stale_stream_monitoring_reseeds_the_same_connection_without_writes(self):
+        self.now = 1.740
+        self.frame()
+        self.now = 1.751
+        self.assertEqual("LIGHTING_STATUS_STALE", self.frame()["error"])
+        connection = (self.worker.session, self.worker.generation, self.worker.device)
+        writes = list(self.hid.writes)
+        values = [row for i in range(1, 6) for row in (
+            (f"Fan {i} control mode", "PWM", ""),
+            (f"Fan {i} speed", 1300, "rpm"),
+            (f"Fan {i} duty", 50, "%"))]
+        with patch.object(self.device, "get_status", return_value=values) as fresh:
+            self.assertEqual(self.original, self.call("ReadStatus", {})["status"])
+            fresh.assert_called_once()
+        self.assertEqual(connection, (self.worker.session, self.worker.generation, self.worker.device))
+        self.assertEqual(writes, self.hid.writes)
+        self.assertEqual(self.now, self.reader.sampled_at)
+        self.assertEqual("writtenUnverified", self.frame()["outcome"])
+
+    def test_monitoring_cannot_hide_a_failed_fresh_read_after_an_expired_sample(self):
+        self.frame()
+        self.reader.sample = None
+        writes = list(self.hid.writes)
+        with patch.object(self.device, "get_status", side_effect=OSError("unplugged")) as fresh:
+            with self.assertRaisesRegex(OSError, "unplugged"):
+                self.call("ReadStatus", {})
+            fresh.assert_called_once()
+        self.assertIsNone(self.reader.sample)
+        self.assertEqual(writes, self.hid.writes)
+
+    def test_reacquiring_a_stale_sample_preserves_wiring_checks_before_the_next_frame(self):
+        self.now = 1.740
+        self.frame()
+        self.now = 1.751
+        self.assertEqual("LIGHTING_STATUS_STALE", self.frame()["error"])
+        writes = list(self.hid.writes)
+        values = [row for i in range(1, 6) for row in (
+            (f"Fan {i} control mode", "DC", ""),
+            (f"Fan {i} speed", 1300, "rpm"),
+            (f"Fan {i} duty", 50, "%"))]
+        with patch.object(self.device, "get_status", return_value=values) as fresh:
+            status = self.call("ReadStatus", {})["status"]
+            self.assertEqual("DC", status["channels"][0]["controlMode"])
+            fresh.assert_called_once()
+        self.assertEqual("WIRING_CHANGED", self.frame()["error"])
+        self.assertEqual(writes, self.hid.writes)
+
+    def test_stream_monitoring_does_not_retry_disconnect_malformed_reports_or_backlog(self):
+        for kind, expected in (("disconnect", "unplugged"), ("short", "INVALID_HUB_STATUS_REPORT"),
+                               ("bad-mode", "INVALID_HUB_STATUS_REPORT"),
+                               ("bad-duty", "INVALID_HUB_STATUS_REPORT"), ("backlog", "HUB_STATUS_BACKLOG")):
+            with self.subTest(kind=kind):
+                self.reader.seed(self.original)
+                self.reader.last_frame = self.now
+                self.hid.queue = []
+                self.hid.failure = OSError("unplugged") if kind == "disconnect" else None
+                if kind == "short": self.hid.queue = [b"\x67\x02"]
+                if kind == "bad-mode": self.hid.queue = [report(mode=3)]
+                if kind == "bad-duty": self.hid.queue = [report(duty=101)]
+                if kind == "backlog": self.hid.queue = [report()] * 64
+                with patch.object(self.worker, "status") as fresh:
+                    with self.assertRaisesRegex((OSError, ValueError), expected):
+                        self.call("ReadStatus", {})
+                    fresh.assert_not_called()
+                self.assertIsNone(self.reader.sample)
+                self.assertEqual([], self.hid.writes)
+
     def test_wiring_change_blocks_all_ports(self):
         self.hid.queue.append(report(mode=1))
         self.assertEqual("WIRING_CHANGED", self.frame()["error"])

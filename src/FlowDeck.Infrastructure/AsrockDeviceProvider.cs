@@ -89,7 +89,7 @@ public sealed partial class AsrockDeviceProvider : IDeviceCacheRetirement
     }
 }
 
-internal sealed partial class AsrockDeviceDriver : IConfiguredLightingDriver, IDeviceLightingExpansionDriver, IDevicePollingDriver, ILegacyMigrationSource, IDeviceSetupDriver
+internal sealed partial class AsrockDeviceDriver : IConfiguredLightingDriver, IDeviceLightingExpansionDriver, IDevicePollingDriver, ILegacyMigrationSource, IDeviceSetupDriver, IDeviceCurrentConnectionControlDriver
 {
     private readonly object gate = new();
     private readonly SemaphoreSlim io = new(1);
@@ -131,26 +131,29 @@ internal sealed partial class AsrockDeviceDriver : IConfiguredLightingDriver, ID
     }
     public EndpointSetupOptions[] DescribeSetup()
     {
+        // Counts are controller settings, including unconnected headers; they do not prove attached LEDs.
+        // Keep the exact supported size for explicit setup, without advertising a detected accessory count.
         lock (gate) return connection is null || observed is null ? [] : observed.Zones.Where(z => z.Count > 0)
             .Select(z => new EndpointSetupOptions("zone:" + z.Address, [],
-                [LightingExitAction.FixedColor, LightingExitAction.Off, LightingExitAction.RestoreOriginal], z.Count, z.Count, z.Count)).ToArray();
+                [LightingExitAction.FixedColor, LightingExitAction.Off, LightingExitAction.RestoreOriginal], z.Count, z.Count)).ToArray();
     }
     private static byte Zone(string id) => id.Length == 6 && id.StartsWith("zone:", StringComparison.Ordinal) && id[5] is >= '0' and <= '7'
         ? (byte)(id[5] - '0') : throw new ArgumentException("照明ゾーンが不正です");
-    private string? Ready(byte zone)
+    private string? Ready(byte zone) => Readiness(zone).Error;
+    private (DeviceAvailability Availability, string? Error) Readiness(byte zone)
     {
-        if (disposed || connection is null || observed is null) return "マザー照明を取得できません";
-        if (readError is not null) return readError;
-        if (journalError is not null) return journalError;
-        if (binding is null || binding != Candidate()) return "照明機器の関連付けを確認してください";
+        if (disposed || connection is null || observed is null) return (DeviceAvailability.Disconnected, "マザー照明を取得できません");
+        if (readError is not null) return (DeviceAvailability.TemporarilyUnavailable, readError);
+        if (journalError is not null) return (DeviceAvailability.Failed, journalError);
+        if (active is null && journal!.Pending is not null) return (DeviceAvailability.Failed, "前回のマザー照明を復旧してください");
+        if (nativeJournal!.Pending is { } native && native.Entries.Any(e => !nativeOwned.Contains(e.Zone))) return (DeviceAvailability.Failed, "前回のNative照明を復旧してください");
+        if (nativeFaulted.Contains(zone)) return (DeviceAvailability.Failed, "このゾーンのNative照明を復旧してください");
+        if (binding is null || binding != Candidate()) return (DeviceAvailability.TemporarilyUnavailable, "照明の現在接続を準備中です");
         var port = observed.Zones.SingleOrDefault(z => z.Address == zone);
-        if (port is null) return "照明ゾーンを検出できません";
-        if (!settings.TryGetValue(zone, out var setting) || !setting.Config.WiringConfirmed || !DeviceLightingConfiguration.ValidExit(setting.Config.Exit) ||
-            setting.Setup is not { LedCountConfirmed: true } setup || setup.LedCount != port.Count) return "照明の対象・LED数・終了方法を確認してください";
-        if (active is null && journal!.Pending is not null) return "前回のマザー照明を復旧してください";
-        if (nativeJournal!.Pending is { } native && native.Entries.Any(e => !nativeOwned.Contains(e.Zone))) return "前回のNative照明を復旧してください";
-        if (nativeFaulted.Contains(zone)) return "このゾーンのNative照明を復旧してください";
-        return null;
+        if (port is null) return (DeviceAvailability.TemporarilyUnavailable, "照明ゾーンを検出できません");
+        if (!settings.TryGetValue(zone, out var setting) || !DeviceLightingConfiguration.ValidExit(setting.Config.Exit) ||
+            setting.Setup?.LedCount != port.Count) return (DeviceAvailability.NeedsSetup, "照明の通信範囲・終了方法を取得できません");
+        return (DeviceAvailability.Ready, null);
     }
     public DeviceObservation? Observe()
     {
@@ -160,10 +163,10 @@ internal sealed partial class AsrockDeviceDriver : IConfiguredLightingDriver, ID
             return new(DeviceId, "asrock-usb", "ASRock USB RGB", DeviceKind.Controller, c.Confidence,
                 c.Path + ":" + c.ConnectionId, AsrockDeviceProvider.Definition, AsrockDeviceProvider.DefinitionData.ResourceDomains.ToArray(), snapshot.Zones.Select(z =>
                 {
-                    var error = Ready(z.Address);
+                    var readiness = Readiness(z.Address); var error = readiness.Error;
                     DeviceCapability Cap(DeviceFeature f, bool supported, string? reason) => new(f,
                         supported ? ImplementationSupport.Supported : ImplementationSupport.Unsupported, VerificationEvidence.Automated,
-                        reason is null ? DeviceAvailability.Ready : DeviceAvailability.NeedsSetup, reason);
+                        reason is null ? DeviceAvailability.Ready : readiness.Availability, reason);
                     return new DeviceEndpoint("zone:" + z.Address, "RGB " + (z.Address + 1), EndpointKind.Lighting,
                         [Cap(DeviceFeature.ColorFrames, true, error), Cap(DeviceFeature.RestoreLighting, true, null),
                          Cap(DeviceFeature.FixedColor, true, error), Cap(DeviceFeature.NativeEffect, true, error)], NativeLightingEffects: BuiltInLightingEffects.Asrock());

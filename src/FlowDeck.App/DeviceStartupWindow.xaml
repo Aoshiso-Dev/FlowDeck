@@ -11,13 +11,13 @@
   </Grid>
   <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,24">
    <TextBlock Text="サービス接続" Style="{StaticResource Muted}" Margin="0,0,0,12"/>
-   <TextBlock x:Name="StatusText" Text="接続しています…" FontSize="21" FontWeight="SemiBold"/>
+   <TextBlock x:Name="StatusText" Text="接続中…" FontSize="21" FontWeight="SemiBold"/>
    <TextBlock x:Name="NextActionText" Style="{StaticResource Muted}" Margin="0,12,0,0"/>
    <TextBlock x:Name="PreferenceError" Style="{StaticResource OptionalNote}" Margin="0,8,0,0"/>
   </StackPanel>
   <WrapPanel Grid.Row="2" HorizontalAlignment="Right">
    <Button x:Name="SetupButton" Content="導入・更新" MinWidth="108" Click="OpenSetup"/>
-   <Button x:Name="MonitorButton" Content="監視を開く" MinWidth="108" Click="OpenMonitoring"/>
+   <Button x:Name="MonitorButton" Content="モニター" MinWidth="108" Click="OpenMonitoring"/>
    <Button x:Name="RetryButton" Content="再接続" Style="{StaticResource Primary}" MinWidth="108" Click="Retry" IsDefault="True"/>
    <Button x:Name="CloseButton" Content="閉じる" Click="Exit" Margin="0" MinWidth="80"/>
   </WrapPanel>

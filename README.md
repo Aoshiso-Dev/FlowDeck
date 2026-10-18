@@ -1,6 +1,6 @@
 # FlowDeck
 
-Windows向けの温度・ファン回転数の監視、ファン制御、RGB照明をまとめるデスクトップアプリです。C# / WPFの画面とWindowsサービス、Python / liquidctlのWorkerで構成し、任意のM5GO端末から状態の表示と操作もできます。
+Windows向けの温度・ファン回転数の監視、ファン制御、RGB照明をまとめるデスクトップアプリです。C# / WPFの画面とWindowsサービス、Python / liquidctlのWorkerで構成します。
 
 **開発中の2.0系ソースを公開しています。** インストーラー、実行ファイル、配布用ZIPはこのリポジトリでは提供していません。最初は、実機やサービスへ接続しないDEMOで画面を確認できます。
 
@@ -10,7 +10,6 @@ Windows向けの温度・ファン回転数の監視、ファン制御、RGB照�
 - ファンの固定出力、温度カーブ、端子ごとの設定、異常時・終了時の動作管理
 - RGBの固定色・機器内蔵効果・同期、明るさ、照明グループとシーン
 - 通知、設定の書き出しと復元、タスクトレイ常駐、ライト／ダークテーマ
-- M5GOのUSB・Wi-Fi接続、状態表示、ファン・照明の操作、本体LED同期
 
 NZXT Control Hub、LibreHardwareMonitor経由のセンサー／マザーボードファン、ASRock USB RGB、ENE RGBメモリ、NVIDIA GPU監視、任意のOpenRGB連携を扱う実装があります。機能は機器と接続経路によって異なります。**検出可能な機種や定義ファイルへの掲載は、実機での動作保証を意味しません。** 実機検証は限られた構成で行っており、他のPC・機器・ファームウェアを含めた受入検証は完了していません。
 
@@ -50,7 +49,7 @@ DEMOの温度・回転数・接続機器は模擬データです。上のDEMOコ
 | `src/FlowDeck.Service` | Windowsサービス |
 | `worker` | Python / liquidctl Worker |
 | `device-definitions` | 機器と連携ランタイムの定義 |
-| `firmware/m5go` | 任意のM5GOファームウェア |
+| `firmware/dial` | 任意のGUITIONダイヤル端末用ファームウェア |
 | `tests` | C#・Python・ネイティブの試験とfixture |
 | `native/OpenRgb` | OpenRGB連携用の追加コード |
 | `third-party` | ビルドに必要な第三者ソース、ライセンス、対応ソース |
@@ -63,6 +62,6 @@ DEMOの温度・回転数・接続機器は模擬データです。上のDEMOコ
 - LibreHardwareMonitorとその変更部分: MPL-2.0、および同プロジェクトの第三者ライセンス
 - `native/OpenRgb`の追加コード、OpenRGB由来のfixture・検出定義など: GPL-2.0-or-later
 - Python Workerが依存するliquidctl: GPL-3.0-or-later
-- PawnIO関連リソース、M5GOの依存ライブラリなど: 各プロジェクトのライセンス
+- PawnIO関連リソース、Dialの依存ライブラリなど: 各プロジェクトのライセンス
 
-詳細は[第三者ソフトウェアの通知](THIRD-PARTY-NOTICES.md)と各ディレクトリのライセンスを参照してください。FlowDeckはNZXT、ASRock、M5Stackなど各メーカーの公式製品ではありません。
+詳細は[第三者ソフトウェアの通知](THIRD-PARTY-NOTICES.md)と各ディレクトリのライセンスを参照してください。FlowDeckはNZXT、ASRock、GUITIONなど各メーカーの公式製品ではありません。

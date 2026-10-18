@@ -63,10 +63,10 @@ public sealed partial class FlowDeckViewModel
             if (DashboardDisplay.Validate(settings) is { } error) throw new InvalidOperationException(error);
             await core.UpdateSettingsAsync(core.Settings with { Dashboard = settings }, false);
             await host.FlushSettingsAsync(); RefreshDashboard();
-            Notice = "ダッシュボードの表示設定を保存しました";
+            Notice = "表示設定を保存済み";
         });
-        ReloadDashboard = Command(_ => { LoadDashboard(); Notice = "保存済みの表示設定を読み込みました"; return Task.CompletedTask; });
-        ResetDashboard = Command(_ => { LoadDashboardChoices(new()); Notice = "初期表示を編集欄に戻しました。保存すると反映されます"; return Task.CompletedTask; });
+        ReloadDashboard = Command(_ => { LoadDashboard(); Notice = "再読込済み"; return Task.CompletedTask; });
+        ResetDashboard = Command(_ => { LoadDashboardChoices(new()); Notice = "初期値・未保存"; return Task.CompletedTask; });
         MoveDashboard = Command(p =>
         {
             if (DashboardSelected is not { } selected) return Task.CompletedTask;

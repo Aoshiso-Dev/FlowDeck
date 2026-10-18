@@ -34,12 +34,13 @@ public class DeviceLightingWorkspaceTests(Xunit.Abstractions.ITestOutputHelper o
         Assert.True(draft.Conflict); Assert.False(draft.CanApply); Assert.Throws<InvalidOperationException>(() => draft.Capture());
         Assert.True(DeviceLighting.SameProgram(Red, draft.Program)); draft.Reset(); Assert.True(draft.CanApply);
     }
-    [Fact] public void ChangingSelectionDoesNotRetargetOldEditsToANewRevision()
+    [Fact] public void ChangingSelectionDiscardsOldEditsInsteadOfRetargetingThem()
     {
         var draft = Draft(); draft.Select([A]); draft.SetProgram(Red);
         draft.Update(State(2), Generation, Configuration(), 0, true); draft.Select([A, B]);
-        Assert.True(draft.Conflict); Assert.False(draft.CanApply);
-        draft.Select([B]); Assert.False(draft.Conflict); Assert.Equal(B, Assert.Single(draft.Capture().Version.Targets).Target);
+        Assert.False(draft.Conflict); Assert.False(draft.Dirty); Assert.True(DeviceLighting.SameProgram(Blue, draft.Program));
+        draft.Select([B]); Assert.False(draft.Dirty); draft.SetProgram(Red);
+        Assert.Equal(B, Assert.Single(draft.Capture().Version.Targets).Target);
     }
     [Fact] public void MixedSelectionRequiresExplicitProgramChoice()
     {

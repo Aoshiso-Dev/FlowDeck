@@ -189,6 +189,8 @@ public sealed partial class ServiceDeployment
             if (hash is null) { if (File.Exists(target)) File.Delete(target); }
             else
             {
+                // Preserve the original file and its security metadata when its bytes already match the verified snapshot.
+                if (File.Exists(target) && HashFile(target) == hash) continue;
                 var temporary = Path.Combine(data, name + ".restore-" + Guid.NewGuid().ToString("N"));
                 Copy(Path.Combine(Backup(state), name), temporary); File.Move(temporary, target, true);
             }

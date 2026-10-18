@@ -87,14 +87,14 @@ public class LegacyMigrationPreparationTests
     public async Task MotherboardNamesRpmAndProfilesMapButAnOldBooleanCannotProveTheBoardWiring()
     {
         await using var r = await Rig.Create(); var settings = r.Settings() with { CpuFan = new(true, 40),
-            Motherboard = new([new(MotherboardFans.Cpu.SensorId, "ラジエーターポンプ", true)]),
+            Motherboard = new([new(MotherboardFans.Cpu.SensorId, "ラジエーターポンプ")]),
             Dashboard = new([new("motherboard", MotherboardFans.Cpu.SensorId, "fan", "ポンプ", Role: "pump")]) };
         var prepared = LegacyMigrationPreparationBuilder.Prepare(Installation, Files(settings), r.Drivers, true);
         var board = prepared.Configuration.Devices.Devices.Single(d => d.Kind == DeviceKind.Motherboard);
         var fan = prepared.Configuration.Cooling.Endpoints.Single(c => c.Target.DeviceId == board.Id);
         Assert.False(fan.WiringConfirmed); Assert.Equal(40, fan.Safety.Minimum); Assert.Equal(CoolingExitAction.ReleaseToDevice, fan.Safety.ExitAction);
         Assert.Equal(MotherboardFans.Cpu.Id, fan.Target.EndpointId);
-        var endpoint = board.Endpoints.Single(e => e.Id == fan.Target.EndpointId); Assert.Equal("ラジエーターポンプ", endpoint.Name); Assert.True(endpoint.Setup!.ShowOnM5);
+        var endpoint = board.Endpoints.Single(e => e.Id == fan.Target.EndpointId); Assert.Equal("ラジエーターポンプ", endpoint.Name);
         Assert.Equal(fan.Target, prepared.Configuration.Dashboard.Items[0].Target); Assert.Equal("pump", prepared.Configuration.Dashboard.Items[0].Role);
     }
     [Fact]

@@ -6,6 +6,7 @@ namespace FlowDeck.Infrastructure;
 internal sealed record EneMemoryTransport(string Id, byte[] Candidates, Func<IEneMemoryIo> Open, Func<string> ReadPlatformFingerprint);
 internal sealed record EneMemoryConnection(string BusId, byte Address, string NativeIdentity, string ConnectionId,
     string PlatformFingerprint, string DefinitionId, string ControllerFingerprint);
+internal sealed class EneMemoryFreshnessException(string message) : IOException(message);
 internal interface IEneMemorySession
 {
     byte Read(ushort register, Action? beforeData = null);
@@ -15,6 +16,7 @@ internal interface IEneMemorySession
 internal interface IEneMemoryDeviceBackend : IAsyncDisposable
 {
     Task<T> PrepareOperationAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct);
+    Task<T> PrepareFreshOperationAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct);
     Task<EneMemoryConnection[]> DiscoverAsync(CancellationToken ct);
     Task<T> ExecuteAsync<T>(EneMemoryConnection expected, bool fullIdentification, Func<IEneMemorySession, T> operation, CancellationToken ct);
     void Check(EneMemoryConnection expected);
@@ -67,10 +69,14 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
             foreach (var action in metadataWork.GetConsumingEnumerable()) action();
         }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
     }
-    public async Task<T> PrepareOperationAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct)
+    public Task<T> PrepareOperationAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct) =>
+        PrepareOperationCoreAsync(operation, false, ct);
+    public Task<T> PrepareFreshOperationAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct) =>
+        PrepareOperationCoreAsync(operation, true, ct);
+    private async Task<T> PrepareOperationCoreAsync<T>(Func<CancellationToken, Task<T>> operation, bool fresh, CancellationToken ct)
     {
         ObjectDisposedException.ThrowIf(Volatile.Read(ref disposed) != 0, this); ct.ThrowIfCancellationRequested();
-        if (prepared.Value is not null) return await operation(ct).ConfigureAwait(false);
+        if (!fresh && prepared.Value is not null) return await operation(ct).ConfigureAwait(false);
         var batch = await Enqueue(metadataWork, () =>
         {
             long revision; lock (gate) revision = invalidationRevision;
@@ -93,9 +99,14 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
         lock (gate)
         {
             var latest = usedMetadata.GetValueOrDefault(transport.Id);
-            if (batch.InvalidationRevision != invalidationRevision || clock.GetElapsedTime(proof.CapturedAt).TotalSeconds > 2 ||
+            if (batch.InvalidationRevision != invalidationRevision ||
                 batch.Sequence < latest.Sequence && proof.Fingerprint != latest.Proof.Fingerprint)
                 throw new StaleMetadataException("メモリ構成の事前取得が古くなりました");
+            // A failed capture is not an age-only expiry. Never retry it as fresh evidence or
+            // publish it as the latest successful platform proof, even after its TTL expires.
+            if (proof.Error is not null) throw new IOException("メモリ構成を取得できません: " + proof.Error);
+            if (clock.GetElapsedTime(proof.CapturedAt).TotalSeconds > 2)
+                throw new EneMemoryFreshnessException("メモリ構成の事前取得が古くなりました");
             if (batch.Sequence >= latest.Sequence) usedMetadata[transport.Id] = (batch.Sequence, proof);
             else proof = latest.Proof;
         }
@@ -232,7 +243,7 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
                 found.AddRange(next.Values.Select(e => e.Connection));
             }
             catch (OperationCanceledException) { Invalidate(transport.Id); throw; }
-            catch (Exception e) { if (e is not StaleMetadataException) Invalidate(transport.Id); errors.Add(transport.Id + ": " + e.Message); }
+            catch (Exception e) { if (e is not (StaleMetadataException or EneMemoryFreshnessException)) Invalidate(transport.Id); errors.Add(transport.Id + ": " + e.Message); }
         }
         lock (gate)
         {
@@ -260,7 +271,7 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
         if (!fullIdentification)
         {
             lock (gate) if (!Fresh(current[(expected.BusId, expected.Address)]))
-                throw new IOException("メモリRGBの完全照合が古いため、再取得が必要です");
+                throw new EneMemoryFreshnessException("メモリRGBの完全照合が古いため、再取得が必要です");
         }
         Session? session = null; var moduleCheck = false;
         PlatformProof? platform = null;
@@ -293,7 +304,7 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
             });
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (StaleMetadataException) { throw; }
+        catch (Exception e) when (e is StaleMetadataException or EneMemoryFreshnessException) { throw; }
         catch
         {
             if (session is null && !moduleCheck) Invalidate(expected.BusId);
@@ -316,7 +327,7 @@ internal sealed class EneMemoryDeviceBackend : IEneMemoryDeviceBackend
             if (requireRecent)
             {
                 lock (owner.gate) if (!owner.Fresh(owner.current[(expected.BusId, expected.Address)]))
-                    throw new IOException("メモリRGBの完全照合が古くなりました");
+                    throw new EneMemoryFreshnessException("メモリRGBの完全照合が古くなりました");
             }
         }
         private T Io<T>(Func<Action, T> operation, Action? beforeData)

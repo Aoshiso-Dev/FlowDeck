@@ -12,9 +12,11 @@ public static class DeviceDashboard
     public static DeviceDashboardItem[] VisibleItems(DeviceRegistrations registrations, DeviceDashboardConfiguration saved,
         DeviceServiceState state, double elapsedSeconds, bool connected)
     {
-        var items = Items(registrations, saved, state.Inventory);
+        if (!connected) return [];
+        var items = Items(registrations, saved, state.Inventory).Where(i => state.Inventory.Devices.Any(d =>
+            d.Connected && d.Device.Id == i.Target.DeviceId && d.Device.Endpoints.Any(e => e.Id == i.Target.EndpointId)));
         if (saved.Items.Length != 0) return items.Where(i => i.Visible).ToArray();
-        if (!connected || elapsedSeconds is not (>= 0 and < 3)) return [];
+        if (elapsedSeconds is not (>= 0 and < 3)) return [];
         return items.Where(i => state.Inventory.Devices.Any(d => d.Device.Id == i.Target.DeviceId && d.Connected &&
                 d.Device.Endpoints.Any(e => e.Id == i.Target.EndpointId && e.Capabilities.Any(c => c.Feature == i.Measurement && c.Usable))) &&
                 Sample(state, i.Target, i.Measurement) is { } sample && Fresh(sample, elapsedSeconds))
